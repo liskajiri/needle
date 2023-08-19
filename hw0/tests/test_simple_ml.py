@@ -1,9 +1,17 @@
 import sys
+
 import numdifftools as nd
+import numpy as np
+from simple_ml import (
+    add,
+    loss_err,
+    nn_epoch,
+    parse_mnist,
+    softmax_loss,
+    softmax_regression_epoch,
+)
 
 sys.path.append("./src")
-
-from simple_ml import *
 
 
 ##############################################################################
@@ -11,7 +19,7 @@ from simple_ml import *
 def test_add():
     assert add(5, 6) == 11
     assert add(3.2, 1.0) == 4.2
-    assert type(add(4.0, 4)) == float
+    assert isinstance(type(add(4.0, 4)), float)
     np.testing.assert_allclose(
         add(np.array([1, 2]), np.array([3, 4])), np.array([4, 6])
     )

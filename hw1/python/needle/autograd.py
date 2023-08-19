@@ -3,6 +3,7 @@ from collections import defaultdict
 from typing import List, Optional, Tuple, Union
 
 import numpy
+import numpy as array_api
 
 import needle
 
@@ -12,7 +13,6 @@ TENSOR_COUNTER = 0
 
 # NOTE: we will import numpy as the array_api
 # as the backend for our computations, this line will change in later homeworks
-import numpy as array_api
 
 NDArray = numpy.ndarray
 
@@ -102,7 +102,7 @@ class Op:
 
 
 class TensorOp(Op):
-    """Op class specialized to output tensors, will be alternate subclasses for other structures"""
+    """Op class specialized to output tensors"""
 
     def __call__(self, *args):
         return Tensor.make_from_op(self, args)
@@ -407,7 +407,8 @@ def compute_gradient_of_variables(output_tensor: Tensor, out_grad: Tensor) -> No
     # instead of the vector output_node. But this is the common case for loss function.
     node_to_output_grads[output_tensor] = [out_grad]
 
-    # Traverse graph in reverse topological order given the output_node that we are taking gradient wrt.
+    # Traverse graph in reverse topological order given the output_node that we are
+    # taking gradient wrt.
     reverse_topo_order = list(reversed(find_topo_sort([output_tensor])))
 
     for node in reverse_topo_order:
@@ -451,7 +452,7 @@ def topo_sort_dfs(node, visited, topo_order) -> None:
 
 
 def sum_node_list(node_list):
-    """Custom sum function in order to avoid create redundant nodes in Python sum implementation."""
+    """Avoid create redundant nodes in Python sum implementation."""
     from functools import reduce
     from operator import add
 
