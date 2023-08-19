@@ -1,11 +1,11 @@
 import sys
-
-sys.path.append("./python")
-sys.path.append("./apps")
 import needle as ndl
 import numdifftools as nd
 import numpy as np
 from simple_ml import *
+
+sys.path.append("./python")
+sys.path.append("./apps")
 
 
 ##############################################################################

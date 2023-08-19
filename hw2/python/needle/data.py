@@ -1,7 +1,6 @@
 import numpy as np
-from .autograd import Tensor
 
-from typing import Iterator, Optional, List, Sized, Union, Iterable, Any
+from typing import Optional, List
 
 
 class Transform:
@@ -10,7 +9,7 @@ class Transform:
 
 
 class RandomFlipHorizontal(Transform):
-    def __init__(self, p = 0.5):
+    def __init__(self, p=0.5):
         self.p = p
 
     def __call__(self, img):
@@ -22,7 +21,7 @@ class RandomFlipHorizontal(Transform):
             H x W x C ndarray corresponding to image flipped with probability self.p
         Note: use the provided code to provide randomness, for easier testing
         """
-        flip_img = np.random.rand() < self.p
+        np.random.rand() < self.p
         ### BEGIN YOUR SOLUTION
         raise NotImplementedError()
         ### END YOUR SOLUTION
@@ -33,14 +32,16 @@ class RandomCrop(Transform):
         self.padding = padding
 
     def __call__(self, img):
-        """ Zero pad and then randomly crop an image.
+        """Zero pad and then randomly crop an image.
         Args:
              img: H x W x C NDArray of an image
-        Return 
+        Return
             H x W x C NAArray of cliped image
         Note: generate the image shifted by shift_x, shift_y specified below
         """
-        shift_x, shift_y = np.random.randint(low=-self.padding, high=self.padding+1, size=2)
+        shift_x, shift_y = np.random.randint(
+            low=-self.padding, high=self.padding + 1, size=2
+        )
         ### BEGIN YOUR SOLUTION
         raise NotImplementedError()
         ### END YOUR SOLUTION
@@ -81,7 +82,7 @@ class DataLoader:
             (default: ``1``).
         shuffle (bool, optional): set to ``True`` to have the data reshuffled
             at every epoch (default: ``False``).
-     """
+    """
     dataset: Dataset
     batch_size: Optional[int]
 
@@ -91,13 +92,13 @@ class DataLoader:
         batch_size: Optional[int] = 1,
         shuffle: bool = False,
     ):
-
         self.dataset = dataset
         self.shuffle = shuffle
         self.batch_size = batch_size
         if not self.shuffle:
-            self.ordering = np.array_split(np.arange(len(dataset)), 
-                                           range(batch_size, len(dataset), batch_size))
+            self.ordering = np.array_split(
+                np.arange(len(dataset)), range(batch_size, len(dataset), batch_size)
+            )
 
     def __iter__(self):
         ### BEGIN YOUR SOLUTION
@@ -131,6 +132,7 @@ class MNISTDataset(Dataset):
         ### BEGIN YOUR SOLUTION
         raise NotImplementedError()
         ### END YOUR SOLUTION
+
 
 class NDArrayDataset(Dataset):
     def __init__(self, *arrays):

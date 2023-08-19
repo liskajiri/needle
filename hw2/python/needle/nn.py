@@ -1,10 +1,7 @@
 """The module.
 """
-from typing import List, Callable, Any
+from typing import List
 from needle.autograd import Tensor
-from needle import ops
-import needle.init as init
-import numpy as np
 
 
 class Parameter(Tensor):
@@ -49,8 +46,6 @@ def _child_modules(value: object) -> List["Module"]:
         return []
 
 
-
-
 class Module:
     def __init__(self):
         self.training = True
@@ -82,7 +77,9 @@ class Identity(Module):
 
 
 class Linear(Module):
-    def __init__(self, in_features, out_features, bias=True, device=None, dtype="float32"):
+    def __init__(
+        self, in_features, out_features, bias=True, device=None, dtype="float32"
+    ):
         super().__init__()
         self.in_features = in_features
         self.out_features = out_features
@@ -95,7 +92,6 @@ class Linear(Module):
         ### BEGIN YOUR SOLUTION
         raise NotImplementedError()
         ### END YOUR SOLUTION
-
 
 
 class Flatten(Module):
@@ -130,7 +126,6 @@ class SoftmaxLoss(Module):
         ### END YOUR SOLUTION
 
 
-
 class BatchNorm1d(Module):
     def __init__(self, dim, eps=1e-5, momentum=0.1, device=None, dtype="float32"):
         super().__init__()
@@ -140,7 +135,6 @@ class BatchNorm1d(Module):
         ### BEGIN YOUR SOLUTION
         raise NotImplementedError()
         ### END YOUR SOLUTION
-
 
     def forward(self, x: Tensor) -> Tensor:
         ### BEGIN YOUR SOLUTION
@@ -164,7 +158,7 @@ class LayerNorm1d(Module):
 
 
 class Dropout(Module):
-    def __init__(self, p = 0.5):
+    def __init__(self, p=0.5):
         super().__init__()
         self.p = p
 
@@ -183,6 +177,3 @@ class Residual(Module):
         ### BEGIN YOUR SOLUTION
         raise NotImplementedError()
         ### END YOUR SOLUTION
-
-
-
