@@ -1,7 +1,6 @@
 """Core data structures."""
 import needle
-from typing import List, Optional, NamedTuple, Tuple, Union
-from collections import namedtuple
+from typing import List, Optional, Tuple, Union
 import numpy
 from needle import init
 
@@ -42,12 +41,12 @@ class CPUDevice(Device):
         return numpy.ones(shape, dtype=dtype)
 
     def randn(self, *shape):
-        # note: numpy doesn't support types within standard random routines, and 
+        # note: numpy doesn't support types within standard random routines, and
         # .astype("float32") does work if we're generating a singleton
-        return numpy.random.randn(*shape) 
+        return numpy.random.randn(*shape)
 
     def rand(self, *shape):
-        # note: numpy doesn't support types within standard random routines, and 
+        # note: numpy doesn't support types within standard random routines, and
         # .astype("float32") does work if we're generating a singleton
         return numpy.random.rand(*shape)
 
@@ -109,7 +108,7 @@ class Op:
         raise NotImplementedError()
 
     def gradient_as_tuple(self, out_grad: "Value", node: "Value") -> Tuple["Value"]:
-        """ Convenience method to always return a tuple from gradient call"""
+        """Convenience method to always return a tuple from gradient call"""
         output = self.gradient(out_grad, node)
         if isinstance(output, tuple):
             return output
@@ -120,7 +119,7 @@ class Op:
 
 
 class TensorOp(Op):
-    """ Op class specialized to output tensors, will be alterate subclasses for other structures """
+    """Op class specialized to output tensors"""
 
     def __call__(self, *args):
         return Tensor.make_from_op(self, args)
@@ -336,7 +335,11 @@ class Tensor(Value):
         return data.device
 
     def backward(self, out_grad=None):
-        out_grad = out_grad if out_grad else init.ones(*self.shape, dtype=self.dtype, device=self.device)
+        out_grad = (
+            out_grad
+            if out_grad
+            else init.ones(*self.shape, dtype=self.dtype, device=self.device)
+        )
         compute_gradient_of_variables(self, out_grad)
 
     def __repr__(self):
@@ -413,14 +416,15 @@ def compute_gradient_of_variables(output_tensor, out_grad):
     Store the computed result in the grad field of each Variable.
     """
     # a map from node to a list of gradient contributions from each output node
-    node_to_output_grads_list: Dict[Tensor, List[Tensor]] = {}
+    node_to_output_grads_list: dict[Tensor, List[Tensor]] = {}
     # Special note on initializing gradient of
     # We are really taking a derivative of the scalar reduce_sum(output_node)
     # instead of the vector output_node. But this is the common case for loss function.
     node_to_output_grads_list[output_tensor] = [out_grad]
 
-    # Traverse graph in reverse topological order given the output_node that we are taking gradient wrt.
-    reverse_topo_order = list(reversed(find_topo_sort([output_tensor])))
+    # Traverse graph in reverse topological order given the output_node that we
+    # are taking gradient wrt.
+    list(reversed(find_topo_sort([output_tensor])))
 
     ### BEGIN YOUR SOLUTION
     raise NotImplementedError()
@@ -453,7 +457,8 @@ def topo_sort_dfs(node, visited, topo_order):
 
 
 def sum_node_list(node_list):
-    """Custom sum function in order to avoid create redundant nodes in Python sum implementation."""
+    """Avoid create redundant nodes in Python sum implementation."""
     from operator import add
     from functools import reduce
+
     return reduce(add, node_list)

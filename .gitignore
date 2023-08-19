@@ -166,3 +166,4 @@ hw1/.vscode/extensions.json
 .gitignore
 hw2/figures/residualblock.png
 hw2/figures/mlp_resnet.png
+.vscode/settings.json

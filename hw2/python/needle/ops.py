@@ -1,11 +1,9 @@
 """Operatpr table."""
 # Global operator table.
-from numbers import Number
-from typing import Optional, List
+from typing import Optional
 from .autograd import NDArray
-from .autograd import Op, Tensor, Value, TensorOp
+from .autograd import Tensor, Value, TensorOp
 from .autograd import TensorTuple, TensorTupleOp
-import numpy
 
 # NOTE: we will numpy as the array_api
 # to backup our computations, this line will change in later homeworks
@@ -44,7 +42,7 @@ class TupleGetItem(TensorOp):
         in_grad = []
         for i, value in enumerate(node.inputs[0]):
             if i != index:
-                in_grad.append(zeros_like(value))
+                in_grad.append(array_api.zeros_like(value))
             else:
                 in_grad.append(out_grad)
         return MakeTensorTuple()(*in_grad)
@@ -335,7 +333,6 @@ class ReLU(TensorOp):
 
 def relu(a):
     return ReLU()(a)
-
 
 
 class LogSumExp(TensorOp):
