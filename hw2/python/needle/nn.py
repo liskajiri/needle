@@ -215,20 +215,26 @@ class LayerNorm1d(Module):
         self.bias = Parameter(init.zeros(self.dim, **config))
 
     def forward(self, x: Tensor) -> Tensor:
-        # We can assume 2D tensor: [batch, features]
+        # We can assume 2D tensor: (batch, features)
         assert x.ndim == 2
 
+        # mean_x: (batch, )
+        mean_x = ops.mean(x, axes=1)
+        # cast to x.shape
         mean_x = ops.broadcast_to_new_axis(
-            ops.mean(x, axes=1), new_axis=(x.shape[0], 1), new_shape=x.shape
+            mean_x, new_axis=(x.shape[0], 1), new_shape=x.shape
         )
-        var_x = ops.mean((x - mean_x) ** 2, axes=1)
 
-        var_x = ops.sqrt(var_x + self.eps)
+        # var_x: (batch, )
+        var_x = ops.mean((x - mean_x) ** 2, axes=1)
+        # cast to x.shape
         var_x = ops.broadcast_to_new_axis(
             var_x, new_axis=(x.shape[0], 1), new_shape=x.shape
         )
 
-        return self.weight * ((x - mean_x) / var_x) + self.bias
+        weights = self.weight.broadcast_to(x.shape)
+        biases = self.bias.broadcast_to(x.shape)
+        return weights * ((x - mean_x) / ops.sqrt(var_x + self.eps)) + biases
 
 
 class Dropout(Module):
