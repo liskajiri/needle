@@ -1,16 +1,20 @@
 """Core data structures."""
-import needle
+from collections import defaultdict
 from typing import List, Optional, Tuple, Union
+
 import numpy
-from needle import init
+import numpy as array_api
+
+import needle
+import needle.init as init
+
 
 # needle version
 LAZY_MODE = False
 TENSOR_COUNTER = 0
 
-# NOTE: we will numpy as the array_api
-# to backup our computations, this line will change in later homeworks
-import numpy as array_api
+# NOTE: we will import numpy as the array_api
+# as the backend for our computations, this line will change in later homeworks
 
 NDArray = numpy.ndarray
 
@@ -54,12 +58,12 @@ class CPUDevice(Device):
         return numpy.eye(n, dtype=dtype)[i]
 
 
-def cpu():
+def cpu() -> CPUDevice:
     """Return cpu device"""
     return CPUDevice()
 
 
-def all_devices():
+def all_devices() -> list[CPUDevice]:
     """return a list of all available devices"""
     return [cpu()]
 
@@ -367,9 +371,7 @@ class Tensor(Value):
             return needle.ops.MulScalar(other)(self)
 
     def __pow__(self, other):
-        ### BEGIN YOUR SOLUTION
-        raise NotImplementedError()
-        ### END YOUR SOLUTION
+        return needle.ops.PowerScalar(other)(self)
 
     def __sub__(self, other):
         if isinstance(other, Tensor):
@@ -404,31 +406,44 @@ class Tensor(Value):
     def transpose(self, axes=None):
         return needle.ops.Transpose(axes)(self)
 
+    @property
+    def T(self):
+        return self.transpose()
+
+    @property
+    def ndim(self):
+        return len(self.shape)
+
     __radd__ = __add__
     __rmul__ = __mul__
     __rsub__ = __sub__
     __rmatmul__ = __matmul__
 
 
-def compute_gradient_of_variables(output_tensor, out_grad):
+def compute_gradient_of_variables(output_tensor: Tensor, out_grad: Tensor) -> None:
     """Take gradient of output node with respect to each node in node_list.
 
     Store the computed result in the grad field of each Variable.
     """
     # a map from node to a list of gradient contributions from each output node
-    node_to_output_grads_list: dict[Tensor, List[Tensor]] = {}
+    node_to_output_grads: defaultdict[Tensor, List[Tensor]] = defaultdict(list)
     # Special note on initializing gradient of
     # We are really taking a derivative of the scalar reduce_sum(output_node)
     # instead of the vector output_node. But this is the common case for loss function.
-    node_to_output_grads_list[output_tensor] = [out_grad]
+    node_to_output_grads[output_tensor] = [out_grad]
 
-    # Traverse graph in reverse topological order given the output_node that we
-    # are taking gradient wrt.
-    list(reversed(find_topo_sort([output_tensor])))
+    # Traverse graph in reverse topological order given the output_node that we are
+    # taking gradient wrt.
+    reverse_topo_order = list(reversed(find_topo_sort([output_tensor])))
 
-    ### BEGIN YOUR SOLUTION
-    raise NotImplementedError()
-    ### END YOUR SOLUTION
+    for node in reverse_topo_order:
+        node.grad = sum_node_list(node_to_output_grads[node])
+
+        if node.op:
+            # partial adjoints
+            grads = node.op.gradient_as_tuple(node.grad, node)
+            for i, input_node in enumerate(node.inputs):
+                node_to_output_grads[input_node].append(grads[i])
 
 
 def find_topo_sort(node_list: List[Value]) -> List[Value]:
@@ -439,16 +454,21 @@ def find_topo_sort(node_list: List[Value]) -> List[Value]:
     after all its predecessors are traversed due to post-order DFS, we get a topological
     sort.
     """
-    ### BEGIN YOUR SOLUTION
-    raise NotImplementedError()
-    ### END YOUR SOLUTION
+    topo_order = []
+    visited = set()
+    for node in node_list:
+        topo_sort_dfs(node, visited, topo_order)
+    return topo_order
 
 
-def topo_sort_dfs(node, visited, topo_order):
+def topo_sort_dfs(node, visited, topo_order) -> None:
     """Post-order DFS"""
-    ### BEGIN YOUR SOLUTION
-    raise NotImplementedError()
-    ### END YOUR SOLUTION
+    if node in visited:
+        return
+    visited.add(node)
+    for input_node in node.inputs:
+        topo_sort_dfs(input_node, visited, topo_order)
+    topo_order.append(node)
 
 
 ##############################
@@ -458,7 +478,7 @@ def topo_sort_dfs(node, visited, topo_order):
 
 def sum_node_list(node_list):
     """Avoid create redundant nodes in Python sum implementation."""
-    from operator import add
     from functools import reduce
+    from operator import add
 
     return reduce(add, node_list)

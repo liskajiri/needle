@@ -53,6 +53,8 @@ def rand_binary(
 
 def one_hot(n, i, device=None, dtype="float32", requires_grad=False) -> Tensor:
     """Generate one-hot encoding Tensor"""
+    # n: length of array
+    # i: index to set to 1
     device = cpu() if device is None else device
     return Tensor(
         device.one_hot(n, i.numpy(), dtype=dtype),
