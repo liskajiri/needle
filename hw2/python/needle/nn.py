@@ -60,12 +60,12 @@ class Module:
     def _children(self) -> List["Module"]:
         return _child_modules(self.__dict__)
 
-    def eval(self):
+    def eval(self) -> None:
         self.training = False
         for m in self._children():
             m.training = False
 
-    def train(self):
+    def train(self) -> None:
         self.training = True
         for m in self._children():
             m.training = True
@@ -245,7 +245,7 @@ class Dropout(Module):
     def forward(self, x: Tensor) -> Tensor:
         if not self.training:
             return x
-        mask = init.rand_binary(*x.shape, p=self.p) / (1 - self.p)
+        mask = init.rand_binary(*x.shape, p=1 - self.p) / (1 - self.p)
         return x * mask
 
 
