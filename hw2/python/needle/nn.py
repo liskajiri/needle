@@ -106,17 +106,16 @@ class Linear(Module):
                     fan_in=self.out_features,
                     fan_out=1,
                     **config,
-                )
+                ).reshape((1, self.out_features))
             )
-            # Should not be needed, because the bias term will be reshaped
-            # on .forward(), but required to pass tests
-            self.bias = ops.reshape(self.bias, (1, self.out_features))
+        else:
+            self.bias = None
 
     def forward(self, X: Tensor) -> Tensor:
+        X_weights = X @ self.weight
         if self.bias:
-            self.bias = ops.broadcast_to(self.bias, (X.shape[0], self.out_features))
-            return X @ self.weight + self.bias
-        return X @ self.weight
+            return X_weights + self.bias.broadcast_to(X_weights.shape)
+        return X_weights
 
 
 class Flatten(Module):
