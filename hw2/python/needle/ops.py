@@ -115,7 +115,7 @@ class MulScalar(TensorOp):
         return a * self.scalar
 
     def gradient(self, out_grad: Tensor, node: Tensor):
-        return mul_scalar(out_grad, self.scalar)
+        return (out_grad * self.scalar,)
 
 
 def mul_scalar(a, scalar):
@@ -388,3 +388,11 @@ def softmax(Z: Tensor, axes=None) -> Tensor:
 def broadcast_to_new_axis(x: Tensor, new_axis: tuple, new_shape: tuple) -> Tensor:
     new_axes = tuple(1 if i in new_axis else ax for i, ax in enumerate(new_shape))
     return broadcast_to(reshape(x, new_axes), new_shape)
+
+
+def sqrt(x: Tensor) -> Tensor:
+    return x**0.5
+
+
+def mean(a: Tensor, axes=0) -> Tensor:
+    return summation(a, axes=axes) / a.shape[axes]
