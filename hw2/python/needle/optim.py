@@ -1,6 +1,13 @@
 """Optimization module"""
 
 
+from collections import defaultdict
+from typing import Iterable
+
+from needle.nn import Parameter
+from needle.autograd import Tensor
+
+
 class Optimizer:
     def __init__(self, params):
         self.params = params
@@ -14,23 +21,29 @@ class Optimizer:
 
 
 class SGD(Optimizer):
-    def __init__(self, params, lr=0.01, momentum=0.0, weight_decay=0.0):
+    def __init__(
+        self, params: Iterable[Parameter], lr=0.01, momentum=0.0, weight_decay=0.0
+    ):
         super().__init__(params)
         self.lr = lr
         self.momentum = momentum
-        self.u = {}
+        self.u = defaultdict(lambda: 0.0)
         self.weight_decay = weight_decay
 
     def step(self):
-        ### BEGIN YOUR SOLUTION
-        raise NotImplementedError()
-        ### END YOUR SOLUTION
+        for param in self.params:
+            grad = param.grad.data + self.weight_decay * param.data
+            self.u[param] = (
+                self.momentum * self.u[param] + (1 - self.momentum) * grad.data
+            )
+            # resolve issues with wrong types
+            param.data -= self.lr * Tensor(self.u[param], dtype=param.dtype)
 
 
 class Adam(Optimizer):
     def __init__(
         self,
-        params,
+        params: Iterable[Parameter],
         lr=0.01,
         beta1=0.9,
         beta2=0.999,
@@ -45,10 +58,24 @@ class Adam(Optimizer):
         self.weight_decay = weight_decay
         self.t = 0
 
-        self.m = {}
-        self.v = {}
+        self.u = defaultdict(lambda: 0.0)
+        self.v = defaultdict(lambda: 0.0)
 
     def step(self):
-        ### BEGIN YOUR SOLUTION
-        raise NotImplementedError()
-        ### END YOUR SOLUTION
+        self.t += 1
+        for param in self.params:
+            grad = param.grad.data + self.weight_decay * param.data
+            self.u[param] = self.beta1 * self.u[param] + (1 - self.beta1) * grad.data
+            self.v[param] = (
+                self.beta2 * self.v[param] + (1 - self.beta2) * grad.data**2
+            )
+
+            # bias corrections
+            u_hat = self.u[param] / (1 - self.beta1 ** (self.t))
+            v_hat = self.v[param] / (1 - self.beta2 ** (self.t))
+
+            # resolve issues with wrong types
+            param.data = Tensor(
+                param.data - self.lr * u_hat / ((v_hat) ** 0.5 + self.eps),
+                dtype="float32",
+            )
