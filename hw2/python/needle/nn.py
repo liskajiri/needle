@@ -168,8 +168,8 @@ class BatchNorm1d(Module):
             "dtype": dtype,
         }
 
-        self.weight = Parameter(init.ones(self.dim, **config, requires_grad=True))
-        self.bias = Parameter(init.zeros(self.dim, **config, requires_grad=True))
+        self.weight = Parameter(init.ones(self.dim, requires_grad=True, **config))
+        self.bias = Parameter(init.zeros(self.dim, requires_grad=True, **config))
         self.running_mean = init.zeros(self.dim, **config)
         self.running_var = init.ones(self.dim, **config)
 
@@ -177,32 +177,26 @@ class BatchNorm1d(Module):
         def _update_running_variables(var: Tensor, running_var: Tensor) -> Tensor:
             return (1 - self.momentum) * var + self.momentum * running_var
 
+        mean_x = ops.mean(x)
+        x_less_mean = x - mean_x.broadcast_to(x.shape)
+        var_x = ops.mean(x_less_mean**2)
+
+        weights = self.weight.broadcast_to(x.shape)
+        biases = self.bias.broadcast_to(x.shape)
+
         if self.training:
-            mean_x = ops.mean(x)
             self.running_mean = _update_running_variables(self.running_mean, mean_x)
-
-            # make into [1, x] tensor and then broadcast
-            mean_x = ops.broadcast_to(ops.reshape(mean_x, (1, -1)), x.shape)
-
-            var_x = ops.mean((x - mean_x) ** 2)
             self.running_var = _update_running_variables(self.running_var, var_x)
-
-            var_x = ops.sqrt(var_x + self.eps)
-            # make into [1, x] tensor and then broadcast
-            var_x = ops.broadcast_to(ops.reshape(var_x, (1, -1)), x.shape)
         else:
-            # broadcast from batch dimensions to x.shape
-            mean_x = ops.broadcast_to(
-                ops.reshape(self.running_mean, (-1, self.dim)), x.shape
-            )
-            var_x = ops.broadcast_to(
-                ops.reshape(self.running_var, (-1, self.dim)), x.shape
+            # we don't update the running vars at inference time
+            return (
+                weights
+                * ((x - self.running_mean) / ops.sqrt(self.running_var + self.eps))
+                + biases
             )
 
-            self.running_mean = _update_running_variables(self.running_mean, mean_x)
-            self.running_var = _update_running_variables(self.running_var, var_x)
-
-        return self.weight * ((x - mean_x) / var_x) + self.bias
+        var_plus_eps = ops.sqrt(var_x + self.eps).broadcast_to(x.shape)
+        return weights * (x_less_mean / var_plus_eps) + biases
 
 
 class LayerNorm1d(Module):
