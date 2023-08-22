@@ -1,8 +1,10 @@
 import sys
 
 sys.path.append("../python")
+
 import needle as ndl
 import needle.nn as nn
+
 import numpy as np
 
 np.random.seed(0)

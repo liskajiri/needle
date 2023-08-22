@@ -22,7 +22,11 @@ class Optimizer:
 
 class SGD(Optimizer):
     def __init__(
-        self, params: Iterable[Parameter], lr=0.01, momentum=0.0, weight_decay=0.0
+        self,
+        params: Iterable[Parameter],
+        lr: float = 0.01,
+        momentum: float = 0.0,
+        weight_decay: float = 0.0,
     ):
         super().__init__(params)
         self.lr = lr
@@ -37,7 +41,7 @@ class SGD(Optimizer):
                 self.momentum * self.u[param] + (1 - self.momentum) * grad.data
             )
             # resolve issues with wrong types
-            param.data -= self.lr * Tensor(self.u[param], dtype=param.dtype)
+            param.data -= self.lr * Tensor(self.u[param], dtype="float32")
 
 
 class Adam(Optimizer):
@@ -75,7 +79,7 @@ class Adam(Optimizer):
             v_hat = self.v[param] / (1 - self.beta2 ** (self.t))
 
             # resolve issues with wrong types
-            param.data = Tensor(
-                param.data - self.lr * u_hat / ((v_hat) ** 0.5 + self.eps),
+            param.data -= Tensor(
+                self.lr * u_hat / ((v_hat) ** 0.5 + self.eps),
                 dtype="float32",
             )
