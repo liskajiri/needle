@@ -936,11 +936,6 @@ def test_nn_sequential_backward_1():
     )
 
 
-def submit_nn_sequential():
-    mugrade.submit(sequential_forward(batches=2))
-    mugrade.submit(sequential_backward(batches=2))
-
-
 def test_nn_softmax_loss_forward_1():
     np.testing.assert_allclose(
         softmax_loss_forward(5, 10),
@@ -1082,13 +1077,6 @@ def test_nn_softmax_loss_backward_2():
         rtol=1e-5,
         atol=1e-5,
     )
-
-
-def submit_nn_softmax_loss():
-    mugrade.submit(softmax_loss_forward(4, 9))
-    mugrade.submit(softmax_loss_forward(2, 7))
-    mugrade.submit(softmax_loss_backward(4, 9))
-    mugrade.submit(softmax_loss_backward(2, 7))
 
 
 def test_nn_layernorm_forward_1():
@@ -1962,80 +1950,6 @@ def test_optim_adam_z_memory_check_1():
     )
 
 
-def submit_optim_adam():
-    mugrade.submit(
-        learn_model_1d(
-            48,
-            16,
-            lambda z: nn.Sequential(nn.Linear(48, 32), nn.ReLU(), nn.Linear(32, 16)),
-            ndl.optim.Adam,
-            lr=0.001,
-            epochs=2,
-        )
-    )
-    mugrade.submit(
-        learn_model_1d(
-            48,
-            16,
-            lambda z: nn.Sequential(nn.Linear(48, 32), nn.ReLU(), nn.Linear(32, 16)),
-            ndl.optim.Adam,
-            lr=0.001,
-            weight_decay=0.01,
-            epochs=2,
-        )
-    )
-    mugrade.submit(
-        learn_model_1d(
-            48,
-            16,
-            lambda z: nn.Sequential(
-                nn.Linear(48, 32), nn.ReLU(), nn.BatchNorm1d(32), nn.Linear(32, 16)
-            ),
-            ndl.optim.Adam,
-            lr=0.001,
-            weight_decay=0.001,
-            epochs=3,
-        )
-    )
-    mugrade.submit(
-        learn_model_1d_eval(
-            48,
-            16,
-            lambda z: nn.Sequential(
-                nn.Linear(48, 32), nn.ReLU(), nn.BatchNorm1d(32), nn.Linear(32, 16)
-            ),
-            ndl.optim.Adam,
-            lr=0.001,
-            weight_decay=0.001,
-            epochs=2,
-        )
-    )
-    mugrade.submit(
-        learn_model_1d(
-            48,
-            16,
-            lambda z: nn.Sequential(
-                nn.Linear(48, 32), nn.ReLU(), nn.LayerNorm1d(32), nn.Linear(32, 16)
-            ),
-            ndl.optim.Adam,
-            lr=0.01,
-            weight_decay=0.01,
-            epochs=2,
-        )
-    )
-    mugrade.submit(
-        learn_model_1d(
-            48,
-            16,
-            lambda z: nn.Sequential(nn.Linear(48, 32), nn.ReLU(), nn.Linear(32, 16)),
-            ndl.optim.Adam,
-            lr=0.001,
-            weight_decay=0.01,
-            epochs=2,
-        )
-    )
-
-
 def test_mlp_residual_block_num_params_1():
     np.testing.assert_allclose(
         residual_block_num_params(15, 2, nn.BatchNorm1d),
@@ -2184,17 +2098,3 @@ def test_mlp_train_mnist_1():
         rtol=0.001,
         atol=0.001,
     )
-
-
-def submit_mlp_resnet():
-    return None
-    # mugrade.submit(residual_block_num_params(17, 13, nn.BatchNorm1d))
-    # mugrade.submit(residual_block_num_params(785, 101, nn.LayerNorm1d))
-    # mugrade.submit(residual_block_forward(15, 5, nn.LayerNorm1d, 0.3))
-    # mugrade.submit(mlp_resnet_num_params(75, 75, 3, 3, nn.LayerNorm1d))
-    # mugrade.submit(mlp_resnet_num_params(15, 10, 10, 5, nn.BatchNorm1d))
-    # mugrade.submit(mlp_resnet_forward(12, 7, 1, 6, nn.LayerNorm1d, 0.8))
-    # mugrade.submit(mlp_resnet_forward(15, 3, 2, 15, nn.BatchNorm1d, 0.3))
-    # mugrade.submit(train_epoch_1(7, 256, ndl.optim.Adam, lr=0.01, weight_decay=0.01))
-    # mugrade.submit(eval_epoch_1(12, 154))
-    # mugrade.submit(train_mnist_1(550, 1, ndl.optim.SGD, 0.01, 0.01, 7))
