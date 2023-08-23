@@ -6,6 +6,13 @@ import needle.init as init
 import needle.ops as ops
 from needle.autograd import Tensor
 
+"""
+Important: some values need to be converted to float32,
+otherwise they will overflow the division, thus making it a float64 result,
+which will cause type errors downstream
+"""
+from numpy import float32
+
 
 class Parameter(Tensor):
     """A special kind of tensor that represents parameters."""
@@ -50,7 +57,7 @@ def _child_modules(value: object) -> List["Module"]:
 
 
 class Module:
-    def __init__(self):
+    def __init__(self) -> None:
         self.training = True
 
     def parameters(self) -> List[Tensor]:
@@ -82,7 +89,7 @@ class Identity(Module):
 class Linear(Module):
     def __init__(
         self, in_features, out_features, bias=True, device=None, dtype="float32"
-    ):
+    ) -> None:
         super().__init__()
         self.in_features = in_features
         self.out_features = out_features
@@ -129,7 +136,7 @@ class ReLU(Module):
 
 
 class Sequential(Module):
-    def __init__(self, *modules):
+    def __init__(self, *modules) -> None:
         super().__init__()
         self.modules = modules
 
@@ -140,13 +147,14 @@ class Sequential(Module):
 
 
 class SoftmaxLoss(Module):
-    def forward(self, logits: Tensor, y: Tensor):
+    def forward(self, logits: Tensor, y: Tensor) -> Tensor:
         y_one_hot = init.one_hot(logits.shape[1], y)
         diff = (logits * y_one_hot).sum(axes=1)
 
         lse = ops.logsumexp(logits, axes=1)
-        total = lse - diff
-        return total.sum() / logits.shape[0]
+        # division causes result to be float64
+        result = (lse - diff).sum() / float32(logits.shape[0])
+        return result
 
 
 class BatchNorm1d(Module):
@@ -200,7 +208,9 @@ class BatchNorm1d(Module):
 
 
 class LayerNorm1d(Module):
-    def __init__(self, dim: tuple, eps: float = 1e-5, device=None, dtype="float32"):
+    def __init__(
+        self, dim: tuple, eps: float = 1e-5, device=None, dtype="float32"
+    ) -> None:
         super().__init__()
         self.dim = dim
         self.eps = eps
@@ -238,19 +248,20 @@ class LayerNorm1d(Module):
 
 
 class Dropout(Module):
-    def __init__(self, p=0.5):
+    def __init__(self, p=0.5) -> None:
         super().__init__()
         self.p = p
 
     def forward(self, x: Tensor) -> Tensor:
         if not self.training:
             return x
-        mask = init.rand_binary(*x.shape, p=1 - self.p) / (1 - self.p)
+        # division causes result to be float64
+        mask = init.rand_binary(*x.shape, p=1 - self.p) / float32(1 - self.p)
         return x * mask
 
 
 class Residual(Module):
-    def __init__(self, fn: Module):
+    def __init__(self, fn: Module) -> None:
         super().__init__()
         self.fn = fn
 
