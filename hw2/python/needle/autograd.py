@@ -173,7 +173,7 @@ class Value:
         *,
         num_outputs: int = 1,
         cached_data: List[object] = None,
-        requires_grad: Optional[bool] = None
+        requires_grad: Optional[bool] = None,
     ):
         global TENSOR_COUNTER
         TENSOR_COUNTER += 1
@@ -251,7 +251,7 @@ class Tensor(Value):
         device: Optional[Device] = None,
         dtype=None,
         requires_grad=True,
-        **kwargs
+        **kwargs,
     ):
         if isinstance(array, Tensor):
             if device is None:
