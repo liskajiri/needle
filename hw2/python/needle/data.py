@@ -110,7 +110,6 @@ class DataLoader:
         self.dataset = dataset
         self.shuffle = shuffle
         self.batch_size = batch_size
-        self.index = 0
 
     def __iter__(self):
         if self.shuffle:
@@ -122,6 +121,8 @@ class DataLoader:
             orders,
             range(self.batch_size, len(self.dataset), self.batch_size),
         )
+        # reset iteration start at every epoch
+        self.index = 0
 
         return self
 
@@ -132,7 +133,7 @@ class DataLoader:
         indices = self.ordering[self.index]
         self.index += 1
 
-        return [Tensor(i) for i in self.dataset[indices]]
+        return tuple([Tensor(i) for i in self.dataset[indices]])
 
 
 class MNISTDataset(Dataset):
@@ -164,6 +165,26 @@ class MNISTDataset(Dataset):
                     labels of the examples.  Values should be of type np.uint8 and
                     for MNIST will contain the values 0-9.
         """
+
+        self.X, self.y = MNISTDataset.parse_mnist(image_filename, label_filename)
+
+        self.X = self.X.reshape(-1, 28, 28, 1)
+        self.transforms = transforms
+
+    def __getitem__(self, index: int) -> object:
+        (x, y) = self.X[index], self.y[index]
+        if self.transforms:
+            return self.apply_transforms(x), y
+        else:
+            return x, y
+
+    def __len__(self) -> int:
+        return self.X.shape[0]
+
+    @staticmethod
+    def parse_mnist(
+        image_filename: str, label_filename: str
+    ) -> tuple[np.ndarray, np.ndarray]:
         # Read the images file
         with gzip.open(image_filename, "rb") as image_file:
             image_file.read(16)  # Skip the header
@@ -177,17 +198,7 @@ class MNISTDataset(Dataset):
             label_file.read(8)  # Skip the header
             buffer = label_file.read()
             y = np.frombuffer(buffer, dtype=np.uint8)
-
-        self.X = X.reshape(-1, 28, 28, 1)
-        self.y = y
-        self.transforms = transforms
-
-    def __getitem__(self, index: int) -> object:
-        (x, y) = self.X[index], self.y[index]
-        return self.apply_transforms(x), y
-
-    def __len__(self) -> int:
-        return len(self.y)
+        return (X, y)
 
 
 class NDArrayDataset(Dataset):
