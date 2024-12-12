@@ -1,0 +1,45 @@
+[project]
+authors = ["Jiří Liška <70215056+liskajiri@users.noreply.github.com>"]
+channels = ["https://prefix.dev/conda-forge"]
+description = "Library for deep learning & neural networks"
+name = "needle"
+platforms = ["linux-64"]
+version = "0.1.0"
+
+[tasks]
+
+[environments]
+jupyter = ["jupyter"]
+dev = ["dev", "jupyter"]
+default = ["dev"]
+
+[dependencies]
+numpy = ">=2.2.0,<3"
+
+[feature.jupyter.dependencies]
+jupyter = ">=1.1.1,<2"
+ipykernel = ">=6.29.5,<7"
+
+[feature.dev.dependencies]
+cmake = ">=3.31.2,<4"
+pybind11 = ">=2.13.6,<3"
+pytest = ">=8.3.4,<9"
+pytest-benchmark = ">=5.1.0,<6"
+pygal = ">=3.0.5,<4"
+ruff = ">=0.8.2,<0.9"
+
+[feature.dev.tasks]
+format = "ruff format . && clang-format -i hw*/src/*.cc hw*/*src/*.cu"
+lint = "ruff check . --fix"
+style = { depends-on = ["format", "lint"] }
+clean = { cmd = [
+    "rm", "-rf", 
+    "hw*/build",
+    "hw*/python/needle/backend_ndarray/ndarray_backend*.so"
+    ]}
+# make: possible to set inputs {inputs = ["src/ndarray_backend_cpu.cc", "src/ndarray_backend_cuda.cu"]}
+make = {cmd = "cmake .", cwd = "hw3"}
+matmul_benchmark = {cmd = "python -m pytest tests/test_benchmarks.py --benchmark-autosave --benchmark-save-data --benchmark-histogram='benchmark_results/matmul_graph'", cwd = "hw3", depends-on = ["make"]}
+
+[activation]
+env = {PYTHONPATH = "./python"}
