@@ -9,7 +9,10 @@ np.random.seed(0)
 
 
 def ResidualBlock(
-    dim: int, hidden_dim: int, norm: nn.Module = nn.BatchNorm1d, drop_prob: float = 0.1
+    dim: int,
+    hidden_dim: int,
+    norm: nn.Module = nn.norms.BatchNorm1d,
+    drop_prob: float = 0.1,
 ) -> nn.Module:
     return nn.Sequential(
         nn.Residual(
@@ -31,7 +34,7 @@ def MLPResNet(
     hidden_dim: int = 100,
     num_blocks: int = 3,
     num_classes: int = 10,
-    norm: nn.Module = nn.BatchNorm1d,
+    norm: nn.Module = nn.norms.BatchNorm1d,
     drop_prob: float = 0.1,
 ) -> nn.Module:
     # important to use tuples and unpacking - won't work with lists

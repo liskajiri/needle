@@ -1,98 +1,56 @@
-"""Operator table."""
+"""Operator implementations."""
 
-# Global operator table.
 from typing import Optional
 
-# NOTE: we will numpy as the array_api
-# to backup our computations, this line will change in later homeworks
-import numpy as array_api
+from ..autograd import NDArray, Tensor, TensorOp
 
-from .autograd import NDArray, Tensor, TensorOp, TensorTuple, TensorTupleOp, Value
+# NOTE: we will import numpy as the array_api
+# as the backend for our computations, this line will change in later homeworks
 
-# fixes imports in tests
-___all__ = [
-    "make_tuple",
-    "summation" "tuple_get_item",
-    "fused_add_scalars",
+BACKEND = "np"
+# TODO: 2024 version
+import numpy as array_api  # noqa: E402
+
+__all__ = [
     "add",
     "add_scalar",
     "multiply",
     "mul_scalar",
+    "power",
     "power_scalar",
     "divide",
     "divide_scalar",
     "transpose",
     "reshape",
     "broadcast_to",
+    "summation",
     "matmul",
     "negate",
     "log",
     "exp",
     "relu",
-    "logsumexp",
-    "softmax",
     "sqrt",
     "mean",
     "broadcast_to_new_axis",
+    "EWiseAdd",
+    "AddScalar",
+    "EWiseMul",
+    "MulScalar",
+    "EWisePow",
+    "PowerScalar",
+    "EWiseDiv",
+    "DivScalar",
+    "Transpose",
+    "Reshape",
+    "BroadcastTo",
+    "Summation",
+    "MatMul",
+    "Negate",
+    "Log",
+    "Exp",
+    "ReLU",
+    "SquareRoot",
 ]
-
-
-class MakeTensorTuple(TensorTupleOp):
-    def compute(self, *args) -> tuple:
-        return tuple(args)
-
-    def gradient(self, out_grad, node):
-        assert isinstance(out_grad, TensorTuple)
-        return tuple(*[out_grad[i] for i in range(len(out_grad))])
-
-
-def make_tuple(*args):
-    return MakeTensorTuple()(*args)
-
-
-class TupleGetItem(TensorOp):
-    def __init__(self, index):
-        self.index = index
-
-    def __call__(self, a: TensorTuple, fold_const=True) -> Value:
-        assert isinstance(a, TensorTuple)
-        # constant folding
-        if fold_const and isinstance(a.op, MakeTensorTuple):
-            return a.inputs[self.index]
-        return Tensor.make_from_op(self, [a])
-
-    def compute(self, a):
-        return a[self.index]
-
-    def gradient(self, out_grad, node):
-        index = self.index
-        in_grad = []
-        for i, value in enumerate(node.inputs[0]):
-            if i != index:
-                in_grad.append(array_api.zeros_like(value))
-            else:
-                in_grad.append(out_grad)
-        return MakeTensorTuple()(*in_grad)
-
-
-def tuple_get_item(value, index):
-    return TupleGetItem(index)(value)
-
-
-class FusedAddScalars(TensorTupleOp):
-    def __init__(self, c0: float, c1: float):
-        self.c0 = c0
-        self.c1 = c1
-
-    def compute(self, a):
-        return a + self.c0, a + self.c1
-
-    def gradient(self, out_grad, node):
-        return out_grad[0] + out_grad[1]
-
-
-def fused_add_scalars(x, c0, c1):
-    return FusedAddScalars(c0, c1)(x)
 
 
 class EWiseAdd(TensorOp):
@@ -148,6 +106,23 @@ class MulScalar(TensorOp):
 
 def mul_scalar(a, scalar):
     return MulScalar(scalar)(a)
+
+
+class EWisePow(TensorOp):
+    """Op to element-wise raise a tensor to a power."""
+
+    def compute(self, a: NDArray, b: NDArray) -> NDArray:
+        return a**b
+
+    def gradient(self, out_grad, node):
+        a, b = node.inputs
+        grad_a = out_grad * b * (a ** (b - 1))
+        grad_b = out_grad * (a**b) * a.log()
+        return grad_a, grad_b
+
+
+def power(a, b):
+    return EWisePow()(a, b)
 
 
 class PowerScalar(TensorOp):
@@ -207,7 +182,7 @@ class Transpose(TensorOp):
             axes = (-1, -2)
         self.axes = axes
 
-    def compute(self, a):
+    def compute(self, a: NDArray):
         permutation = [i for i in range(len(a.shape))]
         lhs, rhs = self.axes
         permutation[lhs], permutation[rhs] = (
@@ -243,7 +218,7 @@ class BroadcastTo(TensorOp):
     def __init__(self, shape):
         self.shape = shape
 
-    def compute(self, a):
+    def compute(self, a: NDArray):
         return array_api.broadcast_to(a, self.shape)
 
     def gradient(self, out_grad: Tensor, node: Tensor):
@@ -311,7 +286,7 @@ def matmul(a, b):
 
 
 class Negate(TensorOp):
-    def compute(self, a):
+    def compute(self, a: NDArray):
         return -a
 
     def gradient(self, out_grad, node):
@@ -359,63 +334,17 @@ def relu(a):
     return ReLU()(a)
 
 
-class LogSumExp(TensorOp):
-    def __init__(self, axes: Optional[tuple] = None):
-        if isinstance(axes, int):
-            self.axes = (axes,)
-        else:
-            self.axes = axes
-
-    def compute(self, Z: NDArray):
-        max_Z = array_api.max(Z, axis=self.axes)
-
-        if self.axes is None:
-            max_Z_expanded = array_api.broadcast_to(max_Z, Z.shape)
-        else:
-            # tensor cannot be broadcasted without proper dimensions,
-            # so we need to add axis to max_Z
-            new_axes = tuple(
-                [1 if i in self.axes else ax for i, ax in enumerate(Z.shape)]
-            )
-            out_grad = array_api.reshape(max_Z, new_axes)
-            max_Z_expanded = array_api.broadcast_to(out_grad, Z.shape)
-
-        e = array_api.exp(Z - max_Z_expanded).sum(axis=self.axes)
-        return array_api.log(e) + max_Z
-
-    def gradient(self, out_grad: Tensor, node: Value):
-        # gradient of LogSumExp is softmax
-        Z = node.inputs[0]
-        max_Z = array_api.max(Z.cached_data, axis=self.axes, keepdims=True)
-        numerator = exp(Z - max_Z)
-        denominator = summation(numerator, axes=self.axes)
-        # denominator has a different shape than numerator
-        # so we need to add axes to denominator
-
-        target_shape = Z.shape
-        if self.axes:
-            out_grad = broadcast_to_new_axis(out_grad, self.axes, target_shape)
-            denominator = broadcast_to_new_axis(denominator, self.axes, target_shape)
-
-        return out_grad * (numerator / denominator)
-
-
-def logsumexp(a, axes=None):
-    return LogSumExp(axes=axes)(a)
-
-
-def softmax(Z: Tensor, axes=None) -> Tensor:
-    # Numerically stable softmax
-    # ! Uses Z.cached_data
-    max_Z = array_api.max(Z.cached_data, axes, keepdims=True)
-    numerator = exp(Z - max_Z)
-    denominator = summation(numerator, axes)
-    return numerator / denominator
-
-
 def broadcast_to_new_axis(x: Tensor, new_axis: tuple, new_shape: tuple) -> Tensor:
     new_axes = tuple(1 if i in new_axis else ax for i, ax in enumerate(new_shape))
     return broadcast_to(reshape(x, new_axes), new_shape)
+
+
+class SquareRoot(TensorOp):
+    def compute(self, a: NDArray):
+        return array_api.sqrt(a)
+
+    def gradient(self, out_grad, node):
+        return out_grad / (2 * node.outputs[0])
 
 
 def sqrt(x: Tensor) -> Tensor:
