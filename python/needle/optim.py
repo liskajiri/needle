@@ -7,7 +7,7 @@ from needle.nn import Parameter
 
 
 class Optimizer:
-    def __init__(self, params) -> None:
+    def __init__(self, params: Iterable[Parameter]) -> None:
         self.params = params
 
     def step(self) -> None:
@@ -48,11 +48,11 @@ class Adam(Optimizer):
     def __init__(
         self,
         params: Iterable[Parameter],
-        lr=0.01,
-        beta1=0.9,
-        beta2=0.999,
-        eps=1e-8,
-        weight_decay=0.0,
+        lr: float=0.01,
+        beta1: float= 0.9,
+        beta2: float = 0.999,
+        eps: float=1e-8,
+        weight_decay: float=0.0,
     ) -> None:
         super().__init__(params)
         self.lr = lr
