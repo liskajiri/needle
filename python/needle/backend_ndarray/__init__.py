@@ -1,1 +1,3 @@
-from .ndarray import *
+from . import ndarray
+
+__all__ = ["ndarray"]

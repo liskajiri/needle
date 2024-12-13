@@ -6,9 +6,9 @@ from typing import List, Optional, Tuple, Union
 import numpy
 import numpy as array_api
 
-import needle
-import needle.init as init
+import needle as ndl
 
+from .backend_numpy import Device, cpu
 
 # needle version
 LAZY_MODE = False
@@ -19,54 +19,8 @@ TENSOR_COUNTER = 0
 
 NDArray = numpy.ndarray
 
-
-class Device:
-    """Indicates the device supporting an NDArray."""
-
-
-class CPUDevice(Device):
-    """Represents data that sits in CPU"""
-
-    def __repr__(self):
-        return "needle.cpu()"
-
-    def __hash__(self):
-        return self.__repr__().__hash__()
-
-    def __eq__(self, other):
-        return isinstance(other, CPUDevice)
-
-    def enabled(self):
-        return True
-
-    def zeros(self, *shape, dtype="float32"):
-        return numpy.zeros(shape, dtype=dtype)
-
-    def ones(self, *shape, dtype="float32"):
-        return numpy.ones(shape, dtype=dtype)
-
-    def randn(self, *shape):
-        # note: numpy doesn't support types within standard random routines, and
-        # .astype("float32") does work if we're generating a singleton
-        return numpy.random.randn(*shape)
-
-    def rand(self, *shape):
-        # note: numpy doesn't support types within standard random routines, and
-        # .astype("float32") does work if we're generating a singleton
-        return numpy.random.rand(*shape)
-
-    def one_hot(self, n, i, dtype="float32"):
-        return numpy.eye(n, dtype=dtype)[i]
-
-
-def cpu() -> CPUDevice:
-    """Return cpu device"""
-    return CPUDevice()
-
-
-def all_devices() -> list[CPUDevice]:
-    """return a list of all available devices"""
-    return [cpu()]
+# TODO:
+# from .backend_selection import array_api, NDArray, default_device
 
 
 class Op:
@@ -209,7 +163,6 @@ class Value:
         return value
 
 
-### Not needed in HW1
 class TensorTuple(Value):
     """Represent a tuple of tensors.
 
@@ -221,13 +174,13 @@ class TensorTuple(Value):
         return len(cdata)
 
     def __getitem__(self, index: int):
-        return needle.ops.tuple_get_item(self, index)
+        return ndl.ops.tuple_get_item(self, index)
 
     def tuple(self):
         return tuple([x for x in self])
 
     def __repr__(self):
-        return "needle.TensorTuple" + str(self.tuple())
+        return "ndl.TensorTuple" + str(self.tuple())
 
     def __str__(self):
         return self.__repr__()
@@ -235,7 +188,7 @@ class TensorTuple(Value):
     def __add__(self, other):
         assert isinstance(other, TensorTuple)
         assert len(self) == len(other)
-        return needle.ops.make_tuple(*[self[i] + other[i] for i in range(len(self))])
+        return ndl.ops.make_tuple(*[self[i] + other[i] for i in range(len(self))])
 
     def detach(self):
         """Create a new tensor that shares the data but detaches from the graph."""
@@ -343,12 +296,14 @@ class Tensor(Value):
         out_grad = (
             out_grad
             if out_grad
-            else init.ones(*self.shape, dtype=self.dtype, device=self.device)
+            else ndl.init.init_basic.ones(
+                *self.shape, dtype=self.dtype, device=self.device
+            )
         )
         compute_gradient_of_variables(self, out_grad)
 
     def __repr__(self):
-        return "needle.Tensor(" + str(self.realize_cached_data()) + ")"
+        return "ndl.Tensor(" + str(self.realize_cached_data()) + ")"
 
     def __str__(self):
         return self.realize_cached_data().__str__()
@@ -361,51 +316,51 @@ class Tensor(Value):
 
     def __add__(self, other):
         if isinstance(other, Tensor):
-            return needle.ops.EWiseAdd()(self, other)
+            return ndl.ops.EWiseAdd()(self, other)
         else:
-            return needle.ops.AddScalar(other)(self)
+            return ndl.ops.AddScalar(other)(self)
 
     def __mul__(self, other):
         if isinstance(other, Tensor):
-            return needle.ops.EWiseMul()(self, other)
+            return ndl.ops.EWiseMul()(self, other)
         else:
-            return needle.ops.MulScalar(other)(self)
+            return ndl.ops.MulScalar(other)(self)
 
     def __pow__(self, other):
-        return needle.ops.PowerScalar(other)(self)
+        return ndl.ops.PowerScalar(other)(self)
 
     def __sub__(self, other):
         if isinstance(other, Tensor):
-            return needle.ops.EWiseAdd()(self, needle.ops.Negate()(other))
+            return ndl.ops.EWiseAdd()(self, ndl.ops.Negate()(other))
         else:
-            return needle.ops.AddScalar(-other)(self)
+            return ndl.ops.AddScalar(-other)(self)
 
     def __truediv__(self, other):
         if isinstance(other, Tensor):
-            return needle.ops.EWiseDiv()(self, other)
+            return ndl.ops.EWiseDiv()(self, other)
         else:
-            return needle.ops.DivScalar(other)(self)
+            return ndl.ops.DivScalar(other)(self)
 
     def __matmul__(self, other):
-        return needle.ops.MatMul()(self, other)
+        return ndl.ops.MatMul()(self, other)
 
     def matmul(self, other):
-        return needle.ops.MatMul()(self, other)
+        return ndl.ops.MatMul()(self, other)
 
     def sum(self, axes=None):
-        return needle.ops.Summation(axes)(self)
+        return ndl.ops.Summation(axes)(self)
 
     def broadcast_to(self, shape):
-        return needle.ops.BroadcastTo(shape)(self)
+        return ndl.ops.BroadcastTo(shape)(self)
 
     def reshape(self, shape):
-        return needle.ops.Reshape(shape)(self)
+        return ndl.ops.Reshape(shape)(self)
 
     def __neg__(self):
-        return needle.ops.Negate()(self)
+        return ndl.ops.Negate()(self)
 
     def transpose(self, axes=None):
-        return needle.ops.Transpose(axes)(self)
+        return ndl.ops.Transpose(axes)(self)
 
     @property
     def T(self):
@@ -445,7 +400,7 @@ def compute_gradient_of_variables(output_tensor: Tensor, out_grad: Tensor) -> No
             grads = node.op.gradient_as_tuple(node.grad, node)
             for i, input_node in enumerate(node.inputs):
                 node_to_output_grads[input_node].append(grads[i])
-            
+
             # Gradients do not need to be kept further in the AD graph
             node.grad = node.grad.detach()
 

@@ -1,7 +1,7 @@
 import needle as ndl
 import needle.nn as nn
 import numpy as np
-from resnet_mnist import *
+from resnet_mnist import train_mnist, ResidualBlock, MLPResNet, epoch
 
 """Deterministically generate a matrix"""
 

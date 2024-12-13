@@ -1,7 +1,16 @@
-from . import init
-from .autograd import Tensor
-from . import ops
+# from .autograd import *
+from . import autograd
 from . import data
+from . import init
 from . import nn
+from . import ops
 from . import optim
-from .ops import *
+
+__all__ = [
+    "autograd",
+    "data",
+    "init",
+    "nn",
+    "ops",
+    "optim",
+]

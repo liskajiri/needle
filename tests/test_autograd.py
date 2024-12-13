@@ -1,6 +1,6 @@
 import needle as ndl
 import numpy as np
-from mnist_needle import *
+from mnist_needle import softmax_loss, nn_epoch, loss_err
 from mnist_numpy import parse_mnist
 import numdifftools as nd
 
@@ -9,7 +9,7 @@ import numdifftools as nd
 ### TESTS for forward passes
 def test_divide_forward():
     np.testing.assert_allclose(
-        ndl.divide(
+        ndl.ops.divide(
             ndl.Tensor([[3.3, 4.35, 1.2], [2.45, 0.95, 2.55]]),
             ndl.Tensor([[4.6, 4.35, 4.8], [0.65, 0.7, 4.4]]),
         ).numpy(),
@@ -24,7 +24,7 @@ def test_divide_forward():
 
 def test_divide_scalar_forward():
     np.testing.assert_allclose(
-        ndl.divide_scalar(ndl.Tensor([[1.7, 1.45]]), scalar=12).numpy(),
+        ndl.ops.divide_scalar(ndl.Tensor([[1.7, 1.45]]), scalar=12).numpy(),
         np.array([[0.141666666667, 0.120833333333]]),
     )
 
@@ -36,7 +36,11 @@ def test_matmul_forward():
             ndl.Tensor([[1.35, 2.2, 1.55], [3.85, 4.8, 2.6], [1.15, 0.85, 4.15]]),
         ).numpy(),
         np.array(
-            [[13.7075, 19.5025, 13.26], [22.31, 29.785, 18.7275], [4.36, 4.365, 10.22]]
+            [
+                [13.7075, 19.5025, 13.26],
+                [22.31, 29.785, 18.7275],
+                [4.36, 4.365, 10.22],
+            ]
         ),
     )
     np.testing.assert_allclose(
@@ -45,7 +49,11 @@ def test_matmul_forward():
             ndl.Tensor([[1.1, 3.5, 3.7], [0.05, 1.25, 1.0]]),
         ).numpy(),
         np.array(
-            [[4.1825, 13.3625, 14.11], [2.6975, 12.2375, 11.86], [1.89, 8.85, 8.52]]
+            [
+                [4.1825, 13.3625, 14.11],
+                [2.6975, 12.2375, 11.86],
+                [1.89, 8.85, 8.52],
+            ]
         ),
     )
     np.testing.assert_allclose(
@@ -156,7 +164,7 @@ def test_matmul_forward():
 
 def test_summation_forward():
     np.testing.assert_allclose(
-        ndl.summation(
+        ndl.ops.ops_mathematic.summation(
             ndl.Tensor(
                 [
                     [2.2, 4.35, 1.4, 0.3, 2.65],
@@ -168,7 +176,7 @@ def test_summation_forward():
         np.array(30.5),
     )
     np.testing.assert_allclose(
-        ndl.summation(
+        ndl.ops.ops_mathematic.summation(
             ndl.Tensor(
                 [
                     [1.05, 2.55, 1.0],
@@ -183,7 +191,7 @@ def test_summation_forward():
         np.array([4.6, 9.25, 7.5, 7.9, 8.65]),
     )
     np.testing.assert_allclose(
-        ndl.summation(
+        ndl.ops.ops_mathematic.summation(
             ndl.Tensor([[1.5, 3.85, 3.45], [1.35, 1.3, 0.65], [2.6, 4.55, 0.25]]),
             axes=0,
         ).numpy(),
@@ -370,7 +378,7 @@ def gradient_check(f, *args, tol=1e-6, backward=False, **kwargs):
 
 def test_divide_backward():
     gradient_check(
-        ndl.divide,
+        ndl.ops.divide,
         ndl.Tensor(np.random.randn(5, 4)),
         ndl.Tensor(5 + np.random.randn(5, 4)),
     )
@@ -378,7 +386,9 @@ def test_divide_backward():
 
 def test_divide_scalar_backward():
     gradient_check(
-        ndl.divide_scalar, ndl.Tensor(np.random.randn(5, 4)), scalar=np.random.randn(1)
+        ndl.ops.divide_scalar,
+        ndl.Tensor(np.random.randn(5, 4)),
+        scalar=np.random.randn(1),
     )
 
 
@@ -450,10 +460,20 @@ def test_broadcast_to_backward_my():
 
 
 def test_summation_backward():
-    gradient_check(ndl.summation, ndl.Tensor(np.random.randn(5, 4)), axes=(1,))
-    gradient_check(ndl.summation, ndl.Tensor(np.random.randn(5, 4)), axes=(0,))
-    gradient_check(ndl.summation, ndl.Tensor(np.random.randn(5, 4)), axes=(0, 1))
-    gradient_check(ndl.summation, ndl.Tensor(np.random.randn(5, 4, 1)), axes=(0, 1))
+    gradient_check(
+        ndl.ops.ops_mathematic.summation, ndl.Tensor(np.random.randn(5, 4)), axes=(1,)
+    )
+    gradient_check(
+        ndl.ops.ops_mathematic.summation, ndl.Tensor(np.random.randn(5, 4)), axes=(0,)
+    )
+    gradient_check(
+        ndl.ops.ops_mathematic.summation, ndl.Tensor(np.random.randn(5, 4)), axes=(0, 1)
+    )
+    gradient_check(
+        ndl.ops.ops_mathematic.summation,
+        ndl.Tensor(np.random.randn(5, 4, 1)),
+        axes=(0, 1),
+    )
 
 
 ##############################################################################
@@ -541,20 +561,24 @@ def test_topo_sort():
 
 def test_compute_gradient():
     gradient_check(
-        lambda A, B, C: ndl.summation((A @ B + C) * (A @ B), axes=None),
+        lambda A, B, C: ndl.ops.ops_mathematic.summation(
+            (A @ B + C) * (A @ B), axes=None
+        ),
         ndl.Tensor(np.random.randn(10, 9)),
         ndl.Tensor(np.random.randn(9, 8)),
         ndl.Tensor(np.random.randn(10, 8)),
         backward=True,
     )
     gradient_check(
-        lambda A, B: ndl.summation(ndl.broadcast_to(A, shape=(10, 9)) * B, axes=None),
+        lambda A, B: ndl.ops.ops_mathematic.summation(
+            ndl.broadcast_to(A, shape=(10, 9)) * B, axes=None
+        ),
         ndl.Tensor(np.random.randn(10, 1)),
         ndl.Tensor(np.random.randn(10, 9)),
         backward=True,
     )
     gradient_check(
-        lambda A, B, C: ndl.summation(
+        lambda A, B, C: ndl.ops.ops_mathematic.summation(
             ndl.reshape(A, shape=(10, 10)) @ B / 5 + C, axes=None
         ),
         ndl.Tensor(np.random.randn(100)),
