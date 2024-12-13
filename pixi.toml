@@ -1,6 +1,6 @@
 [project]
 authors = ["Jiří Liška <70215056+liskajiri@users.noreply.github.com>"]
-channels = ["https://prefix.dev/conda-forge"]
+channels = ["https://fast.prefix.dev/conda-forge"]
 description = "Library for deep learning & neural networks"
 name = "needle"
 platforms = ["linux-64"]
