@@ -38,17 +38,23 @@ pytest = ">=8.3.4,<9"
 pytest-benchmark = ">=5.1.0,<6"
 pygal = ">=3.0.5,<4"
 numdifftools = ">=0.9.41,<0.10"
+llvm-openmp = ">=19.1.5,<20"
 
 [feature.dev.tasks]
+format = "ruff format . && clang-format -i src/*.cc src/*.cu"
+lint = "ruff check . --fix"
+style = { depends-on = ["format", "lint"] }
 clean = { cmd = [
     "rm", "-rf",
-    "hw*/build",
-    "hw*/python/needle/backend_ndarray/ndarray_backend*.so"
+    "build",
+    "python/needle/backend_ndarray/ndarray_backend*.so"
     ]}
 # make: possible to set inputs {inputs = ["src/ndarray_backend_cpu.cc", "src/ndarray_backend_cuda.cu"]}
 make = {cmd = "mkdir -p build && cd build && cmake .. && make"}
-test = {cmd = "python -m pytest --benchmark-skip", depends-on = ["make"]}
-matmul_benchmark = {cmd = "python -m pytest tests/test_benchmarks.py --benchmark-autosave --benchmark-save-data --benchmark-histogram='benchmark_results/matmul_graph'", depends-on = ["make"]}
+test = {cmd = "python -m pytest -s --benchmark-skip", depends-on = ["make"]}
+matmul_correct = {cmd = "python -m pytest -k 'test_correct' -s", depends-on = ["make"]}
+matmul_benchmark = {cmd = "python -m pytest -k 'test_matmul and not large' -s tests/test_benchmarks.py --benchmark-sort=mean --benchmark-autosave --benchmark-save-data --benchmark-histogram='benchmark_results/matmul'", depends-on = ["make"]}
+large_matmul_benchmark = {cmd = "python -m pytest -k 'test_matmul_large' -s tests/test_benchmarks.py --benchmark-sort=mean --benchmark-autosave --benchmark-save-data --benchmark-histogram='benchmark_results/matmul_large'", depends-on = ["make"]}
 
 [activation]
 env = {PYTHONPATH = "./python:./apps"}
