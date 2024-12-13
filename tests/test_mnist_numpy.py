@@ -1,6 +1,12 @@
 import numdifftools as nd
 import numpy as np
-from mnist_numpy import *
+from mnist_numpy import (
+    loss_err,
+    nn_epoch,
+    parse_mnist,
+    softmax_loss,
+    softmax_regression_epoch,
+)
 
 ##############################################################################
 ### TESTS/SUBMISSION CODE FOR parse_mnist()

@@ -29,7 +29,6 @@ def check_same_memory(original, view):
     assert original._handle.ptr() == view._handle.ptr()
 
 
-# TODO test permute, broadcast_to, reshape, getitem, some combinations thereof
 @pytest.mark.parametrize(
     "params",
     [
@@ -211,7 +210,10 @@ def test_reduce_sum(params, device):
     _A = np.random.randn(*dims)
     A = nd.array(_A, device=device)
     np.testing.assert_allclose(
-        _A.sum(axis=axis, keepdims=True), A.sum(axis=axis).numpy(), atol=1e-5, rtol=1e-5
+        _A.sum(axis=axis, keepdims=True),
+        A.sum(axis=axis, keepdims=True).numpy(),
+        atol=1e-5,
+        rtol=1e-5,
     )
 
 
@@ -222,7 +224,10 @@ def test_reduce_max(params, device):
     _A = np.random.randn(*dims)
     A = nd.array(_A, device=device)
     np.testing.assert_allclose(
-        _A.max(axis=axis, keepdims=True), A.max(axis=axis).numpy(), atol=1e-5, rtol=1e-5
+        _A.max(axis=axis, keepdims=True),
+        A.max(axis=axis, keepdims=True).numpy(),
+        atol=1e-5,
+        rtol=1e-5,
     )
 
 
@@ -240,7 +245,8 @@ class _ShapeAndSlices(nd.NDArray):
         return self.shape, idxs
 
 
-ShapeAndSlices = lambda *shape: _ShapeAndSlices(np.ones(shape))
+def ShapeAndSlices(*shape):
+    return _ShapeAndSlices(np.ones(shape))
 
 
 @pytest.mark.parametrize(
