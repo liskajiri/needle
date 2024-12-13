@@ -10,8 +10,8 @@ version = "0.1.0"
 
 [environments]
 jupyter = ["jupyter"]
+lint = ["lint"]
 dev = ["dev", "jupyter"]
-default = ["dev"]
 
 [dependencies]
 numpy = ">=2.2.0,<3"
@@ -20,21 +20,28 @@ numpy = ">=2.2.0,<3"
 jupyter = ">=1.1.1,<2"
 ipykernel = ">=6.29.5,<7"
 
+[feature.lint.dependencies]
+ruff = ">=0.8.2,<0.9"
+pre-commit = ">=4.0.1,<5"
+pre-commit-hooks = ">=5.0.0,<6"
+clang-format = ">=19.1.5,<20"
+
+[feature.lint.tasks]
+format = "clang-format -i src/*.cc src/*.cu"
+lint = "pre-commit run --all-files --color=always --show-diff-on-failure"
+style = { depends-on = ["format", "lint"] }
+
 [feature.dev.dependencies]
 cmake = ">=3.31.2,<4"
 pybind11 = ">=2.13.6,<3"
 pytest = ">=8.3.4,<9"
 pytest-benchmark = ">=5.1.0,<6"
 pygal = ">=3.0.5,<4"
-ruff = ">=0.8.2,<0.9"
 numdifftools = ">=0.9.41,<0.10"
 
 [feature.dev.tasks]
-format = "ruff format . && clang-format -i hw*/src/*.cc hw*/*src/*.cu"
-lint = "ruff check . --fix"
-style = { depends-on = ["format", "lint"] }
 clean = { cmd = [
-    "rm", "-rf", 
+    "rm", "-rf",
     "hw*/build",
     "hw*/python/needle/backend_ndarray/ndarray_backend*.so"
     ]}
