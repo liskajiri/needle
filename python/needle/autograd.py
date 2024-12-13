@@ -445,6 +445,9 @@ def compute_gradient_of_variables(output_tensor: Tensor, out_grad: Tensor) -> No
             grads = node.op.gradient_as_tuple(node.grad, node)
             for i, input_node in enumerate(node.inputs):
                 node_to_output_grads[input_node].append(grads[i])
+            
+            # Gradients do not need to be kept further in the AD graph
+            node.grad = node.grad.detach()
 
 
 def find_topo_sort(node_list: List[Value]) -> List[Value]:
