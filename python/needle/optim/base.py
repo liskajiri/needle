@@ -2,7 +2,7 @@
 
 from typing import Iterable
 
-from needle.nn import Parameter
+from needle.nn.nn_basic import Parameter
 
 
 class Optimizer:

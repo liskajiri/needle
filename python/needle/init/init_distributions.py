@@ -1,6 +1,13 @@
 from needle.autograd import Tensor
 from needle.init.init_basic import rand, randn
 
+__all__ = [
+    "xavier_uniform",
+    "xavier_normal",
+    "kaiming_uniform",
+    "kaiming_normal",
+]
+
 
 def xavier_uniform(fan_in, fan_out, gain=1.0, **kwargs) -> Tensor:
     a = gain * (6.0 / (fan_in + fan_out)) ** 0.5

@@ -5,6 +5,15 @@ from typing import List
 import needle.ops as ops
 from needle.autograd import Tensor
 
+__all__ = [
+    "Parameter",
+    "Module",
+    "Identity",
+    "Flatten",
+    "Sequential",
+    "Residual",
+]
+
 
 class Parameter(Tensor):
     """A special kind of tensor that represents parameters."""

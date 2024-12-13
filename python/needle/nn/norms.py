@@ -5,6 +5,11 @@ from needle.nn.nn_basic import Module, Parameter
 import needle.ops as ops
 from needle.autograd import Tensor
 
+__all__ = [
+    "BatchNorm1d",
+    "LayerNorm1d",
+]
+
 
 class BatchNorm1d(Module):
     def __init__(

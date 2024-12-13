@@ -1,5 +1,17 @@
 import needle as ndl
 
+__all__ = [
+    "rand",
+    "randn",
+    "constant",
+    "ones",
+    "zeros",
+    "randb",
+    "one_hot",
+    "zeros_like",
+    "ones_like",
+]
+
 
 def rand(*shape, low=0.0, high=1.0, device=None, dtype="float32", requires_grad=False):
     """Generate random numbers uniform between low and high"""

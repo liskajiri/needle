@@ -11,6 +11,47 @@ BACKEND = "np"
 # TODO: 2024 version
 import numpy as array_api  # noqa: E402
 
+__all__ = [
+    "add",
+    "add_scalar",
+    "multiply",
+    "mul_scalar",
+    "power",
+    "power_scalar",
+    "divide",
+    "divide_scalar",
+    "transpose",
+    "reshape",
+    "broadcast_to",
+    "summation",
+    "matmul",
+    "negate",
+    "log",
+    "exp",
+    "relu",
+    "sqrt",
+    "mean",
+    "broadcast_to_new_axis",
+    "EWiseAdd",
+    "AddScalar",
+    "EWiseMul",
+    "MulScalar",
+    "EWisePow",
+    "PowerScalar",
+    "EWiseDiv",
+    "DivScalar",
+    "Transpose",
+    "Reshape",
+    "BroadcastTo",
+    "Summation",
+    "MatMul",
+    "Negate",
+    "Log",
+    "Exp",
+    "ReLU",
+    "SquareRoot",
+]
+
 
 class EWiseAdd(TensorOp):
     def compute(self, a: NDArray, b: NDArray):
