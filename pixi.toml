@@ -27,6 +27,7 @@ pytest = ">=8.3.4,<9"
 pytest-benchmark = ">=5.1.0,<6"
 pygal = ">=3.0.5,<4"
 ruff = ">=0.8.2,<0.9"
+numdifftools = ">=0.9.41,<0.10"
 
 [feature.dev.tasks]
 format = "ruff format . && clang-format -i hw*/src/*.cc hw*/*src/*.cu"
@@ -38,8 +39,9 @@ clean = { cmd = [
     "hw*/python/needle/backend_ndarray/ndarray_backend*.so"
     ]}
 # make: possible to set inputs {inputs = ["src/ndarray_backend_cpu.cc", "src/ndarray_backend_cuda.cu"]}
-make = {cmd = "cmake .", cwd = "hw3"}
-matmul_benchmark = {cmd = "python -m pytest tests/test_benchmarks.py --benchmark-autosave --benchmark-save-data --benchmark-histogram='benchmark_results/matmul_graph'", cwd = "hw3", depends-on = ["make"]}
+make = {cmd = "mkdir -p build && cd build && cmake .. && make"}
+test = {cmd = "python -m pytest --benchmark-skip", depends-on = ["make"]}
+matmul_benchmark = {cmd = "python -m pytest tests/test_benchmarks.py --benchmark-autosave --benchmark-save-data --benchmark-histogram='benchmark_results/matmul_graph'", depends-on = ["make"]}
 
 [activation]
-env = {PYTHONPATH = "./python"}
+env = {PYTHONPATH = "./python:./apps"}
