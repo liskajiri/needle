@@ -3,8 +3,7 @@ project(needle C CXX)
 cmake_policy(SET CMP0146 OLD)
 
 # find correct version of Python
-execute_process(COMMAND python3-config --prefix
-  OUTPUT_VARIABLE Python_ROOT_DIR)
+execute_process(COMMAND python3-config --prefix OUTPUT_VARIABLE Python_ROOT_DIR)
 find_package(Python COMPONENTS Development Interpreter REQUIRED)
 include_directories(${Python_INCLUDE_DIRS})
 
@@ -16,13 +15,16 @@ execute_process(COMMAND python3 -m pybind11 --cmakedir
 find_package(pybind11 PATHS ${__pybind_path})
 
 
+# Compile flags
 if(NOT MSVC)
-  set(CMAKE_CXX_FLAGS "-std=c++11 -O2 -march=native ${CMAKE_CXX_FLAGS}")
+  set(CMAKE_CXX_FLAGS "-std=c++17 -O3 -march=native -mavx2 -mfma ${CMAKE_CXX_FLAGS}")
   set(CMAKE_CUDA_STANDARD 14)
 else()
-  set(CMAKE_CXX_FLAGS "/std:c++11 -O2 -march=native ${CMAKE_CXX_FLAGS}")
+  set(CMAKE_CXX_FLAGS "/std:c++17  -O3 -march=native /arch:AVX2 ${CMAKE_CXX_FLAGS}")
   set(CMAKE_CUDA_STANDARD 14)
 endif()
+
+
 
 include_directories(SYSTEM ${pybind11_INCLUDE_DIRS})
 list(APPEND LINKER_LIBS ${pybind11_LIBRARIES})
@@ -36,6 +38,10 @@ target_link_libraries(ndarray_backend_cpu PUBLIC ${LINKER_LIBS})
 pybind11_extension(ndarray_backend_cpu)
 pybind11_strip(ndarray_backend_cpu)
 
+find_package(OpenMP)
+if (OpenMP_CXX_FOUND)
+  target_link_libraries(ndarray_backend_cpu PUBLIC ${LINKER_LIBS} OpenMP::OpenMP_CXX)
+endif()
 
 # directly output to ffi folder
 set_target_properties(ndarray_backend_cpu
@@ -48,14 +54,12 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
   set_property(TARGET ndarray_backend_cpu PROPERTY LINK_OPTIONS -undefined dynamic_lookup)
 endif()
 
-
-
 ####################
 ### CUDA BACKEND ###
 ####################
 find_package(CUDA)
 if(CUDA_FOUND)
-  message(STATUS "Found cuda, building cuda backend")
+  message(STATUS "Found CUDA, building CUDA backend")
 
   include_directories(SYSTEM ${CUDA_INCLUDE_DIRS})
   list(APPEND LINKER_LIBS ${CUDA_CUDART_LIBRARY})
@@ -68,6 +72,12 @@ if(CUDA_FOUND)
     # set to 3.7 the flag of K80
     CUDA_SELECT_NVCC_ARCH_FLAGS(ARCH_FLAGS 3.7)
   endif()
+  # if(NV_RET EQUAL "0")
+  #   set(ARCH_FLAGS Auto)
+  # else()
+  #   # Set to 3.7 the flag of K80
+  #   set(ARCH_FLAGS 3.7)
+  # endif()
 
   # set arch flags properly
   CUDA_ADD_LIBRARY(ndarray_backend_cuda MODULE src/ndarray_backend_cuda.cu OPTIONS ${ARCH_FLAGS})
