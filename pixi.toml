@@ -7,14 +7,17 @@ platforms = ["linux-64"]
 version = "0.1.0"
 
 [tasks]
+clean = "rm -rf .build cmake-build-debug python/needle/backend_ndarray/ndarray_backend*.so"
 
 [environments]
 jupyter = ["jupyter"]
-lint = ["lint"]
+lint = {features = ["lint"], no-default-feature = true}
 dev = ["dev", "jupyter"]
+test = ["test"]
 
 [dependencies]
 numpy = ">=2.2.0,<3"
+python = ">=3.12.8,<3.13"
 
 [feature.jupyter.dependencies]
 jupyter = ">=1.1.1,<2"
@@ -27,31 +30,43 @@ pre-commit-hooks = ">=5.0.0,<6"
 clang-format = ">=19.1.5,<20"
 
 [feature.lint.tasks]
-format = "clang-format -i src/*.cc src/*.cu"
+format = "clang-format -i -style='{IndentWidth: 4}' src/cpu/*.cc src/*.cu"
 lint = "pre-commit run --all-files --color=always --show-diff-on-failure"
 style = { depends-on = ["format", "lint"] }
 
 [feature.dev.dependencies]
 cmake = ">=3.31.2,<4"
 pybind11 = ">=2.13.6,<3"
+llvm-openmp = ">=19.1.5,<20"
+ninja = ">=1.12.1,<2"
+
+[feature.dev.tasks]
+# make = {cmd = "mkdir -p build && cd build && cmake .. && make"}
+# Use the cross-platform Ninja generator
+make = { cmd = [
+    "cmake",
+    "-G",
+    "Ninja",
+    "-S",
+    ".",
+    "-B",
+    ".build",
+] }
+build = { cmd = ["ninja", "-C", ".build"], depends-on = ["make"] }
+
+[feature.test.dependencies]
+numdifftools = ">=0.9.41,<0.10"
 pytest = ">=8.3.4,<9"
 pytest-benchmark = ">=5.1.0,<6"
 pygal = ">=3.0.5,<4"
-numdifftools = ">=0.9.41,<0.10"
-llvm-openmp = ">=19.1.5,<20"
+scalene = ">=1.5.41,<2"
 
-[feature.dev.tasks]
-clean = { cmd = [
-    "rm", "-rf",
-    "build",
-    "python/needle/backend_ndarray/ndarray_backend*.so"
-    ]}
-# make: possible to set inputs {inputs = ["src/ndarray_backend_cpu.cc", "src/ndarray_backend_cuda.cu"]}
-make = {cmd = "mkdir -p build && cd build && cmake .. && make"}
-test = {cmd = "python -m pytest --benchmark-skip", depends-on = ["make"]}
-matmul_correct = {cmd = "python -m pytest -k 'test_correct' -s", depends-on = ["make"]}
-matmul_benchmark = {cmd = "python -m pytest -k 'test_matmul and not large' -s tests/test_benchmarks.py --benchmark-sort=mean --benchmark-autosave --benchmark-save-data --benchmark-histogram='benchmark_results/matmul'", depends-on = ["make"]}
-large_matmul_benchmark = {cmd = "python -m pytest -k 'test_matmul_large' -s tests/test_benchmarks.py --benchmark-sort=mean --benchmark-autosave --benchmark-save-data --benchmark-histogram='benchmark_results/matmul_large'", depends-on = ["make"]}
+[feature.test.tasks]
+test = {cmd = "python -m pytest --benchmark-skip", depends-on = ["build"]}
+matmul_correct = {cmd = "python -m pytest -k 'test_correct' -s", depends-on = ["build"]}
+matmul_benchmark = {cmd = "python -m pytest -k 'test_matmul and not large' -s tests/test_benchmarks.py --benchmark-sort=mean --benchmark-autosave --benchmark-save-data --benchmark-histogram='benchmark_results/matmul'", depends-on = ["build"]}
+large_matmul_benchmark = {cmd = "python -m pytest -k 'test_matmul_large' -s tests/test_benchmarks.py --benchmark-sort=mean --benchmark-autosave --benchmark-save-data --benchmark-histogram='benchmark_results/matmul_large'", depends-on = ["build"]}
+
 
 [activation]
 env = {PYTHONPATH = "./python:./apps"}
