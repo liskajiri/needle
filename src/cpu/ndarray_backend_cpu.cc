@@ -1,13 +1,9 @@
 module;
-#include <pybind11/numpy.h>
-#include <pybind11/pybind11.h>
-#include <pybind11/stl.h>
+
+#include <nanobind/nanobind.h>
+#include <nanobind/ndarray.h>
 
 #include <algorithm>
-#include <cmath>
-#include <cstring>
-#include <iostream>
-#include <stdexcept>
 #include <vector>
 
 import ndarray;
@@ -18,35 +14,46 @@ import reductions;
 
 export module ndarray_backend_cpu;
 
-PYBIND11_MODULE(ndarray_backend_cpu, m) {
-    namespace py = pybind11;
+// TODO: nb::ndarray can alloc memory cheaply - connect to python?
+NB_MODULE(ndarray_backend_cpu, m) {
+    namespace nb = nanobind;
     using namespace needle;
     using namespace cpu;
 
     m.attr("__device_name__") = "cpu";
     m.attr("__tile_size__") = TILE;
 
-    py::class_<AlignedArray>(m, "Array")
-        .def(py::init<size_t>(), py::return_value_policy::take_ownership)
+    nb::class_<AlignedArray>(m, "Array")
+        // TODO: return_value_policy is not present
+        .def(nb::init_implicit<size_t>())
         .def("ptr", &AlignedArray::ptr_as_int)
-        .def_readonly("size", &AlignedArray::size);
+        // read only
+        .def_ro("size", &AlignedArray::size);
 
     // return numpy array (with copying for simplicity, otherwise garbage
     // collection is a pain)
-    m.def("to_numpy", [](const AlignedArray &a, std::vector<size_t> shape,
-                         std::vector<size_t> strides, size_t offset) {
+    m.def("to_numpy", [](const AlignedArray &a,
+                         const std::vector<size_t> &shape,
+                         const std::vector<size_t> &strides,
+                         const size_t offset) {
         std::vector<size_t> numpy_strides = strides;
         std::transform(numpy_strides.begin(), numpy_strides.end(),
                        numpy_strides.begin(),
                        [](size_t &c) { return c * ELEM_SIZE; });
-        return py::array_t<scalar_t>(shape, numpy_strides, a.ptr + offset);
+        size_t size = shape.size();
+        // TODO:
+        nb::capsule owner(a.ptr,
+                          [](void *p) noexcept { delete[] (scalar_t *)p; });
+        return nb::ndarray<nb::numpy, scalar_t>(a.ptr + offset, {size}, owner);
     });
 
     // convert from numpy (with copying)
-    m.def("from_numpy", [](py::array_t<scalar_t> a, AlignedArray *out) {
-        std::memcpy(out->ptr, a.request().ptr, out->size * ELEM_SIZE);
+    // TODO: nb::ndarray probably can do it without copy
+    m.def("from_numpy", [](nb::ndarray<scalar_t> a, AlignedArray *out) {
+        memcpy(out->ptr, a.data(), out->size * ELEM_SIZE);
     });
 
+    // TODO: function Array constraints
     m.def("fill", Fill);
     m.def("compact", Compact);
 

@@ -3,11 +3,11 @@ authors = ["Jiří Liška <70215056+liskajiri@users.noreply.github.com>"]
 channels = ["https://fast.prefix.dev/conda-forge"]
 description = "Library for deep learning & neural networks"
 name = "needle"
-platforms = ["linux-64"]
+platforms = ["linux-64"] #, "win-64"]
 version = "0.1.0"
 
 [tasks]
-clean = "rm -rf .build cmake-build-debug python/needle/backend_ndarray/ndarray_backend*.so"
+clean = "rm -rf .build/ cmake-build-debug/ python/needle/backend_ndarray/ndarray_backend*.so"
 
 [environments]
 jupyter = ["jupyter"]
@@ -36,22 +36,14 @@ style = { depends-on = ["format", "lint"] }
 
 [feature.dev.dependencies]
 cmake = ">=3.31.2,<4"
-pybind11 = ">=2.13.6,<3"
 llvm-openmp = ">=19.1.5,<20"
 ninja = ">=1.12.1,<2"
+clang = ">=19.1.6,<20"
+nanobind = ">=2.4.0,<3"
 
 [feature.dev.tasks]
-# make = {cmd = "mkdir -p build && cd build && cmake .. && make"}
 # Use the cross-platform Ninja generator
-make = { cmd = [
-    "cmake",
-    "-G",
-    "Ninja",
-    "-S",
-    ".",
-    "-B",
-    ".build",
-] }
+make = { cmd = "cmake -G Ninja -S . -B .build", env = { CXX = "clang++" } }
 build = { cmd = ["ninja", "-C", ".build"], depends-on = ["make"] }
 
 [feature.test.dependencies]

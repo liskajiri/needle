@@ -3,7 +3,6 @@ module;
 #include <cmath>
 #include <omp.h>
 #include <vector>
-#include <x86intrin.h>
 
 import ndarray;
 export module scalar_ops;
