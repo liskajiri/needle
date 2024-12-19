@@ -10,10 +10,18 @@ export module scalar_ops;
 
 namespace needle {
 namespace cpu {
-// TODO: Same signature as elementwise.cc
-export void ScalarSetitem(const size_t size, scalar_t val, AlignedArray *out,
-                          const std::vector<uint32_t> &shape,
-                          const std::vector<uint32_t> &strides, size_t offset) {
+export void Fill(AlignedArray *out, const scalar_t val) {
+    /**
+     * Fill the values of an aligned array with val
+     */
+    // Parallelization here is questionable
+    std::fill(out->ptr, out->ptr + out->size, val);
+}
+
+export void ScalarSetitem(const size_t size, const scalar_t val,
+                          AlignedArray *out, const std::vector<uint32_t> &shape,
+                          const std::vector<uint32_t> &strides,
+                          const size_t offset) {
     /**
      * Set items in a (non-compact) array
      *
@@ -26,65 +34,69 @@ export void ScalarSetitem(const size_t size, scalar_t val, AlignedArray *out,
      * strides: strides of the out array offset: offset of the out array
      */
     // vector for indexes when iterating over the arrays
-    std::vector<uint32_t> indexes(shape.size(), 0);
+    size_t num_dims = shape.size();
+    // precalculate strides for compact array
+    std::vector<uint32_t> compact_strides(num_dims, 1);
+    for (int i = num_dims - 2; i >= 0; --i) {
+        compact_strides[i] = compact_strides[i + 1] * shape[i + 1];
+    }
+
+#pragma omp parallel for schedule(static)
     for (size_t i = 0; i < size; i++) {
         uint32_t idx_offset = offset;
-        for (size_t j = 0; j < indexes.size(); j++) {
-            idx_offset += indexes[j] * strides[j];
+
+        uint32_t temp = i;
+        for (size_t j = 0; j < num_dims; j++) {
+            uint32_t idx = temp / compact_strides[j];
+            idx_offset += idx * strides[j];
+            temp %= compact_strides[j];
         }
         out->ptr[idx_offset] = val;
-
-        // increment last axis
-        indexes[indexes.size() - 1] += 1;
-        for (int j = shape.size() - 1; j >= 0; j--) {
-            // overflow addition
-            if (indexes[j] == shape[j]) {
-                indexes[j] = 0;
-                if (j >= 1) {
-                    indexes[j - 1] += 1;
-                }
-            }
-        }
     };
 }
 
 // scalar operations
 template <typename Func>
-void ScalarOp(const AlignedArray &a, float scalar, AlignedArray *out,
+void ScalarOp(const AlignedArray &a, const float scalar, AlignedArray *out,
               Func func) {
-    // TODO: openmp
+#pragma omp parallel for schedule(static)
     for (size_t i = 0; i < a.size; ++i) {
         out->ptr[i] = func(a.ptr[i], scalar);
     }
 }
 
-export void ScalarAdd(const AlignedArray &a, float scalar, AlignedArray *out) {
+export void ScalarAdd(const AlignedArray &a, const float scalar,
+                      AlignedArray *out) {
     ScalarOp(a, scalar, out, std::plus<float>());
 }
 
-export void ScalarMul(const AlignedArray &a, float scalar, AlignedArray *out) {
+export void ScalarMul(const AlignedArray &a, const float scalar,
+                      AlignedArray *out) {
     ScalarOp(a, scalar, out, std::multiplies<float>());
 }
 
-export void ScalarDiv(const AlignedArray &a, float scalar, AlignedArray *out) {
+export void ScalarDiv(const AlignedArray &a, const float scalar,
+                      AlignedArray *out) {
     ScalarOp(a, scalar, out, std::divides<float>());
 }
 
-export void ScalarPower(const AlignedArray &a, float scalar,
+export void ScalarPower(const AlignedArray &a, const float scalar,
                         AlignedArray *out) {
     ScalarOp(a, scalar, out, [](float x, float y) { return std::pow(x, y); });
 }
 
-export void ScalarMaximum(const AlignedArray &a, float scalar,
+export void ScalarMaximum(const AlignedArray &a, const float scalar,
                           AlignedArray *out) {
     ScalarOp(a, scalar, out, [](float x, float y) { return std::max(x, y); });
 }
 
-export void ScalarEq(const AlignedArray &a, float scalar, AlignedArray *out) {
+export void ScalarEq(const AlignedArray &a, const float scalar,
+                     AlignedArray *out) {
     ScalarOp(a, scalar, out, std::equal_to<float>());
 }
 
-export void ScalarGe(const AlignedArray &a, float scalar, AlignedArray *out) {
+export void ScalarGe(const AlignedArray &a, const float scalar,
+                     AlignedArray *out) {
     ScalarOp(a, scalar, out, std::greater_equal<float>());
 }
 

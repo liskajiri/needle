@@ -5,6 +5,7 @@ module;
 #include <x86intrin.h>
 
 import ndarray;
+import scalar_ops;
 
 export module matmul;
 

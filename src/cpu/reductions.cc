@@ -18,15 +18,6 @@ export void ReduceMax(const AlignedArray &a, AlignedArray *out,
      *   out: compact array to write into
      *   reduce_size: size of the dimension to reduce over
      */
-    // for (size_t i = 0; i < out->size; i++)
-    // {
-    //     float curr_max = a.ptr[i * reduce_size];
-    //     for (size_t j = 0; j < reduce_size; j++)
-    //     {
-    //         curr_max = std::max(a.ptr[i * reduce_size + j], curr_max);
-    //     }
-    //     out->ptr[i] = curr_max;
-    // }
 
 #pragma omp parallel for
     for (size_t i = 0; i < out->size; i++) {
@@ -52,16 +43,6 @@ export void ReduceSum(const AlignedArray &a, AlignedArray *out,
      *   out: compact array to write into
      *   reduce_size: size of the dimension to reduce over
      */
-    // for (size_t i = 0; i < out->size; i++)
-    // {
-    //     auto temp = 0.0;
-    //     for (size_t j = 0; j < reduce_size; j++)
-    //     {
-    //         temp += a.ptr[i * reduce_size + j];
-    //     }
-    //     out->ptr[i] = temp;
-    // }
-    // TODO: test
 #pragma omp parallel for
     for (size_t i = 0; i < out->size; i++) {
         double temp = 0.0;

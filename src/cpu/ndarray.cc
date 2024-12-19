@@ -1,7 +1,6 @@
 module;
 
 #include <cstdlib>
-#include <omp.h>
 #include <stdint.h>
 #include <vector>
 
@@ -33,49 +32,6 @@ export struct AlignedArray {
     scalar_t *ptr;
     size_t size;
 };
-export void Fill(AlignedArray *out, scalar_t val) {
-    /**
-     * Fill the values of an aligned array with val
-     */
-    std::fill(out->ptr, out->ptr + out->size, val);
-}
 
-export void Compact(const AlignedArray &a, AlignedArray *out,
-                    const std::vector<uint32_t> &shape,
-                    const std::vector<uint32_t> &strides, const size_t offset) {
-    /**
-     * Compact an array in memory
-     *
-     * Args:
-     *   a: non-compact representation of the array, given as input
-     *   out: compact version of the array to be written
-     *   shape: shapes of each dimension for a and out
-     *   strides: strides of the *a* array (not out, which has compact strides)
-     *   offset: offset of the *a* array (not out, which has zero offset, being
-     * compact)
-     *
-     * Returns:
-     * void
-     */
-    size_t num_dims = shape.size();
-    // precalculate strides for compact array
-    std::vector<uint32_t> compact_strides(num_dims, 1);
-    for (int i = num_dims - 2; i >= 0; --i) {
-        compact_strides[i] = compact_strides[i + 1] * shape[i + 1];
-    }
-
-#pragma omp parallel for schedule(static)
-    for (size_t i = 0; i < out->size; i++) {
-        uint32_t idx_offset = offset;
-
-        uint32_t temp = i;
-        for (size_t j = 0; j < num_dims; j++) {
-            uint32_t idx = temp / compact_strides[j];
-            idx_offset += idx * strides[j];
-            temp %= compact_strides[j];
-        }
-        out->ptr[i] = a.ptr[idx_offset];
-    };
-}
 } // namespace cpu
 } // namespace needle
