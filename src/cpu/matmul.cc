@@ -28,7 +28,8 @@ export void Matmul(const AlignedArray &a, const AlignedArray &b,
      */
     Fill(out, 0.0);
 
-#pragma omp parallel for collapse(2) schedule(static)
+#pragma omp parallel for if (m * n * p > 16 * 16 * 16) collapse(2)             \
+    schedule(static)
     for (size_t i = 0; i < m; i++) {
         for (size_t j = 0; j < p; j++) {
 #pragma omp simd

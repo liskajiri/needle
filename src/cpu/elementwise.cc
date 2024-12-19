@@ -85,12 +85,10 @@ export void EwiseSetitem(const AlignedArray &a, AlignedArray *out,
     };
 }
 
-// TODO: Proper templating to use different types
-// WARNING: functions must match signatures in Pybind11
 template <typename Func>
 void EwiseOp(const AlignedArray &a, const AlignedArray &b, AlignedArray *out,
              Func func) {
-#pragma omp parallel for schedule(static)
+#pragma omp parallel for simd schedule(static)
     for (size_t i = 0; i < a.size; ++i) {
         out->ptr[i] = func(a.ptr[i], b.ptr[i]);
     }
