@@ -10,6 +10,7 @@ from .ndarray import (
     empty,
     full,
     broadcast_to,
+    BackendDevice,
 )
 
 __all__ = [
@@ -24,4 +25,5 @@ __all__ = [
     "empty",
     "full",
     "broadcast_to",
+    "BackendDevice",
 ]
