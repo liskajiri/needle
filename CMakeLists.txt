@@ -2,9 +2,13 @@ cmake_minimum_required(VERSION 3.31)
 project(needle LANGUAGES CXX)
 cmake_policy(SET CMP0146 OLD)
 
+# list(APPEND CMAKE_PREFIX_PATH $ENV{CONDA_PREFIX}/bin/)
+# set(CMAKE_CXX_COMPILER $ENV{CONDA_PREFIX}/bin/clang)
+message(STATUS "CMake prefix path: ${CMAKE_PREFIX_PATH}")
+
 set(CMAKE_CXX_COMPILER clang++)
 option(USE_CLANG "Build with clang" ON)
-message(STATUS "C++ Compiler: ${CMAKE_CXX_COMPILER}")
+message(STATUS "C++ Compiler: ${CMAKE_CXX_COMPILER}: ${CMAKE_CXX_COMPILER_VERSION}")
 
 # Build system setup
 set(CMAKE_GENERATOR "Ninja")
@@ -65,12 +69,19 @@ target_compile_features(ndarray_backend_cpu PRIVATE cxx_std_20)
 find_package(OpenMP)
 if (OpenMP_CXX_FOUND)
     target_link_libraries(ndarray_backend_cpu PUBLIC OpenMP::OpenMP_CXX)
-    message(STATUS "OpenMP found")
+    message(STATUS "OpenMP found: ${OpenMP_CXX_VERSION}")
 endif()
 
 if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
     set_property(TARGET ndarray_backend_cpu PROPERTY LINK_OPTIONS -undefined dynamic_lookup)
 endif()
+
+# Output properties
+set_target_properties(
+    ndarray_backend_cpu PROPERTIES
+    LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/python/needle/backend_ndarray
+    CXX_VISIBILITY_PRESET "hidden"
+)
 
 ####################
 ### CUDA BACKEND ###
@@ -78,7 +89,7 @@ endif()
 set(CMAKE_CUDA_STANDARD 14)
 find_package(CUDA)
 if(CUDA_FOUND)
-    message(STATUS "Found CUDA, building CUDA backend")
+    message(STATUS "Found CUDA ${CUDA_VERSION_STRING} at ${CUDA_TOOLKIT_ROOT_DIR}")
     include_directories(SYSTEM ${CUDA_INCLUDE_DIRS})
     list(APPEND LINKER_LIBS ${CUDA_CUDART_LIBRARY})
 
