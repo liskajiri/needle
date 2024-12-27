@@ -2,6 +2,7 @@ module;
 
 #include <nanobind/nanobind.h>
 #include <nanobind/ndarray.h>
+// #include <nanobind/nb_cast.h>
 
 #include <algorithm>
 #include <vector>
@@ -30,21 +31,16 @@ NB_MODULE(ndarray_backend_cpu, m) {
         // read only
         .def_ro("size", &AlignedArray::size);
 
-    // return numpy array (with copying for simplicity, otherwise garbage
-    // collection is a pain)
-    m.def("to_numpy", [](const AlignedArray &a,
-                         const std::vector<size_t> &shape,
-                         const std::vector<size_t> &strides,
-                         const size_t offset) {
-        std::vector<size_t> numpy_strides = strides;
-        std::transform(numpy_strides.begin(), numpy_strides.end(),
-                       numpy_strides.begin(),
-                       [](size_t &c) { return c * ELEM_SIZE; });
-        size_t size = shape.size();
-        // TODO:
-        nb::capsule owner(a.ptr,
-                          [](void *p) noexcept { delete[] (scalar_t *)p; });
-        return nb::ndarray<nb::numpy, scalar_t>(a.ptr + offset, {size}, owner);
+    // return numpy array - should not be copied
+    m.def("to_numpy", [](const AlignedArray &a, const nb::tuple &shape_tuple,
+                         const nb::tuple &strides_tuple, const size_t offset) {
+        std::vector<size_t> shape;
+        for (const auto &dim : shape_tuple) {
+            shape.push_back(nb::cast<size_t>(dim));
+        }
+        // TODO: strides
+        return nb::ndarray<nb::numpy, scalar_t>(
+            a.ptr + offset, shape_tuple.size(), shape.data(), nullptr);
     });
 
     // convert from numpy (with copying)

@@ -5,6 +5,8 @@ module;
 #include <stdint.h>
 #include <vector>
 
+#include <nanobind/stl/tuple.h>
+
 import ndarray;
 
 export module elementwise;
@@ -12,8 +14,8 @@ export module elementwise;
 namespace needle {
 namespace cpu {
 export void Compact(const AlignedArray &a, AlignedArray *out,
-                    const std::vector<uint32_t> &shape,
-                    const std::vector<uint32_t> &strides, const size_t offset) {
+                    const nanobind::tuple &shape,
+                    const nanobind::tuple &strides, const size_t offset) {
     /**
      * Compact an array in memory
      *
@@ -28,11 +30,14 @@ export void Compact(const AlignedArray &a, AlignedArray *out,
      * Returns:
      * void
      */
+    // Incoming types (shape, stride) are Python tuples - need to recast
+    // elements
     size_t num_dims = shape.size();
     // precalculate strides for compact array
     std::vector<uint32_t> compact_strides(num_dims, 1);
     for (int i = num_dims - 2; i >= 0; --i) {
-        compact_strides[i] = compact_strides[i + 1] * shape[i + 1];
+        compact_strides[i] =
+            compact_strides[i + 1] * nanobind::cast<size_t>(shape[i + 1]);
     }
 
 #pragma omp parallel for schedule(static)
@@ -42,7 +47,7 @@ export void Compact(const AlignedArray &a, AlignedArray *out,
         uint32_t temp = i;
         for (size_t j = 0; j < num_dims; j++) {
             uint32_t idx = temp / compact_strides[j];
-            idx_offset += idx * strides[j];
+            idx_offset += idx * nanobind::cast<size_t>(strides[j]);
             temp %= compact_strides[j];
         }
         out->ptr[i] = a.ptr[idx_offset];
@@ -50,9 +55,8 @@ export void Compact(const AlignedArray &a, AlignedArray *out,
 }
 
 export void EwiseSetitem(const AlignedArray &a, AlignedArray *out,
-                         const std::vector<uint32_t> &shape,
-                         const std::vector<uint32_t> &strides,
-                         const size_t offset) {
+                         const nanobind::tuple &shape,
+                         const nanobind::tuple &strides, const size_t offset) {
     /**
      * Set items in a (non-compact) array
      *
@@ -68,7 +72,8 @@ export void EwiseSetitem(const AlignedArray &a, AlignedArray *out,
     // precalculate strides for compact array
     std::vector<uint32_t> compact_strides(num_dims, 1);
     for (int i = num_dims - 2; i >= 0; --i) {
-        compact_strides[i] = compact_strides[i + 1] * shape[i + 1];
+        compact_strides[i] =
+            compact_strides[i + 1] * nanobind::cast<size_t>(shape[i + 1]);
     }
 
 #pragma omp parallel for schedule(static)
@@ -78,7 +83,7 @@ export void EwiseSetitem(const AlignedArray &a, AlignedArray *out,
         uint32_t temp = i;
         for (size_t j = 0; j < num_dims; j++) {
             uint32_t idx = temp / compact_strides[j];
-            idx_offset += idx * strides[j];
+            idx_offset += idx * nanobind::cast<size_t>(strides[j]);
             temp %= compact_strides[j];
         }
         out->ptr[idx_offset] = a.ptr[i];

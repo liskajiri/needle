@@ -1,6 +1,7 @@
 module;
 
 #include <cstdlib>
+#include <stdlib.h>
 #include <vector>
 
 export module ndarray;
