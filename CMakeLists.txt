@@ -1,13 +1,11 @@
-cmake_minimum_required(VERSION 3.31)
+set(CMAKE_CXX_COMPILER $ENV{CONDA_PREFIX}/bin/clang)
+message(STATUS "CMake prefix path: ${CMAKE_PREFIX_PATH}")
+
+cmake_minimum_required(VERSION 3.28..3.31)
 project(needle LANGUAGES CXX)
 cmake_policy(SET CMP0146 OLD)
 
-# list(APPEND CMAKE_PREFIX_PATH $ENV{CONDA_PREFIX}/bin/)
-# set(CMAKE_CXX_COMPILER $ENV{CONDA_PREFIX}/bin/clang)
-# message(STATUS "CMake prefix path: ${CMAKE_PREFIX_PATH}")
-
-# set(CMAKE_CXX_COMPILER clang++)
-# option(USE_CLANG "Build with clang" ON)
+option(USE_CLANG "Build with clang" ON)
 message(STATUS "C++ Compiler: ${CMAKE_CXX_COMPILER}: ${CMAKE_CXX_COMPILER_VERSION}")
 
 # Build system setup
@@ -23,19 +21,22 @@ if (NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
   set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release" "MinSizeRel" "RelWithDebInfo")
 endif()
 
+include_directories(
+    $ENV{CONDA_PREFIX}/include
+)
+
+# Library paths
+link_directories(
+    $ENV{CONDA_PREFIX}/lib
+)
+
 # Compiler flags
 if(NOT MSVC)
-    set(CMAKE_CXX_FLAGS "-std=c++20 -O3 -march=native -mavx2 ${CMAKE_CXX_FLAGS}")
+    set(CMAKE_CXX_FLAGS "-std=c++20 -O3 -march=native -mavx2 -stdlib=libc++ -lc++abi -lc++ -lc++experimental ${CMAKE_CXX_FLAGS}")
 else()
     set(CMAKE_CXX_FLAGS "/std:c++20 /O2 /arch:AVX2 ${CMAKE_CXX_FLAGS}")
 endif()
 
-# Solves linker issues
-add_library(core INTERFACE)
-target_include_directories(core INTERFACE
-    # ${CMAKE_CURRENT_SOURCE_DIR}/src
-    # ${CMAKE_CURRENT_SOURCE_DIR}/include
-)
 
 #--- Python setup
 execute_process(COMMAND python3-config --prefix OUTPUT_VARIABLE Python_ROOT_DIR)
@@ -69,12 +70,35 @@ target_sources(ndarray_backend_cpu
         ${SOURCE_FILES}
 )
 
+# Solves linker issues
+add_library(core INTERFACE)
+target_include_directories(core INTERFACE
+    ${CMAKE_CURRENT_SOURCE_DIR}/src
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+)
 target_link_libraries(ndarray_backend_cpu PRIVATE core)
+target_link_libraries(ndarray_backend_cpu PRIVATE
+    c++
+    c++abi
+    c++experimental
+)
+# target_compile_options(ndarray_backend_cpu PRIVATE -stdlib=libc++)
 target_compile_features(ndarray_backend_cpu PRIVATE cxx_std_20)
 
 # OpenMP
-find_package(OpenMP)
+set(OpenMP_ROOT "$ENV{CONDA_PREFIX}")
+set(OpenMP_CXX_FLAGS "-fopenmp")
+set(OpenMP_CXX_LIB_NAMES "omp")
+set(OpenMP_omp_LIBRARY "$ENV{CONDA_PREFIX}/lib/libomp.so")
+set(OpenMP_CXX_INCLUDE_DIRS "$ENV{CONDA_PREFIX}/lib/clang/19/include")
+
+find_package(OpenMP REQUIRED)
 if (OpenMP_CXX_FOUND)
+    include_directories(
+        ${OpenMP_CXX_INCLUDE_DIRS}
+        $ENV{CONDA_PREFIX}/include
+    )
+    link_directories($ENV{CONDA_PREFIX}/lib)
     target_link_libraries(ndarray_backend_cpu PUBLIC OpenMP::OpenMP_CXX)
     message(STATUS "OpenMP found: ${OpenMP_CXX_VERSION}")
 endif()
