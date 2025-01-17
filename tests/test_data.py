@@ -1,7 +1,9 @@
 import needle as ndl
 import numpy as np
+import pytest
 
 
+# TODO: Ideal place for hypothesis test
 def test_flip_horizontal():
     tform = ndl.data.RandomFlipHorizontal()
     np.random.seed(0)
@@ -1423,6 +1425,7 @@ def test_flip_horizontal():
 # ----------------------------------------------------------------------------
 
 
+# TODO: Ideal place for hypothesis test
 def test_random_crop():
     transform = ndl.data.RandomCrop(2)
     np.random.seed(0)
@@ -10748,6 +10751,8 @@ def test_mnist_dataset():
     np.testing.assert_allclose(sample_labels, compare_labels)
 
 
+# TODO: Speed up this test
+@pytest.mark.slow
 def test_dataloader_mnist():
     batch_size = 1
     mnist_train_dataset = ndl.data.MNISTDataset(

@@ -1,12 +1,11 @@
 from typing import Optional
 
 from .ops_mathematic import broadcast_to_new_axis, exp, summation
-from ..autograd import NDArray
-from ..autograd import Tensor, Value, TensorOp
+from ..autograd import NDArray, Tensor, Value, TensorOp
 
 import numpy as array_api
-# TODO: 2024 version
-# from ..backend_selection import array_api, BACKEND
+# # TODO: 2024 version
+# from ..backend_selection import array_api
 
 
 # TODO: not covered by current tests - Convert to 2024 edition

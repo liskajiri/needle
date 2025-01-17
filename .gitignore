@@ -132,3 +132,15 @@ cython_debug/
 .ruff_cache
 .benchmarks
 .vscode/settings.json
+
+# pixi environments
+.pixi
+*.egg-info
+
+nn_implementations/*
+figures/*
+
+notebooks/*
+.build/*
+.idea/*
+.vscode/c_cpp_properties.json
