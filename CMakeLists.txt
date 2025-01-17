@@ -32,7 +32,7 @@ link_directories(
 
 # Compiler flags
 if(NOT MSVC)
-    set(CMAKE_CXX_FLAGS "-std=c++20 -O3 -march=native -mavx2 -stdlib=libc++ -lc++abi -lc++ -lc++experimental ${CMAKE_CXX_FLAGS}")
+    set(CMAKE_CXX_FLAGS "-std=c++20 -O3 -march=native -mavx2 -stdlib=libc++ ${CMAKE_CXX_FLAGS}")
 else()
     set(CMAKE_CXX_FLAGS "/std:c++20 /O2 /arch:AVX2 ${CMAKE_CXX_FLAGS}")
 endif()
