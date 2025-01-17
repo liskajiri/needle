@@ -132,6 +132,9 @@ class CPUDevice(Device):
     def reduce_sum(self, a, out, reduce_size):
         out.array[:] = a.array[:].reshape(-1, reduce_size).sum(axis=1)
 
+    def broadcast_to(self, a, shape, out):
+        out.array[:] = np.broadcast_to(a.array, shape)
+
 
 def cpu():
     """Return cpu device"""

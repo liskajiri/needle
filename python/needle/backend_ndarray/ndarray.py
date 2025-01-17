@@ -166,7 +166,7 @@ class NDArray:
         offset: int = 0,
     ):
         """
-        Create a new NDArray with the given properties.  This will allocation the
+        Create a new NDArray with the given properties.  This will allocate the
         memory if handle=None, otherwise it will use the handle of an existing
         array.
         """

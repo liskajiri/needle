@@ -3,7 +3,6 @@ import pytest
 
 from needle import backend_ndarray as nd
 
-
 _DEVICES = [
     nd.cpu(),
     pytest.param(
@@ -299,7 +298,6 @@ def test_setitem_scalar(params, device):
     _A = np.random.randn(*shape)
     A = nd.array(_A, device=device)
     # probably tear these out using lambdas
-    print(slices)
     start_ptr = A._handle.ptr()
     _A[slices] = 4.0
     A[slices] = 4.0
@@ -443,8 +441,6 @@ def test_broadcast_to(device, params):
     A = nd.array(_A, device=device)
     lhs = np.broadcast_to(_A, shape=to_shape)
     rhs = A.broadcast_to(to_shape)
-    print(lhs.shape, rhs.shape)
-    print(lhs.strides, rhs._strides)
     np.testing.assert_allclose(lhs, rhs.numpy(), atol=1e-5, rtol=1e-5)
     compare_strides(lhs, rhs)
     check_same_memory(A, rhs)
