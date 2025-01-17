@@ -2,10 +2,8 @@ module;
 
 #include <nanobind/nanobind.h>
 #include <nanobind/ndarray.h>
-// #include <nanobind/nb_cast.h>
 
 #include <algorithm>
-#include <vector>
 
 import ndarray;
 import elementwise;
@@ -15,7 +13,6 @@ import reductions;
 
 export module ndarray_backend_cpu;
 
-// TODO: nb::ndarray can alloc memory cheaply - connect to python?
 NB_MODULE(ndarray_backend_cpu, m) {
     namespace nb = nanobind;
     using namespace needle;
@@ -25,27 +22,37 @@ NB_MODULE(ndarray_backend_cpu, m) {
     m.attr("__tile_size__") = TILE;
 
     nb::class_<AlignedArray>(m, "Array")
-        // TODO: return_value_policy is not present
-        .def(nb::init_implicit<size_t>())
+        .def(nb::init_implicit<size_t>(), nb::rv_policy::take_ownership)
         .def("ptr", &AlignedArray::ptr_as_int)
         // read only
         .def_ro("size", &AlignedArray::size);
 
-    // return numpy array - should not be copied
-    m.def("to_numpy", [](const AlignedArray &a, const nb::tuple &shape_tuple,
-                         const nb::tuple &strides_tuple, const size_t offset) {
-        std::vector<size_t> shape;
-        for (const auto &dim : shape_tuple) {
-            shape.push_back(nb::cast<size_t>(dim));
-        }
-        // TODO: strides
-        return nb::ndarray<nb::numpy, scalar_t>(
-            a.ptr + offset, shape_tuple.size(), shape.data(), nullptr);
-    });
+    m.def(
+        "to_numpy",
+        [](const AlignedArray &a, const nb::tuple &shape_tuple,
+           const nb::tuple &strides_tuple, const size_t offset) {
+            const size_t ndim = shape_tuple.size();
+            auto shape_arr = std::make_unique<size_t[]>(ndim);
+            auto strides_arr = std::make_unique<int64_t[]>(ndim);
+
+            for (size_t i = 0; i < ndim; i++) {
+                shape_arr[i] = nb::cast<size_t>(shape_tuple[i]);
+                strides_arr[i] =
+                    static_cast<int64_t>(nb::cast<size_t>(strides_tuple[i]));
+            }
+
+            nb::capsule owner(a.ptr, [](void *p) noexcept {});
+
+            return nb::ndarray<nb::numpy, scalar_t>(a.ptr + offset, ndim,
+                                                    shape_arr.get(), owner,
+                                                    strides_arr.get());
+        },
+        // new python object
+        nb::rv_policy::move);
 
     // convert from numpy (with copying)
     // TODO: nb::ndarray probably can do it without copy
-    m.def("from_numpy", [](nb::ndarray<scalar_t> a, AlignedArray *out) {
+    m.def("from_numpy", [](nb::ndarray<scalar_t> &a, AlignedArray *out) {
         memcpy(out->ptr, a.data(), out->size * ELEM_SIZE);
     });
 

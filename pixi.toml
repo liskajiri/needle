@@ -50,8 +50,6 @@ pybind11 = ">=2.13.6,<3"
 [feature.dev.tasks]
 make = { cmd = "cmake -G Ninja -S . -B .build"}
 build = { cmd = ["ninja", "-C", ".build"], depends-on = ["make"] }
-make_nanobind = {cmd = "cmake -DUSE_NANOBIND=ON -G Ninja -S . -B .build"}
-build_nanobind = { cmd = ["ninja", "-C", ".build"], depends-on = ["make_nanobind"] }
 
 [feature.test.dependencies]
 numdifftools = ">=0.9.41,<0.10"
