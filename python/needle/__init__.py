@@ -1,12 +1,9 @@
 from .autograd import Op, TensorOp, Tensor, Value, TensorTuple, cpu
-from . import data
-from . import init
-from . import nn
-from . import ops
-from . import optim
+from . import data, init, nn, ops, optim
 
 # Provides array_api.functions
 from .ops import *  # noqa: F403
+from .backend_selection import *  # noqa: F403
 
 __all__ = [
     # autograd

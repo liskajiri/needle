@@ -3,18 +3,22 @@ authors = ["Jiří Liška <70215056+liskajiri@users.noreply.github.com>"]
 channels = ["https://fast.prefix.dev/conda-forge"]
 description = "Library for deep learning & neural networks"
 name = "needle"
-platforms = ["linux-64"]
+platforms = ["linux-64"] #, "win-64"]
 version = "0.1.0"
 
 [tasks]
+clean = "rm -rf .build/; rm -rf cmake-build-debug/; rm -rf python/needle/backend_ndarray/ndarray_backend*.so"
 
 [environments]
 jupyter = ["jupyter"]
-lint = ["lint"]
-dev = ["dev", "jupyter"]
+lint = {features = ["lint"], no-default-feature = true}
+dev = ["dev"]
+test = ["test"]
+benchmark = ["benchmark", "test"]
 
 [dependencies]
 numpy = ">=2.2.0,<3"
+python = ">=3.12.8,<3.13"
 
 [feature.jupyter.dependencies]
 jupyter = ">=1.1.1,<2"
@@ -27,34 +31,53 @@ pre-commit-hooks = ">=5.0.0,<6"
 clang-format = ">=19.1.5,<20"
 
 [feature.lint.tasks]
-format = "clang-format -i src/*.cc src/*.cu"
+format = "clang-format -i -style='{IndentWidth: 4}' src/cpu/*.cc src/*.cu"
 lint = "pre-commit run --all-files --color=always --show-diff-on-failure"
 style = { depends-on = ["format", "lint"] }
 
 [feature.dev.dependencies]
 cmake = ">=3.31.2,<4"
+ninja = ">=1.12.1,<2"
+nanobind = ">=2.4.0,<3"
+clang = ">=19.1.6,<20"
+llvm-openmp = ">=19.1.6,<20"
+clangxx = ">=19.1.6,<20"
+libcxx = ">=19.1.6,<20"
+libcxx-devel = ">=19.1.6,<20"
+libcxxabi = ">=19.1.6,<20"
 pybind11 = ">=2.13.6,<3"
-pytest = ">=8.3.4,<9"
-pytest-benchmark = ">=5.1.0,<6"
-pygal = ">=3.0.5,<4"
-numdifftools = ">=0.9.41,<0.10"
-llvm-openmp = ">=19.1.5,<20"
 
 [feature.dev.tasks]
-format = "ruff format . && clang-format -i src/*.cc src/*.cu"
-lint = "ruff check . --fix"
-style = { depends-on = ["format", "lint"] }
-clean = { cmd = [
-    "rm", "-rf",
-    "build",
-    "python/needle/backend_ndarray/ndarray_backend*.so"
-    ]}
-# make: possible to set inputs {inputs = ["src/ndarray_backend_cpu.cc", "src/ndarray_backend_cuda.cu"]}
-make = {cmd = "mkdir -p build && cd build && cmake .. && make"}
-test = {cmd = "python -m pytest -s --benchmark-skip", depends-on = ["make"]}
-matmul_correct = {cmd = "python -m pytest -k 'test_correct' -s", depends-on = ["make"]}
-matmul_benchmark = {cmd = "python -m pytest -k 'test_matmul and not large' -s tests/test_benchmarks.py --benchmark-sort=mean --benchmark-autosave --benchmark-save-data --benchmark-histogram='benchmark_results/matmul'", depends-on = ["make"]}
-large_matmul_benchmark = {cmd = "python -m pytest -k 'test_matmul_large' -s tests/test_benchmarks.py --benchmark-sort=mean --benchmark-autosave --benchmark-save-data --benchmark-histogram='benchmark_results/matmul_large'", depends-on = ["make"]}
+make = { cmd = "cmake -G Ninja -S . -B .build"}
+build = { cmd = ["ninja", "-C", ".build"], depends-on = ["make"] }
+
+[feature.test.dependencies]
+numdifftools = ">=0.9.41,<0.10"
+pytest = ">=8.3.4,<9"
+pytorch = ">=2.5.1,<3"
+pytest-sugar = ">=1.0.0,<2"
+pytest-cov = ">=6.0.0,<7"
+pytest-xdist = ">=3.6.1,<4"
+pytest-html = ">=4.1.1,<5"
+
+[feature.test.tasks]
+# TODO: run slow test in CI
+test = {cmd = "python -m pytest tests/ -n auto --html=tests/report.html -m 'not slow'", depends-on = ["build"]}
+
+[feature.benchmark.dependencies]
+# TODO: remove when Codspeed is ready
+pytest-benchmark = ">=5.1.0,<6"
+# scalene = ">=1.5.41,<2"
+# pytest-codspeed = ">=3.1.0,<4"
+pygal = ">=3.0.5,<4"
+# py-spy = ">=0.4.0,<0.5"
+
+[feature.benchmark.tasks]
+# TODO: Add --codspeed when Codspeed is ready
+matmul_correct = {cmd = "python -m pytest benchmarks/ -k 'test_correct' -s", depends-on = ["build"]}
+matmul_benchmark = {cmd = "python -m pytest benchmarks/ -k 'test_matmul and not large' -s  --benchmark-sort=mean --benchmark-autosave --benchmark-save-data --benchmark-histogram='benchmark_results/matmul'", depends-on = ["build"]}
+large_matmul_benchmark = {cmd = "python -m pytest benchmarks/ -k 'test_matmul_large' -s --benchmark-sort=mean --benchmark-autosave --benchmark-save-data --benchmark-histogram='benchmark_results/matmul_large'", depends-on = ["build"]}
+bench_matmul = "py-spy record -o profile.svg -- python benchmarks/test_matmul_benchmarks.py"
 
 [activation]
 env = {PYTHONPATH = "./python:./apps"}

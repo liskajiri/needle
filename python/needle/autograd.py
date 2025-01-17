@@ -4,23 +4,21 @@ from collections import defaultdict
 from typing import List, Optional, Tuple, Union
 
 import numpy
-import numpy as array_api
 
 import needle as ndl
 
 from .backend_numpy import Device, cpu
 
-# needle version
-LAZY_MODE = False
-TENSOR_COUNTER = 0
-
-# NOTE: we will import numpy as the array_api
-# as the backend for our computations, this line will change in later homeworks
+import numpy as array_api
 
 NDArray = numpy.ndarray
 
 # TODO:
-# from .backend_selection import array_api, NDArray, default_device
+# from .backend_selection import array_api, NDArray
+
+# needle version
+LAZY_MODE = False
+TENSOR_COUNTER = 0
 
 
 class Op:

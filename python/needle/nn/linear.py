@@ -1,6 +1,7 @@
 from needle import init
 from needle.autograd import Tensor
 from needle.nn.nn_basic import Module, Parameter
+from needle.ops.ops_mathematic import broadcast_to
 
 
 class Linear(Module):
@@ -38,5 +39,5 @@ class Linear(Module):
     def forward(self, X: Tensor) -> Tensor:
         X_weights = X @ self.weight
         if self.bias:
-            return X_weights + self.bias.broadcast_to(X_weights.shape)
+            return X_weights + broadcast_to(self.bias, X_weights.shape)
         return X_weights

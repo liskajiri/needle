@@ -10,6 +10,15 @@ from .ndarray import (
     empty,
     full,
     broadcast_to,
+    BackendDevice,
+    max,
+    reshape,
+    maximum,
+    log,
+    exp,
+    tanh,
+    sum,
+    flip,
 )
 
 __all__ = [
@@ -24,4 +33,13 @@ __all__ = [
     "empty",
     "full",
     "broadcast_to",
+    "BackendDevice",
+    "max",
+    "reshape",
+    "maximum",
+    "log",
+    "exp",
+    "tanh",
+    "sum",
+    "flip",
 ]

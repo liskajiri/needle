@@ -1,6 +1,7 @@
 import needle as ndl
 import needle.nn as nn
 import numpy as np
+import pytest
 from resnet_mnist import train_mnist, ResidualBlock, MLPResNet, epoch
 
 """Deterministically generate a matrix"""
@@ -1865,6 +1866,7 @@ def test_mlp_resnet_forward_2():
     )
 
 
+@pytest.mark.slow
 def test_mlp_train_epoch_1():
     np.testing.assert_allclose(
         train_epoch_1(5, 250, ndl.optim.Adam, lr=0.01, weight_decay=0.1),
@@ -1880,6 +1882,7 @@ def test_mlp_eval_epoch_1():
     )
 
 
+@pytest.mark.slow
 def test_mlp_train_mnist_1():
     np.testing.assert_allclose(
         train_mnist_1(250, 2, ndl.optim.SGD, 0.001, 0.01, 100),
