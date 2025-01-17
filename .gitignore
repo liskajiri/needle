@@ -144,3 +144,7 @@ notebooks/*
 .build/*
 .idea/*
 .vscode/c_cpp_properties.json
+benchmark_results/*
+.codspeed/*
+*assets*
+src/.vscode/settings.json
