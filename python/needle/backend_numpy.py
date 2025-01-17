@@ -1,6 +1,8 @@
 """This file defies specific implementations of devices when using numpy as NDArray backend."""
 
 import numpy
+import numpy as np
+from .backend_ndarray.ndarray_backend_numpy import Array, _datetype_size
 
 
 class Device:
@@ -46,6 +48,89 @@ class CPUDevice(Device):
 
     def full(self, shape, fill_value, dtype="float32"):
         return numpy.full(shape, fill_value, dtype=dtype)
+
+    # MOVED from Array
+    @property
+    def Array(self):
+        return Array
+
+    def to_numpy(self, a, shape, strides, offset):
+        return np.lib.stride_tricks.as_strided(
+            a.array[offset:], shape, tuple([s * _datetype_size for s in strides])
+        )
+
+    @staticmethod
+    def from_numpy(a, out):
+        out.array[:] = a.flatten()
+
+    def fill(self, out, val):
+        out.array.fill(val)
+
+    def compact(self, a, out, shape, strides, offset):
+        out.array[:] = self.to_numpy(a, shape, strides, offset).flatten()
+
+    def ewise_setitem(self, a, out, shape, strides, offset):
+        self.to_numpy(out, shape, strides, offset)[:] = a.array.reshape(shape)
+
+    def scalar_setitem(self, size, val, out, shape, strides, offset):
+        self.to_numpy(out, shape, strides, offset)[:] = val
+
+    def ewise_add(self, a, b, out):
+        out.array[:] = a.array + b.array
+
+    def scalar_add(self, a, val, out):
+        out.array[:] = a.array + val
+
+    def ewise_mul(self, a, b, out):
+        out.array[:] = a.array * b.array
+
+    def scalar_mul(self, a, val, out):
+        out.array[:] = a.array * val
+
+    def ewise_div(self, a, b, out):
+        out.array[:] = a.array / b.array
+
+    def scalar_div(self, a, val, out):
+        out.array[:] = a.array / val
+
+    def scalar_power(self, a, val, out):
+        out.array[:] = np.power(a.array, val)
+
+    def ewise_maximum(self, a, b, out):
+        out.array[:] = np.maximum(a.array, b.array)
+
+    def scalar_maximum(self, a, val, out):
+        out.array[:] = np.maximum(a.array, val)
+
+    def ewise_eq(self, a, b, out):
+        out.array[:] = (a.array == b.array).astype(np.float32)
+
+    def scalar_eq(self, a, val, out):
+        out.array[:] = (a.array == val).astype(np.float32)
+
+    def ewise_ge(self, a, b, out):
+        out.array[:] = (a.array >= b.array).astype(np.float32)
+
+    def scalar_ge(self, a, val, out):
+        out.array[:] = (a.array >= val).astype(np.float32)
+
+    def ewise_log(self, a, out):
+        out.array[:] = np.log(a.array)
+
+    def ewise_exp(self, a, out):
+        out.array[:] = np.exp(a.array)
+
+    def ewise_tanh(self, a, out):
+        out.array[:] = np.tanh(a.array)
+
+    def matmul(self, a, b, out, m, n, p):
+        out.array[:] = (a.array.reshape(m, n) @ b.array.reshape(n, p)).reshape(-1)
+
+    def reduce_max(self, a, out, reduce_size):
+        out.array[:] = a.array[:].reshape(-1, reduce_size).max(axis=1)
+
+    def reduce_sum(self, a, out, reduce_size):
+        out.array[:] = a.array[:].reshape(-1, reduce_size).sum(axis=1)
 
 
 def cpu():

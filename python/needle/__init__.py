@@ -3,6 +3,7 @@ from . import data, init, nn, ops, optim
 
 # Provides array_api.functions
 from .ops import *  # noqa: F403
+from .backend_selection import *  # noqa: F403
 
 __all__ = [
     # autograd

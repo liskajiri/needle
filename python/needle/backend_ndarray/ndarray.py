@@ -1,11 +1,9 @@
 from __future__ import annotations
 
 import math
+from typing import Optional
 
 import numpy as np
-
-from . import ndarray_backend_cpu
-from . import ndarray_backend_numpy
 
 __all__ = [
     "NDArray",
@@ -18,11 +16,19 @@ __all__ = [
     "empty",
     "full",
     "broadcast_to",
+    "BackendDevice",
+    "max",
+    "reshape",
+    "maximum",
+    "log",
+    "exp",
+    "tanh",
+    "sum",
+    "flip",
 ]
-
-
-def prod(x):
-    return math.prod(x)
+# TODO: get rid of .compact calls - copies memory
+# TODO: reference hw3.ipynb for future optimizations
+# TODO: investigate usage of __slots__, Python's array.array for NDArray class
 
 
 class BackendDevice:
@@ -73,7 +79,7 @@ class BackendDevice:
 def cuda():
     """Return cuda device"""
     try:
-        from . import ndarray_backend_cuda
+        from . import ndarray_backend_cuda  # type: ignore
 
         return BackendDevice("cuda", ndarray_backend_cuda)
     except ImportError:
@@ -82,12 +88,22 @@ def cuda():
 
 def cpu_numpy():
     """Return numpy device"""
-    return BackendDevice("cpu_numpy", ndarray_backend_numpy)
+    try:
+        from . import ndarray_backend_numpy
+
+        return BackendDevice("cpu_numpy", ndarray_backend_numpy)
+    except ImportError:
+        raise ImportError("Numpy backend not available")
 
 
 def cpu():
     """Return cpu device"""
-    return BackendDevice("cpu", ndarray_backend_cpu)
+    try:
+        from . import ndarray_backend_cpu  # type: ignore
+
+        return BackendDevice("cpu", ndarray_backend_cpu)
+    except ImportError:
+        raise ImportError("CPU backend not available")
 
 
 def default_device():
@@ -102,9 +118,6 @@ def all_devices():
 class NDArray:
     """A generic ND array class that may contain multiple different backends
     i.e., a Numpy backend, a native CPU backend, or a GPU backend.
-    This class will only contains those functions that you need to implement
-    to actually get the desired functionality for the programming examples
-    in the homework, and no more.
     For now, for simplicity the class only supports float32 types, though
     this can be extended if desired.
     """
@@ -127,7 +140,7 @@ class NDArray:
             array = NDArray(np.array(other), device=device)
             self._init(array)
 
-    def _init(self, other):
+    def _init(self, other: NDArray):
         self._shape = other._shape
         self._strides = other._strides
         self._offset = other._offset
@@ -135,7 +148,7 @@ class NDArray:
         self._handle = other._handle
 
     @staticmethod
-    def compact_strides(shape):
+    def compact_strides(shape: tuple):
         """Utility function to compute compact strides"""
         stride = 1
         res = []
@@ -145,17 +158,25 @@ class NDArray:
         return tuple(res[::-1])
 
     @staticmethod
-    def make(shape, strides=None, device=None, handle=None, offset=0):
-        """Create a new NDArray with the given properties.  This will allocation the
+    def make(
+        shape: tuple,
+        strides: Optional[tuple] = None,
+        device: Optional[BackendDevice] = None,
+        handle: Optional[NDArray] = None,
+        offset: int = 0,
+    ):
+        """
+        Create a new NDArray with the given properties.  This will allocation the
         memory if handle=None, otherwise it will use the handle of an existing
-        array."""
+        array.
+        """
         array = NDArray.__new__(NDArray)
-        array._shape = tuple(shape)
+        array._shape = shape
         array._strides = NDArray.compact_strides(shape) if strides is None else strides
         array._offset = offset
         array._device = device if device is not None else default_device()
         if handle is None:
-            array._handle = array.device.Array(prod(shape))
+            array._handle = array.device.Array(math.prod(shape))
         else:
             array._handle = handle
         return array
@@ -185,9 +206,10 @@ class NDArray:
 
     @property
     def size(self):
-        return prod(self._shape)
+        return math.prod(self._shape)
 
     def __repr__(self):
+        return "NDArray(" + self.numpy().__str__() + ")"
         return "NDArray(" + self.numpy().__str__() + f", device={self.device})"
 
     def __str__(self):
@@ -212,11 +234,11 @@ class NDArray:
         )
 
     def is_compact(self):
-        """Return true if array is compact in memory and internal size equals product
+        """Return true if array is compact in memory and internal size equals math.product
         of the shape dimensions"""
         return (
             self._strides == self.compact_strides(self._shape)
-            and prod(self.shape) == self._handle.size
+            and math.prod(self.shape) == self._handle.size
         )
 
     def compact(self):
@@ -247,14 +269,14 @@ class NDArray:
         that corresponds to a reshaped array but points to the same memory as
         the original array.
         Raises:
-            ValueError if product of current shape is not equal to the product
+            ValueError if math.product of current shape is not equal to the math.product
             of the new shape, or if the matrix is not compact.
         Args:
             new_shape (tuple): new shape of the array
         Returns:
             NDArray : reshaped array; this will point to the same memory as the original NDArray.
         """
-        if self.size != prod(new_shape):
+        if self.size != math.prod(new_shape):
             raise ValueError("Cannot reshape array to new shape")
         if not self.is_compact():
             raise ValueError("Cannot reshape array that is not compact")
@@ -262,13 +284,15 @@ class NDArray:
         if -1 in new_shape:
             # calculate the missing dimension
             changed_shape = [x for x in new_shape if x != -1]
-            missing_dim = self.size // prod(changed_shape)
+            missing_dim = self.size // math.prod(changed_shape)
             new_shape = tuple(changed_shape + [missing_dim])
 
-        new_strides = [prod(new_shape[i:]) for i in range(1, len(new_shape))] + [1]
+        new_strides = tuple(
+            [math.prod(new_shape[i:]) for i in range(1, len(new_shape))] + [1]
+        )
         return NDArray.make(
             new_shape,
-            strides=tuple(new_strides),
+            strides=new_strides,
             device=self.device,
             handle=self._handle,
         )
@@ -295,18 +319,10 @@ class NDArray:
             raise ValueError("New axes has different number of axes")
 
         # gets new shape
-        new_shape = []
-        new_strides = []
-        for d in new_axes:
-            new_shape.append(self._shape[d])
-            new_strides.append(self._strides[d])
+        new_shape = tuple(self._shape[d] for d in new_axes)
+        new_strides = tuple(self._strides[d] for d in new_axes)
 
-        return NDArray.make(
-            new_shape,
-            strides=tuple(new_strides),
-            device=self.device,
-            handle=self._handle,
-        )
+        return self.as_strided(new_shape, new_strides)
 
     def broadcast_to(self, new_shape: tuple) -> NDArray:
         """
@@ -434,7 +450,7 @@ class NDArray:
         as __getitem__()."""
         view = self.__getitem__(idxs)
         if isinstance(other, NDArray):
-            assert prod(view.shape) == prod(other.shape)
+            assert math.prod(view.shape) == math.prod(other.shape)
             self.device.ewise_setitem(
                 other.compact()._handle,
                 view._handle,
@@ -444,7 +460,7 @@ class NDArray:
             )
         else:
             self.device.scalar_setitem(
-                prod(view.shape),
+                math.prod(view.shape),
                 other,
                 view._handle,
                 view.shape,
@@ -541,7 +557,7 @@ class NDArray:
         return out
 
     ### Matrix multiplication
-    def __matmul__(self, other):
+    def __matmul__(self, other: NDArray) -> NDArray:
         """Matrix multiplication of two arrays.  This requires that both arrays
         be 2D (i.e., we don't handle batch matrix multiplication), and that the
         sizes match up properly for matrix multiplication.
@@ -561,12 +577,20 @@ class NDArray:
 
         m, n, p = self.shape[0], self.shape[1], other.shape[1]
 
-        # if the matrix is aligned, use tiled matrix multiplication
-        if hasattr(self.device, "matmul_tiled") and all(
-            d % self.device.__tile_size__ == 0 for d in (m, n, p)
+        # For smaller matrices, the overhead of tiling and reshaping is too large
+        matrix_is_large = m * n * p > 64**3
+
+        if (
+            matrix_is_large
+            # if the matrix is aligned, use tiled matrix multiplication
+            and hasattr(self.device, "matmul_tiled")
+            and all(d % self.device.__tile_size__ == 0 for d in (m, n, p))
         ):
 
-            def tile(a, tile):
+            def tile(a: NDArray, tile: int):
+                """
+                Transforms a matrix [k, n] into a matrix [k // tile, n // tile, tile, tile]
+                """
                 return a.as_strided(
                     (a.shape[0] // tile, a.shape[1] // tile, tile, tile),
                     (a.shape[1] * tile, tile, self.shape[1], 1),
@@ -578,11 +602,18 @@ class NDArray:
             out = NDArray.make((a.shape[0], b.shape[1], t, t), device=self.device)
             self.device.matmul_tiled(a._handle, b._handle, out._handle, m, n, p)
 
-            return (
+            permutation = (
                 out.permute((0, 2, 1, 3))
                 .compact()
                 .reshape((self.shape[0], other.shape[1]))
             )
+            # TODO: unified op?
+            return permutation
+            # return (
+            #     out.permute((0, 2, 1, 3))
+            #     .compact()
+            #     .reshape((self.shape[0], other.shape[1]))
+            # )
 
         else:
             out = NDArray.make((m, p), device=self.device)
@@ -598,7 +629,9 @@ class NDArray:
             raise ValueError("Empty axis in reduce")
 
         if axis is None:
-            view = self.compact().reshape((1,) * (self.ndim - 1) + (prod(self.shape),))
+            view = self.compact().reshape(
+                (1,) * (self.ndim - 1) + (math.prod(self.shape),)
+            )
             # out = NDArray.make((1,) * self.ndim, device=self.device)
             out = NDArray.make((1,), device=self.device)
 
@@ -628,6 +661,23 @@ class NDArray:
         self.device.reduce_max(view.compact()._handle, out._handle, view.shape[-1])
         return out
 
+    def flip(self, axes):
+        """
+        Flip this ndarray along the specified axes.
+        Note: compact() before returning.
+        """
+        # TODO:
+        raise NotImplementedError()
+
+    def pad(self, axes):
+        """
+        Pad this ndarray by zeros by the specified amount in `axes`,
+        which lists for _all_ axes the left and right padding amount, e.g.,
+        axes = ( (0, 0), (1, 1), (0, 0)) pads the middle axis with a 0 on the left and right side.
+        """
+        # TODO:
+        raise NotImplementedError()
+
 
 def array(a, dtype="float32", device=None):
     """Convenience methods to match numpy a bit more closely."""
@@ -650,32 +700,33 @@ def broadcast_to(array, new_shape):
     return array.broadcast_to(new_shape)
 
 
-# def max(array, axis=None, keepdims=False):
-#     return array.max(axis=axis, keepdims=keepdims)
-
-# def reshape(array, new_shape):
-#     return array.reshape(new_shape)
+def max(array, axis=None, keepdims=False):
+    return array.max(axis=axis, keepdims=keepdims)
 
 
-# def maximum(a, b):
-#     return a.maximum(b)
+def reshape(array, new_shape):
+    return array.reshape(new_shape)
 
 
-# def log(a):
-#     return a.log()
+def maximum(a, b):
+    return a.maximum(b)
 
 
-# def exp(a):
-#     return a.exp()
+def log(a):
+    return a.log()
 
 
-# def tanh(a):
-#     return a.tanh()
+def exp(a):
+    return a.exp()
 
 
-# def sum(a, axis=None, keepdims=False):
-#     return a.sum(axis=axis, keepdims=keepdims)
+def tanh(a):
+    return a.tanh()
 
 
-# def flip(a, axes):
-#     return a.flip(axes)
+def sum(a, axis=None, keepdims=False):
+    return a.sum(axis=axis, keepdims=keepdims)
+
+
+def flip(a, axes):
+    return a.flip(axes)

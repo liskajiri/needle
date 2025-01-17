@@ -45,10 +45,13 @@ clangxx = ">=19.1.6,<20"
 libcxx = ">=19.1.6,<20"
 libcxx-devel = ">=19.1.6,<20"
 libcxxabi = ">=19.1.6,<20"
+pybind11 = ">=2.13.6,<3"
 
 [feature.dev.tasks]
 make = { cmd = "cmake -G Ninja -S . -B .build"}
 build = { cmd = ["ninja", "-C", ".build"], depends-on = ["make"] }
+make_nanobind = {cmd = "cmake -DUSE_NANOBIND=ON -G Ninja -S . -B .build"}
+build_nanobind = { cmd = ["ninja", "-C", ".build"], depends-on = ["make_nanobind"] }
 
 [feature.test.dependencies]
 numdifftools = ">=0.9.41,<0.10"
@@ -66,10 +69,10 @@ test = {cmd = "python -m pytest tests/ -n auto --html=tests/report.html -m 'not 
 [feature.benchmark.dependencies]
 # TODO: remove when Codspeed is ready
 pytest-benchmark = ">=5.1.0,<6"
-scalene = ">=1.5.41,<2"
-pytest-codspeed = ">=3.1.0,<4"
+# scalene = ">=1.5.41,<2"
+# pytest-codspeed = ">=3.1.0,<4"
 pygal = ">=3.0.5,<4"
-py-spy = ">=0.4.0,<0.5"
+# py-spy = ">=0.4.0,<0.5"
 
 [feature.benchmark.tasks]
 # TODO: Add --codspeed when Codspeed is ready
