@@ -61,8 +61,10 @@ pytest-html = ">=4.1.1,<5"
 hypothesis = ">=6.124.0,<7"
 
 [feature.test.tasks]
+# Save results of test to html, run code coverage
 test = {cmd = "python -m pytest tests/ -n auto --html=reports/test_report.html --cov-report html:reports/coverage --cov=python/needle/ tests/ -m 'not slow'", depends-on = ["build"]}
-test_all = {cmd = "python -m pytest tests/ -n auto --html=reports/test_report.html --cov-report html:reports/coverage --cov=python/needle/ tests/", depends-on = ["build"]}
+# Fails tests if code coverage is below 80%
+test_all = {cmd = "python -m pytest tests/ -n auto --html=reports/test_report.html --cov-report html:reports/coverage --cov=python/needle/ tests/ --cov-fail-under=80", depends-on = ["build"]}
 
 [feature.benchmark.dependencies]
 # TODO: remove when Codspeed is ready

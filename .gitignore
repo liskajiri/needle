@@ -147,3 +147,4 @@ notebooks/*
 .codspeed/*
 *assets*
 reports/*
+bin/*
