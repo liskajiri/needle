@@ -143,4 +143,6 @@ figures/*
 notebooks/*
 .build/*
 .idea/*
-.vscode/c_cpp_properties.json
+*.vscode*
+.codspeed/*
+*assets*
