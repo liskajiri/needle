@@ -12,7 +12,6 @@ import numpy as array_api
 class LogSoftmax(TensorOp):
     def compute(self, Z: NDArray):
         # 2d input array
-        ### BEGIN YOUR SOLUTION
         # Subtract the maximum value along axis=1 for numerical stability
         print("Shape: ", Z.shape)
         assert Z.ndim == 2, "Input must be a 2D array"
@@ -24,10 +23,8 @@ class LogSoftmax(TensorOp):
             array_api.sum(array_api.exp(shifted_Z), axis=1, keepdims=True)
         )
         return shifted_Z - log_sum_exp
-        ### END YOUR SOLUTION
 
     def gradient(self, out_grad, node):
-        ### BEGIN YOUR SOLUTION
         Z = node.inputs[0]
         print(node, node.inputs[0])
         # Z = Z.numpy()
@@ -39,7 +36,6 @@ class LogSoftmax(TensorOp):
         # Gradient calculation
         sum_out_grad = array_api.sum(out_grad, axis=1, keepdims=True)
         return out_grad - sum_out_grad * softmax_Z
-        ### END YOUR SOLUTION
 
 
 def logsoftmax(a):
