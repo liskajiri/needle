@@ -39,4 +39,5 @@ jobs:
           with:
             pixi-version: v0.39.0
             cache: true
-        - run: pixi run -e test test
+        # also runs slow tests
+        - run: pixi run test_all
