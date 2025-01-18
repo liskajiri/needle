@@ -146,3 +146,4 @@ notebooks/*
 *.vscode*
 .codspeed/*
 *assets*
+reports/*
