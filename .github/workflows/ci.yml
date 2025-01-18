@@ -22,7 +22,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
         - name: Install build tools
-          run: sudo apt-get install clang-tools-19
+          run: sudo apt-get install clang-19
 
         - uses: actions/checkout@v4
         - name: Test
