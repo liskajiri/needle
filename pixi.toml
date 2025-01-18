@@ -7,17 +7,17 @@ platforms = ["linux-64"] #, "win-64"]
 version = "0.1.0"
 
 [tasks]
-clean = "rm -rf .build/; rm -rf cmake-build-debug/; rm -rf python/needle/backend_ndarray/ndarray_backend*.so"
+clean = "rm -rf .build/ cmake-build-debug/ python/needle/backend_ndarray/ndarray_backend*.so reports/ .pytest_cache/ .coverage"
 
 [environments]
 jupyter = ["jupyter"]
 lint = {features = ["lint"], no-default-feature = true}
 dev = ["dev"]
 test = ["test"]
-benchmark = ["benchmark", "test"]
+benchmark = ["benchmark"]
 
 [dependencies]
-numpy = ">=2.2.0,<3"
+numpy = ">=2.2.1,<3"
 python = ">=3.12.8,<3.13"
 
 [feature.jupyter.dependencies]
@@ -45,7 +45,6 @@ clangxx = ">=19.1.6,<20"
 libcxx = ">=19.1.6,<20"
 libcxx-devel = ">=19.1.6,<20"
 libcxxabi = ">=19.1.6,<20"
-pybind11 = ">=2.13.6,<3"
 
 [feature.dev.tasks]
 make = { cmd = "cmake -G Ninja -S . -B .build"}
@@ -59,13 +58,15 @@ pytest-sugar = ">=1.0.0,<2"
 pytest-cov = ">=6.0.0,<7"
 pytest-xdist = ">=3.6.1,<4"
 pytest-html = ">=4.1.1,<5"
+hypothesis = ">=6.124.0,<7"
 
 [feature.test.tasks]
-# TODO: run slow test in CI
-test = {cmd = "python -m pytest tests/ -n auto --html=tests/report.html -m 'not slow'", depends-on = ["build"]}
+test = {cmd = "python -m pytest tests/ -n auto --html=reports/test_report.html --cov-report html:reports/coverage --cov=python/needle/ tests/ -m 'not slow'", depends-on = ["build"]}
+test_all = {cmd = "python -m pytest tests/ -n auto --html=reports/test_report.html --cov-report html:reports/coverage --cov=python/needle/ tests/", depends-on = ["build"]}
 
 [feature.benchmark.dependencies]
 # TODO: remove when Codspeed is ready
+pytest = ">=8.3.4,<9"
 pytest-benchmark = ">=5.1.0,<6"
 # scalene = ">=1.5.41,<2"
 # pytest-codspeed = ">=3.1.0,<4"
@@ -75,9 +76,9 @@ pygal = ">=3.0.5,<4"
 [feature.benchmark.tasks]
 # TODO: Add --codspeed when Codspeed is ready
 matmul_correct = {cmd = "python -m pytest benchmarks/ -k 'test_correct' -s", depends-on = ["build"]}
-matmul_benchmark = {cmd = "python -m pytest benchmarks/ -k 'test_matmul and not large' -s  --benchmark-sort=mean --benchmark-autosave --benchmark-save-data --benchmark-histogram='benchmark_results/matmul'", depends-on = ["build"]}
-large_matmul_benchmark = {cmd = "python -m pytest benchmarks/ -k 'test_matmul_large' -s --benchmark-sort=mean --benchmark-autosave --benchmark-save-data --benchmark-histogram='benchmark_results/matmul_large'", depends-on = ["build"]}
-bench_matmul = "py-spy record -o profile.svg -- python benchmarks/test_matmul_benchmarks.py"
+matmul_benchmark = {cmd = "python -m pytest benchmarks/ -k 'test_matmul and not large' -s  --benchmark-sort=mean --benchmark-autosave --benchmark-save-data --benchmark-histogram='reports/matmul_benchmark'", depends-on = ["build"]}
+large_matmul_benchmark = {cmd = "python -m pytest benchmarks/ -k 'test_matmul_large' -s --benchmark-sort=mean --benchmark-autosave --benchmark-save-data --benchmark-histogram='reports/matmul_large'", depends-on = ["build"]}
+bench_matmul = "py-spy record -o profile.svg -- python reports/test_matmul_benchmarks.py"
 
 [activation]
 env = {PYTHONPATH = "./python:./apps"}
