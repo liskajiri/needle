@@ -41,22 +41,23 @@ NB_MODULE(ndarray_backend_cpu, m) {
                     static_cast<int64_t>(nb::cast<size_t>(strides_tuple[i]));
             }
 
-            nb::capsule owner(a.ptr, [](void *p) noexcept {});
-
-            return nb::ndarray<nb::numpy, scalar_t>(a.ptr + offset, ndim,
-                                                    shape_arr.get(), owner,
-                                                    strides_arr.get());
+            return nb::ndarray<nb::numpy, scalar_t>(
+                a.ptr + offset, ndim, shape_arr.get(),
+                nb::capsule(&a, [](void *) noexcept {}), strides_arr.get());
         },
-        // new python object
-        nb::rv_policy::move);
+        // Keep AlignedArray alive while numpy array exists
+        nb::keep_alive<0, 1>());
 
     // convert from numpy (with copying)
-    // TODO: nb::ndarray probably can do it without copy
-    m.def("from_numpy", [](nb::ndarray<scalar_t> &a, AlignedArray *out) {
-        memcpy(out->ptr, a.data(), out->size * ELEM_SIZE);
-    });
+    m.def(
+        "from_numpy",
+        [](nb::ndarray<scalar_t> &a, AlignedArray *out) {
+            out->ptr = static_cast<scalar_t *>(a.data());
+            out->size = a.size();
+            out->numpy_handle = a.data();
+        },
+        nb::keep_alive<2, 1>());
 
-    // TODO: function Array constraints
     m.def("fill", Fill);
     m.def("compact", Compact);
 

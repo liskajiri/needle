@@ -26,11 +26,18 @@ export struct AlignedArray {
         if (ret != 0)
             throw std::bad_alloc();
         this->size = size;
+        // when converting a numpy array, we don't own the memory
+        this->numpy_handle = nullptr;
     }
-    ~AlignedArray() { free(ptr); }
+    ~AlignedArray() {
+        if (numpy_handle == nullptr) {
+            free(ptr);
+        }
+    }
     size_t ptr_as_int() { return (size_t)ptr; }
     scalar_t *ptr;
     size_t size;
+    void *numpy_handle;
 };
 
 } // namespace cpu

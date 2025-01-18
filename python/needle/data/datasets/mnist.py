@@ -40,6 +40,7 @@ class MNISTDataset(Dataset):
             transforms = []
         self.X, self.y = MNISTDataset.parse_mnist(image_filename, label_filename)
 
+        # TODO: should be (n, 784)
         self.X = self.X.reshape(-1, 28, 28, 1)
         self.transforms = transforms
 

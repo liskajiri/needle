@@ -14,6 +14,7 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_CXX_SCAN_FOR_MODULES ON)
+set(CMAKE_EXPERIMENTAL_CXX_MODULE_MAP_FLAG -Mno-modules)
 # set(CMAKE_CXX_FLAGS "-g -O0 -Wall -Wextra -Wpedantic -Werror")
 
 # Build performance options
@@ -56,12 +57,12 @@ find_package(nanobind CONFIG REQUIRED)
 
 # Implementation files
 set(SOURCE_FILES
-    src/cpu/ndarray_backend_cpu.cc
-    src/cpu/ndarray.cc
-    src/cpu/elementwise.cc
-    src/cpu/scalar_ops.cc
-    src/cpu/matmul.cc
-    src/cpu/reductions.cc
+    backends/cpu/ndarray_backend_cpu.cc
+    backends/cpu/ndarray.cc
+    backends/cpu/elementwise.cc
+    backends/cpu/scalar_ops.cc
+    backends/cpu/matmul.cc
+    backends/cpu/reductions.cc
 )
 
 nanobind_add_module(ndarray_backend_cpu ${SOURCE_FILES})
@@ -74,7 +75,7 @@ target_sources(ndarray_backend_cpu
 # Solves linker issues
 add_library(core INTERFACE)
 target_include_directories(core INTERFACE
-    ${CMAKE_CURRENT_SOURCE_DIR}/src
+    ${CMAKE_CURRENT_SOURCE_DIR}/backends
     ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 target_link_libraries(ndarray_backend_cpu PRIVATE core)
@@ -132,7 +133,7 @@ if(CUDA_FOUND)
         CUDA_SELECT_NVCC_ARCH_FLAGS(ARCH_FLAGS 3.7)
     endif()
 
-    CUDA_ADD_LIBRARY(ndarray_backend_cuda MODULE src/ndarray_backend_cuda.cu OPTIONS ${ARCH_FLAGS})
+    CUDA_ADD_LIBRARY(ndarray_backend_cuda MODULE backends/ndarray_backend_cuda.cu OPTIONS ${ARCH_FLAGS})
     target_link_libraries(ndarray_backend_cuda ${LINKER_LIBS})
     pybind11_extension(ndarray_backend_cuda)
     pybind11_strip(ndarray_backend_cuda)

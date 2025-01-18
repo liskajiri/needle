@@ -607,7 +607,7 @@ class NDArray:
                 """
                 return a.as_strided(
                     (a.shape[0] // tile, a.shape[1] // tile, tile, tile),
-                    (a.shape[1] * tile, tile, self.shape[1], 1),
+                    (a.shape[1] * tile, tile, a.shape[1], 1),
                 )
 
             t = self.device.__tile_size__
@@ -621,12 +621,6 @@ class NDArray:
                 .compact()
                 .reshape((self.shape[0], other.shape[1]))
             )
-            # TODO: unified op?
-            # return (
-            #     out.permute((0, 2, 1, 3))
-            #     .compact()
-            #     .reshape((self.shape[0], other.shape[1]))
-            # )
 
         out = NDArray.make((m, p), device=self.device)
         self.device.matmul(

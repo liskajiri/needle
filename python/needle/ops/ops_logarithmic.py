@@ -13,7 +13,6 @@ class LogSoftmax(TensorOp):
     def compute(self, Z: NDArray):
         # 2d input array
         # Subtract the maximum value along axis=1 for numerical stability
-        print("Shape: ", Z.shape)
         assert Z.ndim == 2, "Input must be a 2D array"
         max_Z = array_api.max(Z, axis=1, keepdims=True)
         shifted_Z = Z - max_Z
