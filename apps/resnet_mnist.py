@@ -106,7 +106,6 @@ def train_mnist(
 ) -> tuple[Accuracy, Loss, Accuracy, Loss]:  # type: ignore
     np.random.seed(4)
 
-    INPUT_DIM = 784
     train_filenames = [
         f"{data_dir}/train-images-idx3-ubyte.gz",
         f"{data_dir}/train-labels-idx1-ubyte.gz",
@@ -115,17 +114,13 @@ def train_mnist(
         f"{data_dir}/t10k-images-idx3-ubyte.gz",
         f"{data_dir}/t10k-labels-idx1-ubyte.gz",
     ]
-    mnist_train = ndl.data.MNISTDataset(
-        image_filename=train_filenames[0], label_filename=train_filenames[1]
-    )
-    mnist_test = ndl.data.MNISTDataset(
-        image_filename=test_filenames[0], label_filename=test_filenames[1]
-    )
+    mnist_train = ndl.data.MNISTDataset(*train_filenames)
+    mnist_test = ndl.data.MNISTDataset(*test_filenames)
 
     train_loader = ndl.data.DataLoader(mnist_train, batch_size=batch_size, shuffle=True)
     test_loader = ndl.data.DataLoader(mnist_test, batch_size=batch_size)
 
-    model = MLPResNet(INPUT_DIM, hidden_dim)
+    model = MLPResNet(784, hidden_dim)
     opt = optimizer(model.parameters(), lr=lr, weight_decay=weight_decay)
 
     for epoch_idx in range(epochs):
@@ -143,5 +138,4 @@ def train_mnist(
 
 
 if __name__ == "__main__":
-    # TODO: Some memory leak in the code
     train_mnist()
