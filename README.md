@@ -7,8 +7,7 @@
 
 ### Tests
 
-- look into using pytest's approx [https://docs.pytest.org/en/stable/reference/reference.html#pytest.approx] instead of comparing with numpy
-- [] mark slow tests
+- [x] mark slow tests
 - [] improve memory efficiency test of optimizers
 - [] Codecov
 - automatic proptesting based on types [https://timothycrosley.github.io/hypothesis-auto/]
