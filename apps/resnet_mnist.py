@@ -1,9 +1,9 @@
+from pathlib import Path
 from typing import NewType
 
-from pathlib import Path
 import needle as ndl
-import needle.nn as nn
 import numpy as np
+from needle import nn
 
 np.random.seed(0)
 
@@ -128,10 +128,8 @@ def train_mnist(
     model = MLPResNet(INPUT_DIM, hidden_dim)
     opt = optimizer(model.parameters(), lr=lr, weight_decay=weight_decay)
 
-    for epoch_idx in range(epochs):
-        print("Epoch ", epoch_idx)
+    for _epoch_idx in range(epochs):
         train_acc, train_loss = epoch(train_loader, model, opt)
-        print("Train accuracy: ", train_acc, "Train loss: ", train_loss)
         test_acc, test_loss = epoch(test_loader, model)
 
     return (

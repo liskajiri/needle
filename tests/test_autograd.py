@@ -1,8 +1,9 @@
 import needle as ndl
-import numpy as np
-from mnist_needle import softmax_loss, nn_epoch, loss_err
-from mnist_numpy import parse_mnist
 import numdifftools as nd
+import numpy as np
+import pytest
+from mnist_needle import loss_err, nn_epoch, softmax_loss
+from mnist_numpy import parse_mnist
 
 
 ##############################################################################
@@ -369,9 +370,8 @@ def gradient_check(f, *args, tol=1e-6, backward=False, **kwargs):
         np.linalg.norm(computed_grads[i] - numerical_grads[i]) for i in range(len(args))
     )
     for i in range(len(args)):
-        print(f"SHAPES {i}: ", computed_grads[i].shape, numerical_grads[i].shape)
         if not np.allclose(computed_grads[i], numerical_grads[i]):
-            print(f"Values {i}: ", computed_grads[i], numerical_grads[i])
+            pass
     assert error < tol
     return computed_grads
 
@@ -529,7 +529,7 @@ def test_topo_sort():
 
     assert len(soln) == len(topo_order)
     # step through list as entries differ in length
-    for t, s in zip(topo_order, soln):
+    for t, s in zip(topo_order, soln, strict=False):
         np.testing.assert_allclose(t, s, rtol=1e-06, atol=1e-06)
 
     # Test case 3
@@ -647,6 +647,7 @@ def test_softmax_loss_ndl():
 ### TESTS for nn_epoch
 
 
+@pytest.mark.slow
 def test_nn_epoch_ndl():
     # test forward/backward pass for relu
     np.testing.assert_allclose(

@@ -1,11 +1,10 @@
 import needle as ndl
 import numpy as np
 import pytest
-
+from hypothesis import given
+from hypothesis import strategies as st
+from hypothesis.extra.numpy import array_shapes, arrays
 from needle.backend_ndarray.ndarray import NDArray
-
-from hypothesis import given, strategies as st
-from hypothesis.extra.numpy import arrays, array_shapes
 
 
 @pytest.mark.proptest
@@ -30,11 +29,13 @@ def test_flip_horizontal_hypothesis(a: NDArray):
 
 def numpy_crop(img: NDArray, padding: int = 3) -> NDArray:
     """Zero pad and then randomly crop an image.
+
     Args:
             img: H x W x C NDArray of an image
     Return
         H x W x C NDArray of clipped image
     Note: generate the image shifted by shift_x, shift_y specified below
+
     """
     assert img.ndim == 3
     shift_x, shift_y = np.random.randint(low=-padding, high=padding + 1, size=2)
@@ -74,6 +75,7 @@ def test_random_crop_hypothesis(a: NDArray, padding: int):
     np.testing.assert_allclose(transform(a), b)
 
 
+@pytest.mark.slow
 def test_mnist_dataset():
     # Test dataset sizing
     mnist_train_dataset = ndl.data.MNISTDataset(
@@ -238,12 +240,14 @@ def test_dataloader_mnist():
         np.testing.assert_allclose(truth_x, batch_x)
         np.testing.assert_allclose(batch_y, truth_y)
 
-    noshuf = ndl.data.DataLoader(
+    not_shuffled = ndl.data.DataLoader(
         dataset=mnist_test_dataset, batch_size=10, shuffle=False
     )
-    shuf = ndl.data.DataLoader(dataset=mnist_test_dataset, batch_size=10, shuffle=True)
+    shuffled = ndl.data.DataLoader(
+        dataset=mnist_test_dataset, batch_size=10, shuffle=True
+    )
     diff = False
-    for i, j in zip(shuf, noshuf):
+    for i, j in zip(shuffled, not_shuffled, strict=False):
         if i != j:
             diff = True
             break

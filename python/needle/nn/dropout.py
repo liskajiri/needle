@@ -1,7 +1,6 @@
-"""
-Important: some values need to be converted to float32,
+"""Important: some values need to be converted to float32,
 otherwise they will overflow the division, thus making it a float64 result,
-which will cause type errors downstream
+which will cause type errors downstream.
 """
 
 from numpy import float32

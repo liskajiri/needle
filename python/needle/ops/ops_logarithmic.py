@@ -1,9 +1,9 @@
-from typing import Optional
+import numpy as array_api
+
+from needle.autograd import NDArray, Tensor, TensorOp, Value
 
 from .ops_mathematic import broadcast_to_new_axis, exp, summation
-from ..autograd import NDArray, Tensor, Value, TensorOp
 
-import numpy as array_api
 # # TODO: 2024 version
 # from ..backend_selection import array_api
 
@@ -43,7 +43,7 @@ def logsoftmax(a):
 
 
 class LogSumExp(TensorOp):
-    def __init__(self, axes: Optional[tuple] = None):
+    def __init__(self, axes: tuple | None = None):
         if isinstance(axes, int):
             self.axes = (axes,)
         else:

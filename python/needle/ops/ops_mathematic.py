@@ -1,8 +1,6 @@
 """Operator implementations."""
 
-from typing import Optional
-
-from ..autograd import NDArray, Tensor, TensorOp
+from needle.autograd import NDArray, Tensor, TensorOp
 
 # NOTE: we will import numpy as the array_api
 # as the backend for our computations, this line will change in later homeworks
@@ -12,44 +10,44 @@ BACKEND = "np"
 import numpy as array_api  # noqa: E402
 
 __all__ = [
+    "AddScalar",
+    "BroadcastTo",
+    "DivScalar",
+    "EWiseAdd",
+    "EWiseDiv",
+    "EWiseMul",
+    "EWisePow",
+    "Exp",
+    "Log",
+    "MatMul",
+    "MulScalar",
+    "Negate",
+    "PowerScalar",
+    "ReLU",
+    "Reshape",
+    "SquareRoot",
+    "Summation",
+    "Transpose",
     "add",
     "add_scalar",
-    "multiply",
-    "mul_scalar",
-    "power",
-    "power_scalar",
+    "broadcast_to",
+    "broadcast_to_new_axis",
     "divide",
     "divide_scalar",
-    "transpose",
-    "reshape",
-    "broadcast_to",
-    "summation",
-    "matmul",
-    "negate",
-    "log",
     "exp",
-    "relu",
-    "sqrt",
+    "log",
+    "matmul",
     "mean",
-    "broadcast_to_new_axis",
-    "EWiseAdd",
-    "AddScalar",
-    "EWiseMul",
-    "MulScalar",
-    "EWisePow",
-    "PowerScalar",
-    "EWiseDiv",
-    "DivScalar",
-    "Transpose",
-    "Reshape",
-    "BroadcastTo",
-    "Summation",
-    "MatMul",
-    "Negate",
-    "Log",
-    "Exp",
-    "ReLU",
-    "SquareRoot",
+    "mul_scalar",
+    "multiply",
+    "negate",
+    "power",
+    "power_scalar",
+    "relu",
+    "reshape",
+    "sqrt",
+    "summation",
+    "transpose",
 ]
 
 
@@ -177,7 +175,7 @@ def divide_scalar(a, scalar):
 
 
 class Transpose(TensorOp):
-    def __init__(self, axes: Optional[tuple] = None):
+    def __init__(self, axes: tuple | None = None):
         if not axes:
             axes = (-1, -2)
         self.axes = axes
@@ -242,7 +240,7 @@ def broadcast_to(a, shape):
 
 
 class Summation(TensorOp):
-    def __init__(self, axes: Optional[tuple] = None):
+    def __init__(self, axes: tuple | None = None):
         if isinstance(axes, int):
             self.axes = (axes,)
         else:

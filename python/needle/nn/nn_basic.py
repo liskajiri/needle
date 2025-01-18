@@ -1,17 +1,15 @@
 """The module."""
 
-from typing import List
-
-import needle.ops as ops
+from needle import ops
 from needle.autograd import Tensor
 
 __all__ = [
-    "Parameter",
-    "Module",
-    "Identity",
     "Flatten",
-    "Sequential",
+    "Identity",
+    "Module",
+    "Parameter",
     "Residual",
+    "Sequential",
 ]
 
 
@@ -19,53 +17,51 @@ class Parameter(Tensor):
     """A special kind of tensor that represents parameters."""
 
 
-def _unpack_params(value: object) -> List[Tensor]:
+def _unpack_params(value: object) -> list[Tensor]:
     if isinstance(value, Parameter):
         return [value]
-    elif isinstance(value, Module):
+    if isinstance(value, Module):
         return value.parameters()
-    elif isinstance(value, dict):
+    if isinstance(value, dict):
         params = []
-        for k, v in value.items():
+        for v in value.values():
             params += _unpack_params(v)
         return params
-    elif isinstance(value, (list, tuple)):
+    if isinstance(value, list | tuple):
         params = []
         for v in value:
             params += _unpack_params(v)
         return params
-    else:
-        return []
+    return []
 
 
-def _child_modules(value: object) -> List["Module"]:
+def _child_modules(value: object) -> list["Module"]:
     if isinstance(value, Module):
         modules = [value]
         modules.extend(_child_modules(value.__dict__))
         return modules
     if isinstance(value, dict):
         modules = []
-        for k, v in value.items():
+        for v in value.values():
             modules += _child_modules(v)
         return modules
-    elif isinstance(value, (list, tuple)):
+    if isinstance(value, list | tuple):
         modules = []
         for v in value:
             modules += _child_modules(v)
         return modules
-    else:
-        return []
+    return []
 
 
 class Module:
     def __init__(self) -> None:
         self.training = True
 
-    def parameters(self) -> List[Tensor]:
+    def parameters(self) -> list[Tensor]:
         """Return the list of parameters in the module."""
         return _unpack_params(self.__dict__)
 
-    def _children(self) -> List["Module"]:
+    def _children(self) -> list["Module"]:
         return _child_modules(self.__dict__)
 
     def eval(self) -> None:

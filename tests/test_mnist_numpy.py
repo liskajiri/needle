@@ -1,5 +1,6 @@
 import numdifftools as nd
 import numpy as np
+import pytest
 from mnist_numpy import (
     loss_err,
     nn_epoch,
@@ -7,9 +8,6 @@ from mnist_numpy import (
     softmax_loss,
     softmax_regression_epoch,
 )
-
-##############################################################################
-### TESTS/SUBMISSION CODE FOR parse_mnist()
 
 
 def test_parse_mnist():
@@ -75,6 +73,7 @@ def test_softmax_regression_epoch():
 ### TESTS/SUBMISSION CODE FOR nn_epoch()
 
 
+@pytest.mark.slow
 def test_nn_epoch():
     # test nn gradients
     np.random.seed(0)

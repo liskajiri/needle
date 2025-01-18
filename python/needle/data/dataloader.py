@@ -1,19 +1,22 @@
-from typing import Iterable
+from collections.abc import Iterable
+
 import numpy as np
+
 from needle.autograd import Tensor
 from needle.data.dataset import Dataset
 
 
 class DataLoader:
-    r"""
-    Data loader. Combines a dataset and a sampler, and provides an iterable over
+    r"""Data loader. Combines a dataset and a sampler, and provides an iterable over
     the given dataset.
+
     Args:
         dataset (Dataset): dataset from which to load the data.
         batch_size (int, optional): how many samples per batch to load
             (default: ``1``).
         shuffle (bool, optional): set to ``True`` to have the data reshuffled
             at every epoch (default: ``False``).
+
     """
 
     def __init__(

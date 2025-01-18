@@ -21,7 +21,7 @@ _ALL_DEVICES = [
 matmul_dims = [(8, 8, 8)]
 
 
-@pytest.mark.parametrize("m,n,p", matmul_dims)
+@pytest.mark.parametrize(("m", "n", "p"), matmul_dims)
 def test_correct(m, n, p, device=nd.cpu()):
     _A = np.random.randn(m, n)
     _B = np.random.randn(n, p)
@@ -50,7 +50,7 @@ matmul_dims = [
 
 
 @pytest.mark.parametrize("device", _ALL_DEVICES, ids=["cpu", "cuda", "np"])
-@pytest.mark.parametrize("m,n,p", matmul_dims)
+@pytest.mark.parametrize(("m", "n", "p"), matmul_dims)
 @pytest.mark.benchmark(
     max_time=2,
     min_rounds=1000,
@@ -80,7 +80,7 @@ large_matmul_dims = [
 
 
 @pytest.mark.parametrize("device", _ALL_DEVICES, ids=["cpu", "cuda", "np"])
-@pytest.mark.parametrize("m,n,p", large_matmul_dims)
+@pytest.mark.parametrize(("m", "n", "p"), large_matmul_dims)
 @pytest.mark.benchmark(
     max_time=5,
     min_rounds=100,

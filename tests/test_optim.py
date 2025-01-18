@@ -1,8 +1,7 @@
-import pytest
 import needle as ndl
-import needle.nn as nn
 import numpy as np
-
+import pytest
+from needle import nn
 from test_nn import global_tensor_count, learn_model_1d, learn_model_1d_eval
 
 

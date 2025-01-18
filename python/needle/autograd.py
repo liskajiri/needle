@@ -1,17 +1,16 @@
 """Core data structures."""
 
 from collections import defaultdict
-from typing import List, Optional, Tuple, Union
+from typing import Union
 
-import numpy
+import numpy as array_api
+import numpy as np
 
 import needle as ndl
 
 from .backend_numpy import Device, cpu
 
-import numpy as array_api
-
-NDArray = numpy.ndarray
+NDArray = np.ndarray
 
 # TODO:
 # from .backend_selection import array_api, NDArray
@@ -25,9 +24,9 @@ class Op:
     """Operator definition."""
 
     def __call__(self, *args):
-        raise NotImplementedError()
+        raise NotImplementedError
 
-    def compute(self, *args: Tuple[NDArray]):
+    def compute(self, *args: tuple[NDArray]):
         """Calculate forward pass of operator.
 
         Parameters
@@ -41,11 +40,11 @@ class Op:
             Array output of the operation
 
         """
-        raise NotImplementedError()
+        raise NotImplementedError
 
     def gradient(
         self, out_grad: "Value", node: "Value"
-    ) -> Union["Value", Tuple["Value"]]:
+    ) -> Union["Value", tuple["Value"]]:
         """Compute partial adjoint for each input value for a given output adjoint.
 
         Parameters
@@ -61,29 +60,29 @@ class Op:
         input_grads: Value or Tuple[Value]
             A list containing partial gradient adjoints to be propagated to
             each of the input node.
-        """
-        raise NotImplementedError()
 
-    def gradient_as_tuple(self, out_grad: "Value", node: "Value") -> Tuple["Value"]:
-        """Convenience method to always return a tuple from gradient call"""
+        """
+        raise NotImplementedError
+
+    def gradient_as_tuple(self, out_grad: "Value", node: "Value") -> tuple["Value"]:
+        """Convenience method to always return a tuple from gradient call."""
         output = self.gradient(out_grad, node)
         if isinstance(output, tuple):
             return output
-        elif isinstance(output, list):
+        if isinstance(output, list):
             return tuple(output)
-        else:
-            return (output,)
+        return (output,)
 
 
 class TensorOp(Op):
-    """Op class specialized to output tensors"""
+    """Op class specialized to output tensors."""
 
     def __call__(self, *args):
         return Tensor.make_from_op(self, args)
 
 
 class TensorTupleOp(Op):
-    """Op class specialized to output TensorTuple"""
+    """Op class specialized to output TensorTuple."""
 
     def __call__(self, *args):
         return TensorTuple.make_from_op(self, args)
@@ -93,15 +92,15 @@ class Value:
     """A value in the computational graph."""
 
     # trace of computational graph
-    op: Optional[Op]
-    inputs: List["Value"]
+    op: Op | None
+    inputs: list["Value"]
     # The following fields are cached fields for
     # dynamic computation
     cached_data: NDArray
     requires_grad: bool
 
     def realize_cached_data(self):
-        """Run compute to realize the cached data"""
+        """Run compute to realize the cached data."""
         # avoid recomputation
         if self.cached_data is not None:
             return self.cached_data
@@ -121,12 +120,12 @@ class Value:
 
     def _init(
         self,
-        op: Optional[Op],
-        inputs: List["Tensor"],
+        op: Op | None,
+        inputs: list["Tensor"],
         *,
         num_outputs: int = 1,
-        cached_data: List[object] = None,
-        requires_grad: Optional[bool] = None,
+        cached_data: list[object] | None = None,
+        requires_grad: bool | None = None,
     ):
         global TENSOR_COUNTER
         TENSOR_COUNTER += 1
@@ -150,7 +149,7 @@ class Value:
         return value
 
     @classmethod
-    def make_from_op(cls, op: Op, inputs: List["Value"]):
+    def make_from_op(cls, op: Op, inputs: list["Value"]):
         value = cls.__new__(cls)
         value._init(op, inputs)
 
@@ -175,7 +174,7 @@ class TensorTuple(Value):
         return ndl.ops.tuple_get_item(self, index)
 
     def tuple(self):
-        return tuple([x for x in self])
+        return tuple(self)
 
     def __repr__(self):
         return "ndl.TensorTuple" + str(self.tuple())
@@ -190,7 +189,7 @@ class TensorTuple(Value):
 
     def detach(self):
         """Create a new tensor that shares the data but detaches from the graph."""
-        return Tuple.make_const(self.realize_cached_data())
+        return tuple.make_const(self.realize_cached_data())
 
 
 class Tensor(Value):
@@ -200,7 +199,7 @@ class Tensor(Value):
         self,
         array,
         *,
-        device: Optional[Device] = None,
+        device: Device | None = None,
         dtype=None,
         requires_grad=True,
         **kwargs,
@@ -230,12 +229,12 @@ class Tensor(Value):
 
     @staticmethod
     def _array_from_numpy(numpy_array, device, dtype):
-        if array_api is numpy:
-            return numpy.array(numpy_array, dtype=dtype)
+        if array_api is np:
+            return np.array(numpy_array, dtype=dtype)
         return array_api.array(numpy_array, device=device, dtype=dtype)
 
     @staticmethod
-    def make_from_op(op: Op, inputs: List["Value"]):
+    def make_from_op(op: Op, inputs: list["Value"]):
         tensor = Tensor.__new__(Tensor)
         tensor._init(op, inputs)
         if not LAZY_MODE:
@@ -264,10 +263,7 @@ class Tensor(Value):
     @data.setter
     def data(self, value):
         assert isinstance(value, Tensor)
-        assert value.dtype == self.dtype, "%s %s" % (
-            value.dtype,
-            self.dtype,
-        )
+        assert value.dtype == self.dtype, f"{value.dtype} {self.dtype}"
         self.cached_data = value.realize_cached_data()
 
     def detach(self):
@@ -286,7 +282,7 @@ class Tensor(Value):
     def device(self):
         data = self.realize_cached_data()
         # numpy array always sits on cpu
-        if array_api is numpy:
+        if array_api is np:
             return cpu()
         return data.device
 
@@ -308,21 +304,19 @@ class Tensor(Value):
 
     def numpy(self):
         data = self.realize_cached_data()
-        if array_api is numpy:
+        if array_api is np:
             return data
         return data.numpy()
 
     def __add__(self, other):
         if isinstance(other, Tensor):
             return ndl.ops.EWiseAdd()(self, other)
-        else:
-            return ndl.ops.AddScalar(other)(self)
+        return ndl.ops.AddScalar(other)(self)
 
     def __mul__(self, other):
         if isinstance(other, Tensor):
             return ndl.ops.EWiseMul()(self, other)
-        else:
-            return ndl.ops.MulScalar(other)(self)
+        return ndl.ops.MulScalar(other)(self)
 
     def __pow__(self, other):
         return ndl.ops.PowerScalar(other)(self)
@@ -330,14 +324,12 @@ class Tensor(Value):
     def __sub__(self, other):
         if isinstance(other, Tensor):
             return ndl.ops.EWiseAdd()(self, ndl.ops.Negate()(other))
-        else:
-            return ndl.ops.AddScalar(-other)(self)
+        return ndl.ops.AddScalar(-other)(self)
 
     def __truediv__(self, other):
         if isinstance(other, Tensor):
             return ndl.ops.EWiseDiv()(self, other)
-        else:
-            return ndl.ops.DivScalar(other)(self)
+        return ndl.ops.DivScalar(other)(self)
 
     def __matmul__(self, other):
         return ndl.ops.MatMul()(self, other)
@@ -380,7 +372,7 @@ def compute_gradient_of_variables(output_tensor: Tensor, out_grad: Tensor) -> No
     Store the computed result in the grad field of each Variable.
     """
     # a map from node to a list of gradient contributions from each output node
-    node_to_output_grads: defaultdict[Tensor, List[Tensor]] = defaultdict(list)
+    node_to_output_grads: defaultdict[Tensor, list[Tensor]] = defaultdict(list)
     # Special note on initializing gradient of
     # We are really taking a derivative of the scalar reduce_sum(output_node)
     # instead of the vector output_node. But this is the common case for loss function.
@@ -403,7 +395,7 @@ def compute_gradient_of_variables(output_tensor: Tensor, out_grad: Tensor) -> No
             node.grad = node.grad.detach()
 
 
-def find_topo_sort(node_list: List[Value]) -> List[Value]:
+def find_topo_sort(node_list: list[Value]) -> list[Value]:
     """Given a list of nodes, return a topological sort list of nodes ending in them.
 
     A simple algorithm is to do a post-order DFS traversal on the given nodes,
@@ -419,7 +411,7 @@ def find_topo_sort(node_list: List[Value]) -> List[Value]:
 
 
 def topo_sort_dfs(node, visited, topo_order) -> None:
-    """Post-order DFS"""
+    """Post-order DFS."""
     if node in visited:
         return
     visited.add(node)
