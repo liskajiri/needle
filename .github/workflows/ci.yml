@@ -22,7 +22,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
         - name: Install build tools
-          run: sudo apt-get install clang-19
+          run: sudo apt-get install clang-format clang-tidy clang-tools clang clangd libc++-dev libc++1 libc++abi-dev libc++abi1 libclang-dev libclang1 liblldb-dev libllvm-ocaml-dev libomp-dev libomp5 lld lldb llvm-dev llvm-runtime llvm python3-clang
 
         - uses: actions/checkout@v4
         - name: Test
