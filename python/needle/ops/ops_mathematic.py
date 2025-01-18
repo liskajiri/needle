@@ -81,7 +81,7 @@ def add_scalar(a, scalar):
 
 
 class EWiseMul(TensorOp):
-    def compute(self, a: NDArray, b: NDArray):
+    def compute(self, a: NDArray, b: NDArray) -> NDArray:
         return a * b
 
     def gradient(self, out_grad: Tensor, node: Tensor):
