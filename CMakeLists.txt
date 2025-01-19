@@ -1,6 +1,9 @@
 set(CMAKE_CXX_COMPILER $ENV{CONDA_PREFIX}/bin/clang)
 message(STATUS "CMake prefix path: ${CMAKE_PREFIX_PATH}")
 
+
+
+
 cmake_minimum_required(VERSION 3.28..3.31)
 project(needle LANGUAGES CXX)
 cmake_policy(SET CMP0146 OLD)
@@ -15,6 +18,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_CXX_SCAN_FOR_MODULES ON)
 set(CMAKE_EXPERIMENTAL_CXX_MODULE_MAP_FLAG -Mno-modules)
+
 # set(CMAKE_CXX_FLAGS "-g -O0 -Wall -Wextra -Wpedantic -Werror")
 
 # Build performance options
