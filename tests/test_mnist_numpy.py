@@ -8,13 +8,12 @@ from mnist_numpy import (
     softmax_loss,
     softmax_regression_epoch,
 )
+from needle.data.datasets.mnist import MNISTPaths
 
 
 @pytest.mark.skip(reason="Test probably not needed")
 def test_parse_mnist():
-    X, y = parse_mnist(
-        "data/train-images-idx3-ubyte.gz", "data/train-labels-idx1-ubyte.gz"
-    )
+    X, y = parse_mnist(MNISTPaths.TRAIN_IMAGES, MNISTPaths.TRAIN_LABELS)
     assert X.dtype == np.float32
     assert y.dtype == np.uint8
     assert X.shape == (60000, 784)
@@ -33,9 +32,7 @@ def test_parse_mnist():
 
 @pytest.mark.skip(reason="Test probably not needed")
 def test_softmax_loss():
-    X, y = parse_mnist(
-        "data/train-images-idx3-ubyte.gz", "data/train-labels-idx1-ubyte.gz"
-    )
+    X, y = parse_mnist(MNISTPaths.TRAIN_IMAGES, MNISTPaths.TRAIN_LABELS)
     np.random.seed(0)
 
     Z = np.zeros((y.shape[0], 10))
@@ -56,9 +53,7 @@ def test_softmax_regression_epoch():
     np.testing.assert_allclose(dTheta.reshape(5, 3), Theta, rtol=1e-4, atol=1e-4)
 
     # test multi-steps on MNIST
-    X, y = parse_mnist(
-        "data/train-images-idx3-ubyte.gz", "data/train-labels-idx1-ubyte.gz"
-    )
+    X, y = parse_mnist(MNISTPaths.TRAIN_IMAGES, MNISTPaths.TRAIN_LABELS)
     theta = np.zeros((X.shape[1], y.max() + 1), dtype=np.float32)
     softmax_regression_epoch(X[:100], y[:100], theta, lr=0.1, batch=10)
     np.testing.assert_allclose(np.linalg.norm(theta), 1.0947356, rtol=1e-5, atol=1e-5)
@@ -89,9 +84,7 @@ def test_nn_epoch():
     np.testing.assert_allclose(dW2.reshape(10, 3), W2_0 - W2, rtol=1e-4, atol=1e-4)
 
     # test full epoch
-    X, y = parse_mnist(
-        "data/train-images-idx3-ubyte.gz", "data/train-labels-idx1-ubyte.gz"
-    )
+    X, y = parse_mnist(MNISTPaths.TRAIN_IMAGES, "data/mnist/train-labels-idx1-ubyte.gz")
     np.random.seed(0)
     W1 = np.random.randn(X.shape[1], 100).astype(np.float32) / np.sqrt(100)
     W2 = np.random.randn(100, 10).astype(np.float32) / np.sqrt(10)

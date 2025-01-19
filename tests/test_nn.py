@@ -388,7 +388,8 @@ def mlp_resnet_forward(dim, hidden_dim, num_blocks, num_classes, norm, drop_prob
 def train_epoch_1(hidden_dim, batch_size, optimizer, **kwargs):
     np.random.seed(1)
     train_dataset = ndl.data.MNISTDataset(
-        "./data/train-images-idx3-ubyte.gz", "./data/train-labels-idx1-ubyte.gz"
+        "./data/mnist/train-images-idx3-ubyte.gz",
+        "./data/mnist/train-labels-idx1-ubyte.gz",
     )
     train_dataloader = ndl.data.DataLoader(dataset=train_dataset, batch_size=batch_size)
 
@@ -401,7 +402,8 @@ def train_epoch_1(hidden_dim, batch_size, optimizer, **kwargs):
 def eval_epoch_1(hidden_dim, batch_size):
     np.random.seed(1)
     test_dataset = ndl.data.MNISTDataset(
-        "./data/t10k-images-idx3-ubyte.gz", "./data/t10k-labels-idx1-ubyte.gz"
+        "./data/mnist/t10k-images-idx3-ubyte.gz",
+        "./data/mnist/t10k-labels-idx1-ubyte.gz",
     )
     test_dataloader = ndl.data.DataLoader(
         dataset=test_dataset, batch_size=batch_size, shuffle=False

@@ -149,7 +149,7 @@ notebooks/hw3.ipynb
 reports/*
 bin
 .build
-data/
+data/mnist
 
 # TODO: maybe add back?
 reports/
