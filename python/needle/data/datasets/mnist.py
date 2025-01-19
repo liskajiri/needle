@@ -1,16 +1,18 @@
 import gzip
-from typing import Optional
 
 import numpy as np
+
 from needle.data.dataset import Dataset
 
 
 class MNISTDataset(Dataset):
+    IMAGE_SIZE = 28 * 28
+
     def __init__(
         self,
         image_filename: str,
         label_filename: str,
-        transforms: Optional[list] = [],
+        transforms: list | None = None,
     ):
         """Read an images and labels file in MNIST format.  See this page:
         http://yann.lecun.com/exdb/mnist/ for a description of the file format.
@@ -19,7 +21,8 @@ class MNISTDataset(Dataset):
             image_filename (str): name of gzipped images file in MNIST format
             label_filename (str): name of gzipped labels file in MNIST format
 
-        Returns:
+        Returns
+        -------
             Tuple (X,y):
                 X (numpy.ndarray[np.float32]): 2D numpy array containing the loaded
                     data.  The dimensionality of the data should be
@@ -33,10 +36,14 @@ class MNISTDataset(Dataset):
                 y (numpy.ndarray[dtype=np.uint8]): 1D numpy array containing the
                     labels of the examples.  Values should be of type np.uint8 and
                     for MNIST will contain the values 0-9.
-        """
 
+        """
+        if transforms is None:
+            transforms = []
         self.X, self.y = MNISTDataset.parse_mnist(image_filename, label_filename)
 
+        # TODO: should be (n, 784)
+        # Fix tests afterwards
         self.X = self.X.reshape(-1, 28, 28, 1)
         self.transforms = transforms
 
@@ -44,8 +51,7 @@ class MNISTDataset(Dataset):
         (x, y) = self.X[index], self.y[index]
         if self.transforms:
             return self.apply_transforms(x), y
-        else:
-            return x, y
+        return x, y
 
     def __len__(self) -> int:
         return self.X.shape[0]
@@ -58,9 +64,11 @@ class MNISTDataset(Dataset):
         with gzip.open(image_filename, "rb") as image_file:
             image_file.read(16)  # Skip the header
             buffer = image_file.read()
-            num_images = len(buffer) // (28 * 28)  # Each image is 28x28 pixels
+            num_images = len(buffer) // (
+                MNISTDataset.IMAGE_SIZE
+            )  # Each image is 28x28 pixels
             X = np.frombuffer(buffer, dtype=np.uint8).astype(np.float32) / 255.0
-            X = X.reshape(num_images, 28 * 28)
+            X = X.reshape(num_images, MNISTDataset.IMAGE_SIZE)
 
         # Read the labels file
         with gzip.open(label_filename, "rb") as label_file:

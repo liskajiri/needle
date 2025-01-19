@@ -1,6 +1,5 @@
 import numpy as np
 import pytest
-
 from needle import backend_ndarray as nd
 
 _DEVICES = [
@@ -230,7 +229,10 @@ def test_reduce_max(params, device):
     )
 
 
-""" For converting slice notation to slice objects to make some proceeding tests easier to read """
+"""
+For converting slice notation to slice objects
+to make some proceeding tests easier to read
+"""
 
 
 class _ShapeAndSlices(nd.NDArray):
@@ -310,7 +312,7 @@ def test_setitem_scalar(params, device):
 matmul_tiled_shapes = [(1, 1, 1), (2, 2, 3), (1, 2, 1), (3, 3, 3)]
 
 
-@pytest.mark.parametrize("m,n,p", matmul_tiled_shapes)
+@pytest.mark.parametrize(("m", "n", "p"), matmul_tiled_shapes)
 def test_matmul_tiled(m, n, p):
     device = nd.cpu()
     assert hasattr(device, "matmul_tiled")
@@ -337,7 +339,7 @@ OPS = {
     "greater_than": lambda a, b: a >= b,
 }
 OP_FNS = [OPS[k] for k in OPS]
-OP_NAMES = [k for k in OPS]
+OP_NAMES = list(OPS)
 
 ewise_shapes = [(1, 1, 1), (4, 5, 6)]
 
@@ -417,7 +419,6 @@ getitem_params = [
 @pytest.mark.parametrize("params", getitem_params)
 @pytest.mark.parametrize("device", _DEVICES, ids=["cpu", "cuda"])
 def test_getitem(device, params):
-    # shape = params["shape"]
     fn = params["fn"]
     _A = np.random.randn(5, 5)
     A = nd.array(_A, device=device)
@@ -461,7 +462,7 @@ matmul_dims = [
 
 
 @pytest.mark.parametrize("device", _DEVICES, ids=["cpu", "cuda"])
-@pytest.mark.parametrize("m,n,p", matmul_dims)
+@pytest.mark.parametrize(("m", "n", "p"), matmul_dims)
 def test_matmul(m, n, p, device):
     _A = np.random.randn(m, n)
     _B = np.random.randn(n, p)
@@ -557,9 +558,9 @@ def Rand(*shape, device=nd.cpu(), entropy=1):
 def RandC(*shape, entropy=1):
     if nd.cuda().enabled():
         return Rand(*shape, device=nd.cuda(), entropy=2)
-    else:
-        raise NotImplementedError("You need a GPU to run these tests.")
+    msg = "You need a GPU to run these tests."
+    raise NotImplementedError(msg)
 
 
 if __name__ == "__main__":
-    print("You have to run the tests with pytest due to parameterization.")
+    pass

@@ -2,10 +2,10 @@ from needle.autograd import Tensor
 from needle.init.init_basic import rand, randn
 
 __all__ = [
-    "xavier_uniform",
-    "xavier_normal",
-    "kaiming_uniform",
     "kaiming_normal",
+    "kaiming_uniform",
+    "xavier_normal",
+    "xavier_uniform",
 ]
 
 

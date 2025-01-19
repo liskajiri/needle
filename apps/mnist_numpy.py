@@ -1,6 +1,7 @@
+import gzip
+
 import numpy as np
 import numpy.typing as npt
-import gzip
 
 
 def parse_mnist(
@@ -13,7 +14,8 @@ def parse_mnist(
         image_filename (str): name of gzipped images file in MNIST format
         label_filename (str): name of gzipped labels file in MNIST format
 
-    Returns:
+    Returns
+    -------
         Tuple (X,y):
             X (numpy.ndarray[np.float32]): 2D numpy array containing the loaded
                 data.  The dimensionality of the data should be
@@ -27,12 +29,14 @@ def parse_mnist(
             y (numpy.ndarray[dtype=np.uint8]): 1D numpy array containing the
                 labels of the examples.  Values should be of type np.uint8 and
                 for MNIST will contain the values 0-9.
+
     """
     # Parse images file
     with gzip.open(image_filename, "rb") as img_file:
         magic_number = int.from_bytes(img_file.read(4), "big")
         if magic_number != 2051:
-            raise ValueError("Invalid magic number in image file.")
+            msg = "Invalid magic number in image file."
+            raise ValueError(msg)
 
         num_images = int.from_bytes(img_file.read(4), "big")
         rows = int.from_bytes(img_file.read(4), "big")
@@ -48,14 +52,16 @@ def parse_mnist(
     with gzip.open(label_filename, "rb") as lbl_file:
         magic_number = int.from_bytes(lbl_file.read(4), "big")
         if magic_number != 2049:
-            raise ValueError("Invalid magic number in label file.")
+            msg = "Invalid magic number in label file."
+            raise ValueError(msg)
 
         num_labels = int.from_bytes(lbl_file.read(4), "big")
         label_data = lbl_file.read()
         y = np.frombuffer(label_data, dtype=np.uint8)
 
     if num_images != num_labels:
-        raise ValueError("Mismatch between number of images and labels.")
+        msg = "Mismatch between number of images and labels."
+        raise ValueError(msg)
 
     return X, y
 
@@ -76,8 +82,10 @@ def softmax_loss(Z: np.ndarray[np.float32], y: np.ndarray[np.int8]):
         y (np.ndarray[np.int8]): 1D numpy array of shape (batch_size, )
             containing the true label of each example.
 
-    Returns:
+    Returns
+    -------
         Average softmax loss over the sample.
+
     """
     ### BEGIN YOUR CODE
     # # numerical stabilization
@@ -126,8 +134,10 @@ def softmax_regression_epoch(
         lr (float): step size (learning rate) for SGD
         batch (int): size of SGD minibatch
 
-    Returns:
+    Returns
+    -------
     None
+
     """
     n_batches = X.shape[0] // batch
 
@@ -146,7 +156,7 @@ def softmax_regression_epoch(
 
 
 def loss_err(h, y):
-    """Helper function to compute both loss and error"""
+    """Helper function to compute both loss and error."""
     return softmax_loss(h, y), np.mean(h.argmax(axis=1) != y)
 
 
@@ -176,8 +186,10 @@ def nn_epoch(
         lr (float): step size (learning rate) for SGD
         batch (int): size of SGD minibatch
 
-    Returns:
+    Returns
+    -------
         None
+
     """
 
     def relu(X):
@@ -208,38 +220,26 @@ def nn_epoch(
 
 
 def train_softmax(X_tr, y_tr, X_te, y_te, epochs=10, lr=0.5, batch=100, cpp=False):
-    """Example function to fully train a softmax regression classifier"""
+    """Example function to fully train a softmax regression classifier."""
     theta = np.zeros((X_tr.shape[1], y_tr.max() + 1), dtype=np.float32)
-    print("| Epoch | Train Loss | Train Err | Test Loss | Test Err |")
-    for epoch in range(epochs):
+    for _epoch in range(epochs):
         if not cpp:
             softmax_regression_epoch(X_tr, y_tr, theta, lr=lr, batch=batch)
         train_loss, train_err = loss_err(X_tr @ theta, y_tr)
         test_loss, test_err = loss_err(X_te @ theta, y_te)
-        print(
-            "|  {:>4} |    {:.5f} |   {:.5f} |   {:.5f} |  {:.5f} |".format(
-                epoch, train_loss, train_err, test_loss, test_err
-            )
-        )
 
 
 def train_nn(X_tr, y_tr, X_te, y_te, hidden_dim=500, epochs=10, lr=0.5, batch=100):
-    """Example function to train two layer neural network"""
+    """Example function to train two layer neural network."""
     n, k = X_tr.shape[1], y_tr.max() + 1
     np.random.seed(0)
     W1 = np.random.randn(n, hidden_dim).astype(np.float32) / np.sqrt(hidden_dim)
     W2 = np.random.randn(hidden_dim, k).astype(np.float32) / np.sqrt(k)
 
-    print("| Epoch | Train Loss | Train Err | Test Loss | Test Err |")
-    for epoch in range(epochs):
+    for _epoch in range(epochs):
         nn_epoch(X_tr, y_tr, W1, W2, lr=lr, batch=batch)
         train_loss, train_err = loss_err(np.maximum(X_tr @ W1, 0) @ W2, y_tr)
         test_loss, test_err = loss_err(np.maximum(X_te @ W1, 0) @ W2, y_te)
-        print(
-            "|  {:>4} |    {:.5f} |   {:.5f} |   {:.5f} |  {:.5f} |".format(
-                epoch, train_loss, train_err, test_loss, test_err
-            )
-        )
 
 
 if __name__ == "__main__":
@@ -250,8 +250,6 @@ if __name__ == "__main__":
         "data/t10k-images-idx3-ubyte.gz", "data/t10k-labels-idx1-ubyte.gz"
     )
 
-    print("Training softmax regression")
     train_softmax(X_tr, y_tr, X_te, y_te, epochs=10, lr=0.1)
 
-    print("\nTraining two layer neural network w/ 100 hidden units")
     train_nn(X_tr, y_tr, X_te, y_te, hidden_dim=100, epochs=20, lr=0.2)
