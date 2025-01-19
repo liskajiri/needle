@@ -9,9 +9,24 @@ version = "0.1.0"
 [tasks]
 clean = "rm -rf .build/ cmake-build-debug/ python/needle/backend_ndarray/ndarray_backend*.so reports/ .pytest_cache/ .coverage"
 
+download_mnist = { cmd = [
+    # create directory
+    "mkdir", "-p", "data", "&&",
+    "curl",
+    "-o", "data/train-images-idx3-ubyte.gz", "https://storage.googleapis.com/cvdf-datasets/mnist/train-images-idx3-ubyte.gz",
+    "-o", "data/train-labels-idx1-ubyte.gz", "https://storage.googleapis.com/cvdf-datasets/mnist/train-labels-idx1-ubyte.gz",
+    "-o", "data/t10k-images-idx3-ubyte.gz", "https://storage.googleapis.com/cvdf-datasets/mnist/t10k-images-idx3-ubyte.gz",
+    "-o", "data/t10k-labels-idx1-ubyte.gz", "https://storage.googleapis.com/cvdf-datasets/mnist/t10k-labels-idx1-ubyte.gz"
+    ], outputs = [
+        "data/train-images-idx3-ubyte.gz",
+        "data/train-labels-idx1-ubyte.gz",
+        "data/t10k-images-idx3-ubyte.gz",
+        "data/t10k-labels-idx1-ubyte.gz",
+    ] }
+
 # TODO: gpu test/bench environment
 [environments]
-jupyter = ["jupyter"]
+jupyter = ["jupyter", "test"]
 lint = {features = ["lint"], no-default-feature = true}
 dev = ["dev"]
 test = ["test"]
@@ -63,9 +78,9 @@ pytest-randomly = ">=3.15.0,<4"
 
 [feature.test.tasks]
 # Save results of test to html, run code coverage
-test = {cmd = "python -m pytest tests/ -n auto --html=reports/test_report.html --cov-report html:reports/coverage --cov=python/needle/ tests/ -m 'not slow'", depends-on = ["build"]}
+test = {cmd = "python -m pytest tests/ -n auto --html=reports/test_report.html --cov-report html:reports/coverage --cov=python/needle/ tests/ -m 'not slow'", depends-on = ["build", "download_mnist"]}
 # Fails tests if code coverage is below 80%
-test_all = {cmd = "python -m pytest tests/ -n auto --html=reports/test_report.html --cov-report html:reports/coverage --cov=python/needle/ tests/ --cov-fail-under=80", depends-on = ["build"]}
+test_all = {cmd = "python -m pytest tests/ -n auto --html=reports/test_report.html --cov-report html:reports/coverage --cov=python/needle/ tests/ --cov-fail-under=80", depends-on = ["build", "download_mnist"]}
 
 [feature.benchmark.dependencies]
 # TODO: remove when Codspeed is ready
@@ -84,4 +99,4 @@ large_matmul_benchmark = {cmd = "python -m pytest benchmarks/ -k 'test_matmul_la
 bench_matmul = "py-spy record -o profile.svg -- python reports/test_matmul_benchmarks.py"
 
 [activation]
-env = {PYTHONPATH = "./python:./apps"}
+env = {PYTHONPATH = "./python:./apps", NEEDLE_BACKEND = "nd"}

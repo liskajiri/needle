@@ -33,6 +33,7 @@
 - [ ] type hints - strict types VS code setting
 - [ ] add types automatically - including numpy shapes
   - <https://github.com/RightTyper/RightTyper>
+  - add typing tests with jaxtyping
 - [ ] set up MyPy / PyRight / ruff typing if available
 - [x] Add more ruff rules
 - [ ] Proper readme

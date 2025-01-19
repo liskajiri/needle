@@ -140,11 +140,16 @@ cython_debug/
 nn_implementations/*
 figures/*
 
-notebooks/*
+notebooks/hw3.ipynb
 .build/*
 .idea/*
 *.vscode*
-.codspeed/*
+.codspeed
 *assets*
 reports/*
-bin/*
+bin
+.build
+data/
+
+# TODO: maybe add back?
+reports/

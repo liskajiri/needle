@@ -36,27 +36,32 @@ def test_dataloader(mnist_test, request) -> tuple[ndl.data.DataLoader, int]:
     )
 
 
-# TODO:
-# def test_mnist_dataset_stats(
-#     mnist_train: ndl.data.MNISTDataset, mnist_test: ndl.data.MNISTDataset
-# ):
-#     X = mnist_train.X
-#     y = mnist_test.y
+def test_mnist_dataset_stats(
+    mnist_train: ndl.data.MNISTDataset, mnist_test: ndl.data.MNISTDataset
+):
+    train_X = mnist_train.X
+    test_X = mnist_test.X
 
-#     assert X.dtype == np.float32
-#     assert y.dtype == np.uint8
-#     assert X.shape == (60000, 784)
-#     assert y.shape == (60000,)
-#     np.testing.assert_allclose(np.linalg.norm(X[:10]), 27.892084)
-#     np.testing.assert_allclose(
-#         np.linalg.norm(X[:1000]),
-#         293.0717,
-#         err_msg="""If you failed this test but not the previous one,
-#         you are probably normalizing incorrectly. You should normalize
-#         w.r.t. the whole dataset, _not_ individual images.""",
-#         rtol=1e-6,
-#     )
-#     np.testing.assert_equal(y[:10], [5, 0, 4, 1, 9, 2, 1, 3, 1, 4])
+    assert train_X.dtype == np.float32
+    assert mnist_train.y.dtype == np.uint8
+    assert test_X.dtype == np.float32
+    assert mnist_test.y.dtype == np.uint8
+
+    # assert train_X.shape == (60000, 784)
+    assert mnist_train.y.shape == (60000,)
+    # assert test_X.shape == (10000, 784)
+    assert mnist_test.y.shape == (10000,)
+
+    np.testing.assert_allclose(np.linalg.norm(train_X[:10]), 27.892084)
+    np.testing.assert_allclose(
+        np.linalg.norm(train_X[:1000]),
+        293.0717,
+        err_msg="""If you failed this test but not the previous one,
+        you are probably normalizing incorrectly. You should normalize
+        w.r.t. the whole dataset, _not_ individual images.""",
+        rtol=1e-6,
+    )
+    np.testing.assert_equal(mnist_train.y[:10], [5, 0, 4, 1, 9, 2, 1, 3, 1, 4])
 
 
 def test_mnist_test_dataset_size(mnist_test):
