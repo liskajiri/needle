@@ -1,9 +1,9 @@
-import numpy as np
 import needle as ndl
+import numpy as np
 
 
 def loss_err(h, y):
-    """Helper function to compute both loss and error"""
+    """Helper function to compute both loss and error."""
     y_one_hot = np.zeros((y.shape[0], h.shape[-1]))
     y_one_hot[np.arange(y.size), y] = 1
     y_ = ndl.Tensor(y_one_hot)
@@ -27,8 +27,10 @@ def softmax_loss(Z: ndl.Tensor, y: ndl.Tensor) -> ndl.Tensor:
             containing a 1 at the index of the true label of each example and
             zeros elsewhere.
 
-    Returns:
+    Returns
+    -------
         Average softmax loss over the sample. (ndl.Tensor[np.float32])
+
     """
     batch_size = Z.shape[0]
 
@@ -36,9 +38,7 @@ def softmax_loss(Z: ndl.Tensor, y: ndl.Tensor) -> ndl.Tensor:
 
     log_Z = ndl.log(ndl.exp(Z).sum(axes=1))
     total = log_Z - diff
-    mean = total.sum() / batch_size
-
-    return mean
+    return total.sum() / batch_size
 
 
 def nn_epoch(
@@ -66,10 +66,12 @@ def nn_epoch(
         lr (float): step size (learning rate) for SGD
         batch (int): size of SGD mini-batch
 
-    Returns:
+    Returns
+    -------
         Tuple: (W1, W2)
             W1: ndl.Tensor[np.float32]
             W2: ndl.Tensor[np.float32]
+
     """
     n_batches = X.shape[0] // batch
 

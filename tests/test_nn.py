@@ -1,8 +1,8 @@
 import needle as ndl
-import needle.nn as nn
 import numpy as np
 import pytest
-from resnet_mnist import train_mnist, ResidualBlock, MLPResNet, epoch
+from needle import nn
+from resnet_mnist import MLPResNet, ResidualBlock, epoch, train_mnist
 
 """Deterministically generate a matrix"""
 
@@ -18,9 +18,9 @@ def get_int_tensor(*shape, low=0, high=10, entropy=1):
 
 
 def check_prng(*shape):
-    """We want to ensure that numpy generates random matrices on your machine/colab
+    """Ensure that numpy generates random matrices on your machine/colab
     Such that our tests will make sense
-    So this matrix should match our to full precision
+    So this matrix should match our to full precision.
     """
     return get_tensor(*shape).cached_data
 
@@ -188,8 +188,12 @@ def learn_model_1d(feature_size, nclasses, _model, optimizer, epochs=1, **kwargs
     opt = optimizer(model.parameters(), **kwargs)
 
     for _ in range(epochs):
-        for i, (X0, y0) in enumerate(
-            zip(np.array_split(X, m // batch), np.array_split(y, m // batch))
+        for _i, (X0, y0) in enumerate(
+            zip(
+                np.array_split(X, m // batch),
+                np.array_split(y, m // batch),
+                strict=False,
+            )
         ):
             opt.reset_grad()
             X0, y0 = ndl.Tensor(X0, dtype="float32"), ndl.Tensor(y0)
@@ -222,8 +226,8 @@ def learn_model_1d_eval(feature_size, nclasses, _model, optimizer, epochs=1, **k
     loss_func = nn.SoftmaxLoss()
     opt = optimizer(model.parameters(), **kwargs)
 
-    for i, (X0, y0) in enumerate(
-        zip(np.array_split(X, m // batch), np.array_split(y, m // batch))
+    for _i, (X0, y0) in enumerate(
+        zip(np.array_split(X, m // batch), np.array_split(y, m // batch), strict=False)
     ):
         opt.reset_grad()
         X0, y0 = ndl.Tensor(X0, dtype="float32"), ndl.Tensor(y0)
@@ -275,7 +279,7 @@ class UselessModule(ndl.nn.Module):
         }
 
     def forward(self, x):
-        raise NotImplementedError()
+        raise NotImplementedError
 
 
 def check_training_mode():
@@ -780,7 +784,6 @@ def test_nn_linear_backward_1():
 
 
 def test_nn_linear_backward_2():
-    print(linear_backward((10, 5), (3, 10)))
     np.testing.assert_allclose(
         linear_backward((10, 5), (3, 10)),
         np.array(
@@ -830,7 +833,6 @@ def test_nn_linear_backward_2():
 
 
 def test_nn_linear_backward_3():
-    print(linear_backward((10, 5), (1, 3, 10)))
     np.testing.assert_allclose(
         linear_backward((10, 5), (1, 3, 10)),
         np.array(
@@ -900,7 +902,6 @@ def test_nn_relu_backward_1():
 
 
 def test_nn_sequential_forward_1():
-    print(sequential_forward(batches=3))
     np.testing.assert_allclose(
         sequential_forward(batches=3),
         np.array(

@@ -1,9 +1,9 @@
-from typing import Optional
+import numpy as array_api
+
+from needle.autograd import NDArray, Tensor, TensorOp, Value
 
 from .ops_mathematic import broadcast_to_new_axis, exp, summation
-from ..autograd import NDArray, Tensor, Value, TensorOp
 
-import numpy as array_api
 # # TODO: 2024 version
 # from ..backend_selection import array_api
 
@@ -13,7 +13,6 @@ class LogSoftmax(TensorOp):
     def compute(self, Z: NDArray):
         # 2d input array
         # Subtract the maximum value along axis=1 for numerical stability
-        print("Shape: ", Z.shape)
         assert Z.ndim == 2, "Input must be a 2D array"
         max_Z = array_api.max(Z, axis=1, keepdims=True)
         shifted_Z = Z - max_Z
@@ -43,7 +42,7 @@ def logsoftmax(a):
 
 
 class LogSumExp(TensorOp):
-    def __init__(self, axes: Optional[tuple] = None):
+    def __init__(self, axes: tuple | None = None):
         if isinstance(axes, int):
             self.axes = (axes,)
         else:

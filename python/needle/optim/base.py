@@ -1,6 +1,6 @@
-"""Optimization module"""
+"""Optimization module."""
 
-from typing import Iterable
+from collections.abc import Iterable
 
 from needle.nn.nn_basic import Parameter
 
@@ -10,7 +10,7 @@ class Optimizer:
         self.params = params
 
     def step(self) -> None:
-        raise NotImplementedError()
+        raise NotImplementedError
 
     def reset_grad(self) -> None:
         for p in self.params:

@@ -17,21 +17,6 @@ _ALL_DEVICES = [
     nd.cpu_numpy(),
 ]
 
-
-matmul_dims = [(8, 8, 8)]
-
-
-@pytest.mark.parametrize("m,n,p", matmul_dims)
-def test_correct(m, n, p, device=nd.cpu()):
-    _A = np.random.randn(m, n)
-    _B = np.random.randn(n, p)
-    A = nd.array(_A, device=device)
-    B = nd.array(_B, device=device)
-
-    out = A @ B
-    np.testing.assert_allclose(out.numpy(), _A @ _B, rtol=1e-5, atol=1e-5)
-
-
 # TODO: split to CPU/GPU separate tests
 
 ##### ===
@@ -50,7 +35,7 @@ matmul_dims = [
 
 
 @pytest.mark.parametrize("device", _ALL_DEVICES, ids=["cpu", "cuda", "np"])
-@pytest.mark.parametrize("m,n,p", matmul_dims)
+@pytest.mark.parametrize(("m", "n", "p"), matmul_dims)
 @pytest.mark.benchmark(
     max_time=2,
     min_rounds=1000,
@@ -80,7 +65,7 @@ large_matmul_dims = [
 
 
 @pytest.mark.parametrize("device", _ALL_DEVICES, ids=["cpu", "cuda", "np"])
-@pytest.mark.parametrize("m,n,p", large_matmul_dims)
+@pytest.mark.parametrize(("m", "n", "p"), large_matmul_dims)
 @pytest.mark.benchmark(
     max_time=5,
     min_rounds=100,

@@ -1,7 +1,6 @@
-"""
-Important: some values need to be converted to float32,
+"""Important: some values need to be converted to float32,
 otherwise they will overflow the division, thus making it a float64 result,
-which will cause type errors downstream
+which will cause type errors downstream.
 """
 
 from numpy import float32
@@ -18,5 +17,4 @@ class SoftmaxLoss(Module):
 
         lse = ops.logsumexp(logits, axes=1)
         # division causes result to be float64
-        result = (lse - diff).sum() / float32(logits.shape[0])
-        return result
+        return (lse - diff).sum() / float32(logits.shape[0])

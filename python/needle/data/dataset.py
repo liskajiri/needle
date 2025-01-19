@@ -1,6 +1,3 @@
-from typing import Optional
-
-
 class Dataset:
     r"""An abstract class representing a `Dataset`.
 
@@ -9,7 +6,7 @@ class Dataset:
     :meth:`__len__`, which is expected to return the size of the dataset.
     """
 
-    def __init__(self, transforms: Optional[list] = None):
+    def __init__(self, transforms: list | None = None):
         self.transforms = transforms
 
     def __getitem__(self, index) -> object:
