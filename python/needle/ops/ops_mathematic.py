@@ -1,54 +1,9 @@
 """Operator implementations."""
 
-from needle.autograd import NDArray, Tensor, TensorOp
-
-# NOTE: we will import numpy as the array_api
-# as the backend for our computations, this line will change in later homeworks
-
-BACKEND = "np"
-# TODO: 2024 version
-import numpy as array_api  # noqa: E402
-
-__all__ = [
-    "AddScalar",
-    "BroadcastTo",
-    "DivScalar",
-    "EWiseAdd",
-    "EWiseDiv",
-    "EWiseMul",
-    "EWisePow",
-    "Exp",
-    "Log",
-    "MatMul",
-    "MulScalar",
-    "Negate",
-    "PowerScalar",
-    "ReLU",
-    "Reshape",
-    "SquareRoot",
-    "Summation",
-    "Transpose",
-    "add",
-    "add_scalar",
-    "broadcast_to",
-    "broadcast_to_new_axis",
-    "divide",
-    "divide_scalar",
-    "exp",
-    "log",
-    "matmul",
-    "mean",
-    "mul_scalar",
-    "multiply",
-    "negate",
-    "power",
-    "power_scalar",
-    "relu",
-    "reshape",
-    "sqrt",
-    "summation",
-    "transpose",
-]
+import needle
+from needle.autograd import NDArray, Tensor, TensorOp, TensorTupleOp
+from needle.backend_selection import array_api
+from needle.ops.ops_tuple import make_tuple
 
 
 class EWiseAdd(TensorOp):
@@ -342,7 +297,7 @@ class SquareRoot(TensorOp):
         return array_api.sqrt(a)
 
     def gradient(self, out_grad, node):
-        return out_grad / (2 * node.outputs[0])
+        return out_grad / (2 * node.inputs[0])
 
 
 def sqrt(x: Tensor) -> Tensor:
@@ -351,3 +306,150 @@ def sqrt(x: Tensor) -> Tensor:
 
 def mean(a: Tensor, axes=0) -> Tensor:
     return summation(a, axes=axes) / a.shape[axes]
+
+
+class Tanh(TensorOp):
+    def compute(self, a: NDArray):
+        return array_api.tanh(a)
+
+    def gradient(self, out_grad, node):
+        return out_grad.cached_data * (1 - node.cached_data**2)
+
+
+def tanh(a):
+    return Tanh()(a)
+
+
+class Stack(TensorOp):
+    def __init__(self, axis: int):
+        """
+        Concatenates a sequence of arrays along a new dimension.
+        Parameters:
+        axis - dimension to concatenate along
+        All arrays need to be of the same size.
+        """
+        self.axis = axis
+
+    def compute(self, args: list[NDArray]) -> Tensor:
+        # # Convert tuple of tensors to list of arrays
+        # arrays = [array for array in args]
+        # # Stack arrays along specified axis
+        # stacked_array = array_api.stack(arrays, axis=self.axis)
+        new_shape = list(args[0].shape)
+        new_shape.insert(self.axis, len(args))
+
+        new_arr = needle.init.zeros(new_shape)
+        for i, array in enumerate(args):
+            slices = [slice(None)] * len(new_shape)
+            slices[self.axis] = i
+            new_arr[tuple(slices)] = array
+        return new_arr
+
+    def gradient(self, out_grad, node):
+        # Split gradient along stacking axis to get individual gradients
+        return split(out_grad, self.axis)
+
+
+def stack(args, axis):
+    return Stack(axis)(make_tuple(*args))
+
+
+class Split(TensorTupleOp):
+    def __init__(self, axis: int):
+        """
+        Splits a tensor along an axis into a tuple of tensors.
+        (The "inverse" of Stack)
+        Parameters:
+        axis - dimension to split
+        """
+        self.axis = axis
+
+    def compute(self, A):
+        split_size = A.shape[self.axis]
+        return array_api.split(A, split_size, self.axis)
+
+    def gradient(self, out_grad, node):
+        return stack(out_grad, self.axis)
+
+
+def split(a, axis):
+    return Split(axis)(a)
+
+
+class Flip(TensorOp):
+    def __init__(self, axes: tuple | None = None):
+        self.axes = axes
+
+    def compute(self, a):
+        ### BEGIN YOUR SOLUTION
+        raise NotImplementedError()
+        ### END YOUR SOLUTION
+
+    def gradient(self, out_grad, node):
+        ### BEGIN YOUR SOLUTION
+        raise NotImplementedError()
+        ### END YOUR SOLUTION
+
+
+def flip(a, axes):
+    return Flip(axes)(a)
+
+
+class Dilate(TensorOp):
+    def __init__(self, axes: tuple, dilation: int):
+        self.axes = axes
+        self.dilation = dilation
+
+    def compute(self, a):
+        ### BEGIN YOUR SOLUTION
+        raise NotImplementedError()
+        ### END YOUR SOLUTION
+
+    def gradient(self, out_grad, node):
+        ### BEGIN YOUR SOLUTION
+        raise NotImplementedError()
+        ### END YOUR SOLUTION
+
+
+def dilate(a, axes, dilation):
+    return Dilate(axes, dilation)(a)
+
+
+class UnDilate(TensorOp):
+    def __init__(self, axes: tuple, dilation: int):
+        self.axes = axes
+        self.dilation = dilation
+
+    def compute(self, a):
+        ### BEGIN YOUR SOLUTION
+        raise NotImplementedError()
+        ### END YOUR SOLUTION
+
+    def gradient(self, out_grad, node):
+        ### BEGIN YOUR SOLUTION
+        raise NotImplementedError()
+        ### END YOUR SOLUTION
+
+
+def undilate(a, axes, dilation):
+    return UnDilate(axes, dilation)(a)
+
+
+class Conv(TensorOp):
+    def __init__(self, stride: int | None = 1, padding: int | None = 0):
+        self.stride = stride
+        self.padding = padding
+
+    def compute(self, A, B):
+        ### BEGIN YOUR SOLUTION
+        raise NotImplementedError()
+        ### END YOUR SOLUTION
+
+    def gradient(self, out_grad, node):
+        ### BEGIN YOUR SOLUTION
+        raise NotImplementedError()
+        ### END YOUR SOLUTION
+
+
+def conv(a, b, stride=1, padding=1):
+    return Conv(stride, padding)(a, b)

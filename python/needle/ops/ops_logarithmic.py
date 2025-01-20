@@ -1,11 +1,6 @@
-import numpy as array_api
-
 from needle.autograd import NDArray, Tensor, TensorOp, Value
-
-from .ops_mathematic import broadcast_to_new_axis, exp, summation
-
-# # TODO: 2024 version
-# from ..backend_selection import array_api
+from needle.backend_selection import array_api
+from needle.ops.ops_mathematic import broadcast_to_new_axis, exp, summation
 
 
 # TODO: not covered by current tests - Convert to 2024 edition

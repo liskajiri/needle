@@ -3,17 +3,10 @@
 from collections import defaultdict
 from typing import Union
 
-import numpy as array_api
 import numpy as np
 
 import needle as ndl
-
-from .backend_numpy import Device, cpu
-
-NDArray = np.ndarray
-
-# TODO:
-# from .backend_selection import array_api, NDArray
+from needle.backend_selection import Device, NDArray, array_api, cpu
 
 # needle version
 LAZY_MODE = False
@@ -108,7 +101,6 @@ class Value:
         self.cached_data = self.op.compute(
             *[x.realize_cached_data() for x in self.inputs]
         )
-        self.cached_data
         return self.cached_data
 
     def is_leaf(self):
@@ -189,7 +181,7 @@ class TensorTuple(Value):
 
     def detach(self):
         """Create a new tensor that shares the data but detaches from the graph."""
-        return tuple.make_const(self.realize_cached_data())
+        return TensorTuple.make_const(self.realize_cached_data())
 
 
 class Tensor(Value):
@@ -426,7 +418,7 @@ def topo_sort_dfs(node, visited, topo_order) -> None:
 
 
 def sum_node_list(node_list):
-    """Avoid create redundant nodes in Python sum implementation."""
+    """Avoid creating redundant nodes in Python sum implementation."""
     from functools import reduce
     from operator import add
 

@@ -1,20 +1,20 @@
 import numpy as np
 import pytest
-from needle import backend_ndarray as nd
+from needle import backend_ndarray as ndl
 
 _DEVICES = [
-    nd.cpu(),
+    ndl.cpu(),
     pytest.param(
-        nd.cuda(), marks=pytest.mark.skipif(not nd.cuda().enabled(), reason="No GPU")
+        ndl.cuda(), marks=pytest.mark.skipif(not ndl.cuda().enabled(), reason="No GPU")
     ),
 ]
 
 _ALL_DEVICES = [
-    nd.cpu(),
+    ndl.cpu(),
     pytest.param(
-        nd.cuda(), marks=pytest.mark.skipif(not nd.cuda().enabled(), reason="No GPU")
+        ndl.cuda(), marks=pytest.mark.skipif(not ndl.cuda().enabled(), reason="No GPU")
     ),
-    nd.cpu_numpy(),
+    ndl.cpu_numpy(),
 ]
 
 
@@ -90,7 +90,7 @@ def check_same_memory(original, view):
 def test_compact(params, device):
     shape, np_fn, nd_fn = params["shape"], params["np_fn"], params["nd_fn"]
     _A = np.random.randint(low=0, high=10, size=shape)
-    A = nd.array(_A, device=device)
+    A = ndl.array(_A, device=device)
 
     lhs = nd_fn(A).compact()
     assert lhs.is_compact(), "array is not compact"
@@ -180,7 +180,7 @@ def test_compact(params, device):
 def test_operations(params, device):
     shape, np_fn, nd_fn = params["shape"], params["np_fn"], params["nd_fn"]
     _A = np.random.randint(low=0, high=10, size=shape)
-    A = nd.array(_A, device=device)
+    A = ndl.array(_A, device=device)
 
     # Apply the function using the custom library and NumPy
     lhs = nd_fn(A).compact()
@@ -206,7 +206,7 @@ reduce_params = [
 def test_reduce_sum(params, device):
     dims, axis = params["dims"], params["axis"]
     _A = np.random.randn(*dims)
-    A = nd.array(_A, device=device)
+    A = ndl.array(_A, device=device)
     np.testing.assert_allclose(
         _A.sum(axis=axis, keepdims=True),
         A.sum(axis=axis, keepdims=True).numpy(),
@@ -220,7 +220,7 @@ def test_reduce_sum(params, device):
 def test_reduce_max(params, device):
     dims, axis = params["dims"], params["axis"]
     _A = np.random.randn(*dims)
-    A = nd.array(_A, device=device)
+    A = ndl.array(_A, device=device)
     np.testing.assert_allclose(
         _A.max(axis=axis, keepdims=True),
         A.max(axis=axis, keepdims=True).numpy(),
@@ -235,7 +235,7 @@ to make some proceeding tests easier to read
 """
 
 
-class _ShapeAndSlices(nd.NDArray):
+class _ShapeAndSlices(ndl.NDArray):
     def __getitem__(self, idxs):
         idxs = tuple(
             [
@@ -273,8 +273,8 @@ def test_setitem_ewise(params, device):
     rhs_shape, rhs_slices = params["rhs"]
     _A = np.random.randn(*lhs_shape)
     _B = np.random.randn(*rhs_shape)
-    A = nd.array(_A, device=device)
-    B = nd.array(_B, device=device)
+    A = ndl.array(_A, device=device)
+    B = ndl.array(_B, device=device)
     start_ptr = A._handle.ptr()
     A[lhs_slices] = B[rhs_slices]
     _A[lhs_slices] = _B[rhs_slices]
@@ -298,7 +298,7 @@ def test_setitem_ewise(params, device):
 def test_setitem_scalar(params, device):
     shape, slices = params
     _A = np.random.randn(*shape)
-    A = nd.array(_A, device=device)
+    A = ndl.array(_A, device=device)
     # probably tear these out using lambdas
     start_ptr = A._handle.ptr()
     _A[slices] = 4.0
@@ -314,12 +314,12 @@ matmul_tiled_shapes = [(1, 1, 1), (2, 2, 3), (1, 2, 1), (3, 3, 3)]
 
 @pytest.mark.parametrize(("m", "n", "p"), matmul_tiled_shapes)
 def test_matmul_tiled(m, n, p):
-    device = nd.cpu()
+    device = ndl.cpu()
     assert hasattr(device, "matmul_tiled")
     t = device.__tile_size__
-    A = nd.array(np.random.randn(m, n, t, t), device=nd.cpu())
-    B = nd.array(np.random.randn(n, p, t, t), device=nd.cpu())
-    C = nd.NDArray.make((m, p, t, t), device=nd.cpu())
+    A = ndl.array(np.random.randn(m, n, t, t), device=ndl.cpu())
+    B = ndl.array(np.random.randn(n, p, t, t), device=ndl.cpu())
+    C = ndl.NDArray.make((m, p, t, t), device=ndl.cpu())
     device.matmul_tiled(A._handle, B._handle, C._handle, m * t, n * t, p * t)
 
     lhs = A.numpy().transpose(0, 2, 1, 3).flatten().reshape(
@@ -350,8 +350,8 @@ ewise_shapes = [(1, 1, 1), (4, 5, 6)]
 def test_ewise_fn(fn, shape, device):
     _A = np.random.randn(*shape)
     _B = np.random.randn(*shape)
-    A = nd.array(_A, device=device)
-    B = nd.array(_B, device=device)
+    A = ndl.array(_A, device=device)
+    B = ndl.array(_B, device=device)
     np.testing.assert_allclose(fn(_A, _B), fn(A, B).numpy(), atol=1e-5, rtol=1e-5)
 
 
@@ -360,8 +360,8 @@ def test_ewise_fn(fn, shape, device):
 def test_ewise_max(shape, device):
     _A = np.random.randn(*shape)
     _B = np.random.randn(*shape)
-    A = nd.array(_A, device=device)
-    B = nd.array(_B, device=device)
+    A = ndl.array(_A, device=device)
+    B = ndl.array(_B, device=device)
     np.testing.assert_allclose(
         np.maximum(_A, _B), A.maximum(B).numpy(), atol=1e-5, rtol=1e-5
     )
@@ -380,7 +380,7 @@ def test_permute(device, params):
     dims = params["dims"]
     axes = params["axes"]
     _A = np.random.randn(*dims)
-    A = nd.array(_A, device=device)
+    A = ndl.array(_A, device=device)
     lhs = np.transpose(_A, axes=axes)
     rhs = A.permute(axes)
     np.testing.assert_allclose(lhs, rhs.numpy(), atol=1e-5, rtol=1e-5)
@@ -400,7 +400,7 @@ def test_reshape(device, params):
     shape = params["shape"]
     new_shape = params["new_shape"]
     _A = np.random.randn(*shape)
-    A = nd.array(_A, device=device)
+    A = ndl.array(_A, device=device)
     lhs = _A.reshape(*new_shape)
     rhs = A.reshape(new_shape)
     np.testing.assert_allclose(lhs, rhs.numpy(), atol=1e-5, rtol=1e-5)
@@ -421,7 +421,7 @@ getitem_params = [
 def test_getitem(device, params):
     fn = params["fn"]
     _A = np.random.randn(5, 5)
-    A = nd.array(_A, device=device)
+    A = ndl.array(_A, device=device)
     lhs = fn(_A)
     rhs = fn(A)
     np.testing.assert_allclose(lhs, rhs.numpy(), atol=1e-5, rtol=1e-5)
@@ -439,7 +439,7 @@ broadcast_params = [
 def test_broadcast_to(device, params):
     from_shape, to_shape = params["from_shape"], params["to_shape"]
     _A = np.random.randn(*from_shape)
-    A = nd.array(_A, device=device)
+    A = ndl.array(_A, device=device)
     lhs = np.broadcast_to(_A, shape=to_shape)
     rhs = A.broadcast_to(to_shape)
     np.testing.assert_allclose(lhs, rhs.numpy(), atol=1e-5, rtol=1e-5)
@@ -466,22 +466,22 @@ matmul_dims = [
 def test_matmul(m, n, p, device):
     _A = np.random.randn(m, n)
     _B = np.random.randn(n, p)
-    A = nd.array(_A, device=device)
-    B = nd.array(_B, device=device)
+    A = ndl.array(_A, device=device)
+    B = ndl.array(_B, device=device)
     np.testing.assert_allclose((A @ B).numpy(), _A @ _B, rtol=1e-5, atol=1e-5)
 
 
 @pytest.mark.parametrize("device", _DEVICES, ids=["cpu", "cuda"])
 def test_scalar_mul(device):
     A = np.random.randn(5, 5)
-    B = nd.array(A, device=device)
+    B = ndl.array(A, device=device)
     np.testing.assert_allclose(A * 5.0, (B * 5.0).numpy(), atol=1e-5, rtol=1e-5)
 
 
 @pytest.mark.parametrize("device", _DEVICES, ids=["cpu", "cuda"])
 def test_scalar_div(device):
     A = np.random.randn(5, 5)
-    B = nd.array(A, device=device)
+    B = ndl.array(A, device=device)
     np.testing.assert_allclose(A / 5.0, (B / 5.0).numpy(), atol=1e-5, rtol=1e-5)
 
 
@@ -489,7 +489,7 @@ def test_scalar_div(device):
 def test_scalar_power(device):
     A = np.random.randn(5, 5)
     A = np.abs(A)
-    B = nd.array(A, device=device)
+    B = ndl.array(A, device=device)
     np.testing.assert_allclose(np.power(A, 5.0), (B**5.0).numpy(), atol=1e-5, rtol=1e-5)
     np.testing.assert_allclose(np.power(A, 0.5), (B**0.5).numpy(), atol=1e-5, rtol=1e-5)
 
@@ -497,7 +497,7 @@ def test_scalar_power(device):
 @pytest.mark.parametrize("device", _DEVICES, ids=["cpu", "cuda"])
 def test_scalar_maximum(device):
     A = np.random.randn(5, 5)
-    B = nd.array(A, device=device)
+    B = ndl.array(A, device=device)
     C = (np.max(A) + 1.0).item()
     np.testing.assert_allclose(
         np.maximum(A, C), (B.maximum(C)).numpy(), atol=1e-5, rtol=1e-5
@@ -511,7 +511,7 @@ def test_scalar_maximum(device):
 @pytest.mark.parametrize("device", _DEVICES, ids=["cpu", "cuda"])
 def test_scalar_eq(device):
     A = np.random.randn(5, 5)
-    B = nd.array(A, device=device)
+    B = ndl.array(A, device=device)
     C = A[0, 1].item()
     np.testing.assert_allclose(A == C, (B == C).numpy(), atol=1e-5, rtol=1e-5)
 
@@ -519,7 +519,7 @@ def test_scalar_eq(device):
 @pytest.mark.parametrize("device", _DEVICES, ids=["cpu", "cuda"])
 def test_scalar_ge(device):
     A = np.random.randn(5, 5)
-    B = nd.array(A, device=device)
+    B = ndl.array(A, device=device)
     C = A[0, 1].item()
     np.testing.assert_allclose(A >= C, (B >= C).numpy(), atol=1e-5, rtol=1e-5)
 
@@ -527,21 +527,21 @@ def test_scalar_ge(device):
 @pytest.mark.parametrize("device", _DEVICES, ids=["cpu", "cuda"])
 def test_ewise_log(device):
     A = np.abs(np.random.randn(5, 5))
-    B = nd.array(A, device=device)
+    B = ndl.array(A, device=device)
     np.testing.assert_allclose(np.log(A), (B.log()).numpy(), atol=1e-5, rtol=1e-5)
 
 
 @pytest.mark.parametrize("device", _DEVICES, ids=["cpu", "cuda"])
 def test_ewise_exp(device):
     A = np.random.randn(5, 5)
-    B = nd.array(A, device=device)
+    B = ndl.array(A, device=device)
     np.testing.assert_allclose(np.exp(A), (B.exp()).numpy(), atol=1e-5, rtol=1e-5)
 
 
 @pytest.mark.parametrize("device", _DEVICES, ids=["cpu", "cuda"])
 def test_ewise_tanh(device):
     A = np.random.randn(5, 5)
-    B = nd.array(A, device=device)
+    B = ndl.array(A, device=device)
     np.testing.assert_allclose(np.tanh(A), (B.tanh()).numpy(), atol=1e-5, rtol=1e-5)
 
 
@@ -549,15 +549,15 @@ def Prepare(A):
     return (A.numpy().flatten()[:128], A.strides, A.shape)
 
 
-def Rand(*shape, device=nd.cpu(), entropy=1):
+def Rand(*shape, device=ndl.cpu(), entropy=1):
     np.random.seed(np.prod(shape) * len(shape) * entropy)
     _A = np.random.randint(low=1, high=100, size=shape)
-    return nd.array(_A, device=device)
+    return ndl.array(_A, device=device)
 
 
 def RandC(*shape, entropy=1):
-    if nd.cuda().enabled():
-        return Rand(*shape, device=nd.cuda(), entropy=2)
+    if ndl.cuda().enabled():
+        return Rand(*shape, device=ndl.cuda(), entropy=2)
     msg = "You need a GPU to run these tests."
     raise NotImplementedError(msg)
 
