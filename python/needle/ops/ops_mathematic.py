@@ -1,6 +1,5 @@
 """Operator implementations."""
 
-import needle
 from needle.autograd import NDArray, Tensor, TensorOp, TensorTupleOp
 from needle.backend_selection import array_api
 from needle.ops.ops_tuple import make_tuple
@@ -186,7 +185,9 @@ class BroadcastTo(TensorOp):
             new_axes = in_shape
 
         different_axes = tuple(i for i, ax in enumerate(new_axes) if ax == 1)
-        out_grad = summation(out_grad, axes=different_axes).reshape(in_shape)
+        out_grad = summation(out_grad, axes=different_axes, keepdims=True).reshape(
+            in_shape
+        )
         return out_grad
 
 
@@ -195,14 +196,15 @@ def broadcast_to(a, shape):
 
 
 class Summation(TensorOp):
-    def __init__(self, axes: tuple | None = None):
+    def __init__(self, axes: tuple | None = None, keepdims: bool = False):
         if isinstance(axes, int):
             self.axes = (axes,)
         else:
             self.axes = axes
+        self.keepdims = keepdims
 
     def compute(self, a):
-        return array_api.sum(a, axis=self.axes)
+        return array_api.sum(a, axis=self.axes, keepdims=self.keepdims)
 
     def gradient(self, out_grad: Tensor, node: Tensor):
         # Function from (m, ) -> (m, 1) -> (m, n)
@@ -213,8 +215,8 @@ class Summation(TensorOp):
         return broadcast_to_new_axis(out_grad, self.axes, target_shape)
 
 
-def summation(a, axes=None):
-    return Summation(axes)(a)
+def summation(a, axes=None, keepdims=False):
+    return Summation(axes, keepdims)(a)
 
 
 class MatMul(TensorOp):
@@ -313,7 +315,8 @@ class Tanh(TensorOp):
         return array_api.tanh(a)
 
     def gradient(self, out_grad, node):
-        return out_grad.cached_data * (1 - node.cached_data**2)
+        tanh = array_api.tanh(node.inputs[0].realize_cached_data())
+        return out_grad.cached_data * (1 - tanh**2)
 
 
 def tanh(a):
@@ -330,24 +333,11 @@ class Stack(TensorOp):
         """
         self.axis = axis
 
-    def compute(self, args: list[NDArray]) -> Tensor:
-        # # Convert tuple of tensors to list of arrays
-        # arrays = [array for array in args]
-        # # Stack arrays along specified axis
-        # stacked_array = array_api.stack(arrays, axis=self.axis)
-        new_shape = list(args[0].shape)
-        new_shape.insert(self.axis, len(args))
-
-        new_arr = needle.init.zeros(new_shape)
-        for i, array in enumerate(args):
-            slices = [slice(None)] * len(new_shape)
-            slices[self.axis] = i
-            new_arr[tuple(slices)] = array
-        return new_arr
+    def compute(self, args: tuple[NDArray]) -> NDArray:
+        return array_api.stack(args, self.axis)
 
     def gradient(self, out_grad, node):
-        # Split gradient along stacking axis to get individual gradients
-        return split(out_grad, self.axis)
+        return Split(self.axis)(out_grad)
 
 
 def stack(args, axis):
@@ -364,12 +354,11 @@ class Split(TensorTupleOp):
         """
         self.axis = axis
 
-    def compute(self, A):
-        split_size = A.shape[self.axis]
-        return array_api.split(A, split_size, self.axis)
+    def compute(self, A: NDArray) -> tuple[NDArray]:
+        return tuple(array_api.split(A, self.axis))
 
     def gradient(self, out_grad, node):
-        return stack(out_grad, self.axis)
+        return Stack(self.axis)(out_grad)
 
 
 def split(a, axis):

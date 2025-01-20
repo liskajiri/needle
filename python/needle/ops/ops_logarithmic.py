@@ -44,21 +44,16 @@ class LogSumExp(TensorOp):
             self.axes = axes
 
     def compute(self, Z: NDArray):
-        max_Z = array_api.max(Z, axis=self.axes)
-
-        if self.axes is None:
-            max_Z_expanded = array_api.broadcast_to(max_Z, Z.shape)
-        else:
-            # tensor cannot be broadcasted without proper dimensions,
-            # so we need to add axis to max_Z
-            new_axes = tuple(
-                [1 if i in self.axes else ax for i, ax in enumerate(Z.shape)]
-            )
-            out_grad = array_api.reshape(max_Z, new_axes)
-            max_Z_expanded = array_api.broadcast_to(out_grad, Z.shape)
-
-        e = array_api.exp(Z - max_Z_expanded).sum(axis=self.axes)
-        return array_api.log(e) + max_Z
+        """
+        From the definition of LogSumExp:
+        log(sum(exp(Z))) = log(exp(Z - max(Z)) * sum(exp(max(Z)))
+        = log(exp(Z - max(Z))) + log(sum(exp(max(Z)))
+        = Z - max(Z) + log(sum(exp(max(Z)))
+        """
+        max_Z = array_api.max(Z, axis=self.axes, keepdims=True)
+        Z = Z - array_api.broadcast_to(max_Z, Z.shape)
+        log_sum_exp = array_api.log(array_api.sum(array_api.exp(Z), axis=self.axes))
+        return log_sum_exp + array_api.reshape(max_Z, log_sum_exp.shape)
 
     def gradient(self, out_grad: Tensor, node: Value):
         # gradient of LogSumExp is softmax

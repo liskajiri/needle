@@ -152,3 +152,13 @@ def default_device():
 def all_devices():
     """Return a list of all available devices."""
     return [cpu()]
+
+
+class CUDANotSupportedError(NotImplementedError):
+    """CUDA is not supported in numpy backend"""
+
+    pass
+
+
+def cuda():
+    raise CUDANotSupportedError("CUDA is not supported in numpy backend")

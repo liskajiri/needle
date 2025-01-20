@@ -156,12 +156,6 @@ def test_compact(params, device):
             "np_fn": lambda X: X.transpose()[1:5, 2:6],
             "nd_fn": lambda X: X.permute((1, 0))[1:5, 2:6],
         },
-        # TODO: This test is failing, need to investigate
-        # {
-        #     "shape": (4, 1, 3),
-        #     "np_fn": lambda X: np.broadcast_to(X, shape=(4, 5, 3)).reshape(20, 3),
-        #     "nd_fn": lambda X: X.broadcast_to((4, 5, 3)).reshape((20, 3)),
-        # },
     ],
     ids=[
         "permute_2D",
@@ -173,7 +167,6 @@ def test_compact(params, device):
         "getitem_2D",
         "getitem_3D",
         "permute_getitem",
-        # "broadcast_reshape",
     ],
 )
 @pytest.mark.parametrize("device", _DEVICES, ids=["cpu", "cuda"])
