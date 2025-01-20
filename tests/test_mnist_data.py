@@ -1,21 +1,17 @@
 import needle as ndl
 import numpy as np
 import pytest
-
-TRAIN_IMAGES = "data/train-images-idx3-ubyte.gz"
-TRAIN_LABELS = "data/train-labels-idx1-ubyte.gz"
-TEST_IMAGES = "data/t10k-images-idx3-ubyte.gz"
-TEST_LABELS = "data/t10k-labels-idx1-ubyte.gz"
+from needle.data.datasets.mnist import MNISTPaths
 
 
 @pytest.fixture(scope="module")
 def mnist_train():
-    return ndl.data.MNISTDataset(TRAIN_IMAGES, TRAIN_LABELS)
+    return ndl.data.MNISTDataset(MNISTPaths.TRAIN_IMAGES, MNISTPaths.TRAIN_LABELS)
 
 
 @pytest.fixture(scope="module")
 def mnist_test():
-    return ndl.data.MNISTDataset(TEST_IMAGES, TEST_LABELS)
+    return ndl.data.MNISTDataset(MNISTPaths.TEST_IMAGES, MNISTPaths.TEST_LABELS)
 
 
 @pytest.fixture(params=[1])
@@ -159,7 +155,9 @@ def test_mnist_train_crop28_flip():
         4.2152724,
     ]
 
-    dataset = ndl.data.MNISTDataset(TRAIN_IMAGES, TRAIN_LABELS, transforms=transforms)
+    dataset = ndl.data.MNISTDataset(
+        MNISTPaths.TRAIN_IMAGES, MNISTPaths.TRAIN_LABELS, transforms=transforms
+    )
     sample_norms = [np.linalg.norm(dataset[idx][0]) for idx in SAMPLE_INDICES]
     sample_labels = [dataset[idx][1] for idx in SAMPLE_INDICES]
 
@@ -184,7 +182,8 @@ def test_mnist_train_crop28_flip():
 #         9.361828,
 #     ]
 
-#     dataset = ndl.data.MNISTDataset(TRAIN_IMAGES, TRAIN_LABELS, transforms=transforms)
+#     dataset = ndl.data.MNISTDataset(MNISTPaths.TRAIN_IMAGES, MNISTPaths.TRAIN_LABELS,
+#       transforms=transforms)
 #     sample_norms = [np.linalg.norm(dataset[idx][0]) for idx in SAMPLE_INDICES]
 #     sample_labels = [dataset[idx][1] for idx in SAMPLE_INDICES]
 

@@ -2,6 +2,7 @@ import gzip
 
 import numpy as np
 import numpy.typing as npt
+from needle.data.datasets.mnist import MNISTPaths
 
 
 def parse_mnist(
@@ -243,12 +244,8 @@ def train_nn(X_tr, y_tr, X_te, y_te, hidden_dim=500, epochs=10, lr=0.5, batch=10
 
 
 if __name__ == "__main__":
-    X_tr, y_tr = parse_mnist(
-        "data/train-images-idx3-ubyte.gz", "data/train-labels-idx1-ubyte.gz"
-    )
-    X_te, y_te = parse_mnist(
-        "data/t10k-images-idx3-ubyte.gz", "data/t10k-labels-idx1-ubyte.gz"
-    )
+    X_tr, y_tr = parse_mnist(MNISTPaths.TRAIN_IMAGES, MNISTPaths.TRAIN_LABELS)
+    X_te, y_te = parse_mnist(MNISTPaths.TEST_IMAGES, MNISTPaths.TEST_LABELS)
 
     train_softmax(X_tr, y_tr, X_te, y_te, epochs=10, lr=0.1)
 

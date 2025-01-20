@@ -17,8 +17,11 @@ from .ndarray import (
     max,
     maximum,
     reshape,
+    split,
+    stack,
     sum,
     tanh,
+    transpose,
 )
 
 __all__ = [
@@ -40,6 +43,9 @@ __all__ = [
     "maximum",
     "ndarray",
     "reshape",
+    "split",
+    "stack",
     "sum",
     "tanh",
+    "transpose",
 ]
