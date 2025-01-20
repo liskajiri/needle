@@ -11,32 +11,38 @@ clean = "rm -rf .build/ cmake-build-debug/ python/needle/backend_ndarray/ndarray
 
 download_mnist = { cmd = [
     # create directory
-    "mkdir", "-p", "data/mnist", "&&",
+    "mkdir", "-p", "data/mnist/", "&&",
     "curl",
     "-o", "data/mnist/train-images-idx3-ubyte.gz", "https://storage.googleapis.com/cvdf-datasets/mnist/train-images-idx3-ubyte.gz",
     "-o", "data/mnist/train-labels-idx1-ubyte.gz", "https://storage.googleapis.com/cvdf-datasets/mnist/train-labels-idx1-ubyte.gz",
     "-o", "data/mnist/t10k-images-idx3-ubyte.gz", "https://storage.googleapis.com/cvdf-datasets/mnist/t10k-images-idx3-ubyte.gz",
     "-o", "data/mnist/t10k-labels-idx1-ubyte.gz", "https://storage.googleapis.com/cvdf-datasets/mnist/t10k-labels-idx1-ubyte.gz"
     ], outputs = [
-        "data/train-images-idx3-ubyte.gz",
-        "data/train-labels-idx1-ubyte.gz",
-        "data/t10k-images-idx3-ubyte.gz",
-        "data/t10k-labels-idx1-ubyte.gz",
-    ] }
+        "data/mnist/train-images-idx3-ubyte.gz",
+        "data/mnist/train-labels-idx1-ubyte.gz",
+        "data/mnist/t10k-images-idx3-ubyte.gz",
+        "data/mnist/t10k-labels-idx1-ubyte.gz",
+    ]}
 
 download_tree_bank = { cmd = [
-    "curl", "-o",
-    "data/tree_bank.zip", "https://download-directory.github.io/?url=https%3A%2F%2Fgithub.com%2Fwojzaremba%2Flstm%2Ftree%2Fmaster%2Fdata"
-], outputs = ["data/tree_bank.zip"] }
+    "mkdir", "-p", "data/tree_bank/", "&&",
+    "curl",
+    "-o", "data/tree_bank/test.txt", "https://raw.githubusercontent.com/wojzaremba/lstm/master/data/ptb.test.txt",
+    "-o" ,"data/tree_bank/train.txt", "https://raw.githubusercontent.com/wojzaremba/lstm/master/data/ptb.train.txt",
+    "-o", "data/tree_bank/valid.txt", "https://raw.githubusercontent.com/wojzaremba/lstm/master/data/ptb.valid.txt",
+], outputs = ["data/tree_bank/test.txt", "data/tree_bank/train.txt", "data/tree_bank/valid.txt"]}
 
 download_cifar = { cmd = [
+    "mkdir", "-p", "data/cifar/", "&&",
     "curl", "-o",
-    "data/cifar-10-python.tar.gz", "https://www.cs.toronto.edu/~kriz/cifar-10-python.tar.gz"
-], outputs = ["data/cifar-10-python.tar.gz"] }
+    "data/cifar/cifar-10-python.tar.gz", "https://www.cs.toronto.edu/$HOMEkriz/cifar-10-python.tar.gz"
+], outputs = ["data/cifar/cifar-10-python.tar.gz"]}
+
+download_datasets ={ cmd = ["echo", "All datasets downloaded!"], depends-on = ["download_mnist", "download_tree_bank", "download_cifar"]}
 
 # TODO: gpu test/bench environment
 [environments]
-jupyter = ["jupyter", "test"]
+# jupyter = ["jupyter", "test"]
 lint = {features = ["lint"], no-default-feature = true}
 dev = ["dev"]
 test = ["test"]
@@ -46,9 +52,9 @@ benchmark = ["benchmark"]
 numpy = ">=2.2.1,<3"
 python = ">=3.12.8,<3.13"
 
-[feature.jupyter.dependencies]
-jupyter = ">=1.1.1,<2"
-ipykernel = ">=6.29.5,<7"
+# [feature.jupyter.dependencies]
+# jupyter = ">=1.1.1,<2"
+# ipykernel = ">=6.29.5,<7"
 
 [feature.lint.dependencies]
 ruff = ">=0.9.1,<0.10"
@@ -86,10 +92,11 @@ pytest-xdist = ">=3.6.1,<4"
 pytest-html = ">=4.1.1,<5"
 hypothesis = ">=6.124.0,<7"
 pytest-randomly = ">=3.15.0,<4"
+pytorch = ">=2.5.1,<3"
 
 [feature.test.tasks]
 # Save results of test to html, run code coverage
-test = {cmd = "python -m pytest tests/ -n auto --html=reports/test_report.html --cov-report html:reports/coverage --cov=python/needle/ tests/ -m 'not slow'", depends-on = ["build", "download_mnist"]}
+test = {cmd = "echo Using needle backend=$NEEDLE_BACKEND && python -m pytest tests/ -n auto --html=reports/test_report.html --cov-report html:reports/coverage --cov=python/needle/ tests/ -m 'not slow'", depends-on = ["build", "download_mnist"]}
 # Fails tests if code coverage is below 80%
 test_all = {cmd = "python -m pytest tests/ -n auto --html=reports/test_report.html --cov-report html:reports/coverage --cov=python/needle/ tests/ --cov-fail-under=80", depends-on = ["build", "download_mnist"]}
 
@@ -108,5 +115,6 @@ benchmark_matmul = {cmd = "python -m pytest benchmarks/ -k 'test_matmul and not 
 benchmark_matmul_large = {cmd = "python -m pytest benchmarks/ -k 'test_matmul_large' -s --benchmark-sort=mean --benchmark-autosave --benchmark-save-data --benchmark-histogram='reports/matmul_large'", depends-on = ["build"]}
 bench_matmul = "py-spy record -o profile.svg -- python reports/test_matmul_benchmarks.py"
 
-[activation]
-env = {PYTHONPATH = "./python:./apps", NEEDLE_BACKEND = "nd"}
+[activation.env]
+PYTHONPATH = "./python:./apps"
+NEEDLE_BACKEND = "np"

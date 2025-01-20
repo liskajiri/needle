@@ -150,6 +150,8 @@ reports/*
 bin
 .build
 data/mnist
+data/cifar
+data/tree_bank
 
 # TODO: maybe add back?
 reports/

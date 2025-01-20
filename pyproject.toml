@@ -2,7 +2,8 @@
 testpaths = "tests/"
 markers = [
     "slow: marks tests as slow",
-    "proptest: marks tests as property tests"
+    "proptest: marks tests as property tests",
+    "gpu: marks tests as requiring a GPU",
 ]
 
 [tool.ruff]
