@@ -149,7 +149,9 @@ notebooks/hw3.ipynb
 reports/*
 bin
 .build
-data/
+data/mnist
+data/cifar
+data/tree_bank
 
 # TODO: maybe add back?
 reports/

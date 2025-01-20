@@ -4,6 +4,7 @@ from typing import NewType
 import needle as ndl
 import numpy as np
 from needle import nn
+from needle.data.datasets.mnist import MNISTPaths
 
 np.random.seed(0)
 
@@ -58,7 +59,9 @@ Accuracy = NewType("accuracy", float)
 
 
 def epoch(
-    dataloader: ndl.data.DataLoader, model: nn.Module, opt: ndl.optim.Optimizer = None
+    dataloader: ndl.data.DataLoader,
+    model: nn.Module,
+    opt: ndl.optim.Optimizer | None = None,
 ) -> tuple[ErrorRate, Loss]:  # type: ignore
     np.random.seed(4)
 
@@ -108,19 +111,15 @@ def train_mnist(
 
     INPUT_DIM = 784
     train_filenames = [
-        f"{data_dir}/train-images-idx3-ubyte.gz",
-        f"{data_dir}/train-labels-idx1-ubyte.gz",
+        MNISTPaths.TRAIN_IMAGES,
+        MNISTPaths.TRAIN_LABELS,
     ]
     test_filenames = [
-        f"{data_dir}/t10k-images-idx3-ubyte.gz",
-        f"{data_dir}/t10k-labels-idx1-ubyte.gz",
+        MNISTPaths.TEST_IMAGES,
+        MNISTPaths.TEST_LABELS,
     ]
-    mnist_train = ndl.data.MNISTDataset(
-        image_filename=train_filenames[0], label_filename=train_filenames[1]
-    )
-    mnist_test = ndl.data.MNISTDataset(
-        image_filename=test_filenames[0], label_filename=test_filenames[1]
-    )
+    mnist_train = ndl.data.MNISTDataset(train_filenames[0], train_filenames[1])
+    mnist_test = ndl.data.MNISTDataset(test_filenames[0], test_filenames[1])
 
     train_loader = ndl.data.DataLoader(mnist_train, batch_size=batch_size, shuffle=True)
     test_loader = ndl.data.DataLoader(mnist_test, batch_size=batch_size)

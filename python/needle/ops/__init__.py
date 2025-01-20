@@ -1,6 +1,6 @@
-from . import ops_logarithmic, ops_mathematic, ops_tuple
-from .ops_logarithmic import LogSumExp, logsoftmax, logsumexp
-from .ops_mathematic import (
+from needle.ops import ops_logarithmic, ops_mathematic, ops_tuple
+from needle.ops.ops_logarithmic import LogSumExp, logsoftmax, logsumexp
+from needle.ops.ops_mathematic import (
     AddScalar,
     BroadcastTo,
     DivScalar,
@@ -36,11 +36,14 @@ from .ops_mathematic import (
     power_scalar,
     relu,
     reshape,
+    split,
     sqrt,
+    stack,
     summation,
+    tanh,
     transpose,
 )
-from .ops_tuple import fused_add_scalars, make_tuple, tuple_get_item
+from needle.ops.ops_tuple import fused_add_scalars, make_tuple, tuple_get_item
 
 __all__ = [
     "AddScalar",
@@ -86,8 +89,11 @@ __all__ = [
     "power_scalar",
     "relu",
     "reshape",
+    "split",
     "sqrt",
+    "stack",
     "summation",
+    "tanh",
     "transpose",
     "tuple_get_item",
 ]

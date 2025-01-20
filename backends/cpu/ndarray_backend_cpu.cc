@@ -44,8 +44,9 @@ NB_MODULE(ndarray_backend_cpu, m) {
             return nb::ndarray<nb::numpy, scalar_t>(
                 a.ptr + offset, ndim, shape_arr.get(),
                 nb::capsule(&a, [](void *) noexcept {}), strides_arr.get());
-        },
+        }
         // Keep AlignedArray alive while numpy array exists
+        ,
         nb::keep_alive<0, 1>());
 
     // convert from numpy (with copying)

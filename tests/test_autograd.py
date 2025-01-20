@@ -4,6 +4,7 @@ import numpy as np
 import pytest
 from mnist_needle import loss_err, nn_epoch, softmax_loss
 from mnist_numpy import parse_mnist
+from needle.data.datasets.mnist import MNISTPaths
 
 
 ##############################################################################
@@ -622,7 +623,8 @@ def test_softmax_loss_ndl():
     gradient_check(ndl.log, ndl.Tensor(1 + np.random.rand(5, 4)))
 
     X, y = parse_mnist(
-        "data/train-images-idx3-ubyte.gz", "data/train-labels-idx1-ubyte.gz"
+        MNISTPaths.TRAIN_IMAGES,
+        MNISTPaths.TRAIN_LABELS,
     )
     np.random.seed(0)
     Z = ndl.Tensor(np.zeros((y.shape[0], 10)).astype(np.float32))
@@ -696,9 +698,7 @@ def test_nn_epoch_ndl():
     )
 
     # test full epoch
-    X, y = parse_mnist(
-        "data/train-images-idx3-ubyte.gz", "data/train-labels-idx1-ubyte.gz"
-    )
+    X, y = parse_mnist(MNISTPaths.TRAIN_IMAGES, MNISTPaths.TRAIN_LABELS)
     np.random.seed(0)
     W1 = ndl.Tensor(np.random.randn(X.shape[1], 100).astype(np.float32) / np.sqrt(100))
     W2 = ndl.Tensor(np.random.randn(100, 10).astype(np.float32) / np.sqrt(10))

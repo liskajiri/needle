@@ -1,54 +1,8 @@
 """Operator implementations."""
 
-from needle.autograd import NDArray, Tensor, TensorOp
-
-# NOTE: we will import numpy as the array_api
-# as the backend for our computations, this line will change in later homeworks
-
-BACKEND = "np"
-# TODO: 2024 version
-import numpy as array_api  # noqa: E402
-
-__all__ = [
-    "AddScalar",
-    "BroadcastTo",
-    "DivScalar",
-    "EWiseAdd",
-    "EWiseDiv",
-    "EWiseMul",
-    "EWisePow",
-    "Exp",
-    "Log",
-    "MatMul",
-    "MulScalar",
-    "Negate",
-    "PowerScalar",
-    "ReLU",
-    "Reshape",
-    "SquareRoot",
-    "Summation",
-    "Transpose",
-    "add",
-    "add_scalar",
-    "broadcast_to",
-    "broadcast_to_new_axis",
-    "divide",
-    "divide_scalar",
-    "exp",
-    "log",
-    "matmul",
-    "mean",
-    "mul_scalar",
-    "multiply",
-    "negate",
-    "power",
-    "power_scalar",
-    "relu",
-    "reshape",
-    "sqrt",
-    "summation",
-    "transpose",
-]
+from needle.autograd import NDArray, Tensor, TensorOp, TensorTupleOp
+from needle.backend_selection import array_api
+from needle.ops.ops_tuple import make_tuple
 
 
 class EWiseAdd(TensorOp):
@@ -231,7 +185,9 @@ class BroadcastTo(TensorOp):
             new_axes = in_shape
 
         different_axes = tuple(i for i, ax in enumerate(new_axes) if ax == 1)
-        out_grad = summation(out_grad, axes=different_axes).reshape(in_shape)
+        out_grad = summation(out_grad, axes=different_axes, keepdims=True).reshape(
+            in_shape
+        )
         return out_grad
 
 
@@ -240,14 +196,15 @@ def broadcast_to(a, shape):
 
 
 class Summation(TensorOp):
-    def __init__(self, axes: tuple | None = None):
+    def __init__(self, axes: tuple | None = None, keepdims: bool = False):
         if isinstance(axes, int):
             self.axes = (axes,)
         else:
             self.axes = axes
+        self.keepdims = keepdims
 
     def compute(self, a):
-        return array_api.sum(a, axis=self.axes)
+        return array_api.sum(a, axis=self.axes, keepdims=self.keepdims)
 
     def gradient(self, out_grad: Tensor, node: Tensor):
         # Function from (m, ) -> (m, 1) -> (m, n)
@@ -258,8 +215,8 @@ class Summation(TensorOp):
         return broadcast_to_new_axis(out_grad, self.axes, target_shape)
 
 
-def summation(a, axes=None):
-    return Summation(axes)(a)
+def summation(a, axes=None, keepdims=False):
+    return Summation(axes, keepdims)(a)
 
 
 class MatMul(TensorOp):
@@ -342,7 +299,7 @@ class SquareRoot(TensorOp):
         return array_api.sqrt(a)
 
     def gradient(self, out_grad, node):
-        return out_grad / (2 * node.outputs[0])
+        return out_grad / (2 * node.inputs[0])
 
 
 def sqrt(x: Tensor) -> Tensor:
@@ -351,3 +308,137 @@ def sqrt(x: Tensor) -> Tensor:
 
 def mean(a: Tensor, axes=0) -> Tensor:
     return summation(a, axes=axes) / a.shape[axes]
+
+
+class Tanh(TensorOp):
+    def compute(self, a: NDArray):
+        return array_api.tanh(a)
+
+    def gradient(self, out_grad, node):
+        tanh = array_api.tanh(node.inputs[0].realize_cached_data())
+        return out_grad.cached_data * (1 - tanh**2)
+
+
+def tanh(a):
+    return Tanh()(a)
+
+
+class Stack(TensorOp):
+    def __init__(self, axis: int):
+        """
+        Concatenates a sequence of arrays along a new dimension.
+        Parameters:
+        axis - dimension to concatenate along
+        All arrays need to be of the same size.
+        """
+        self.axis = axis
+
+    def compute(self, args: tuple[NDArray]) -> NDArray:
+        return array_api.stack(args, self.axis)
+
+    def gradient(self, out_grad, node):
+        return Split(self.axis)(out_grad)
+
+
+def stack(args, axis):
+    return Stack(axis)(make_tuple(*args))
+
+
+class Split(TensorTupleOp):
+    def __init__(self, axis: int):
+        """
+        Splits a tensor along an axis into a tuple of tensors.
+        (The "inverse" of Stack)
+        Parameters:
+        axis - dimension to split
+        """
+        self.axis = axis
+
+    def compute(self, A: NDArray) -> tuple[NDArray]:
+        return tuple(array_api.split(A, self.axis))
+
+    def gradient(self, out_grad, node):
+        return Stack(self.axis)(out_grad)
+
+
+def split(a, axis):
+    return Split(axis)(a)
+
+
+class Flip(TensorOp):
+    def __init__(self, axes: tuple | None = None):
+        self.axes = axes
+
+    def compute(self, a):
+        ### BEGIN YOUR SOLUTION
+        raise NotImplementedError()
+        ### END YOUR SOLUTION
+
+    def gradient(self, out_grad, node):
+        ### BEGIN YOUR SOLUTION
+        raise NotImplementedError()
+        ### END YOUR SOLUTION
+
+
+def flip(a, axes):
+    return Flip(axes)(a)
+
+
+class Dilate(TensorOp):
+    def __init__(self, axes: tuple, dilation: int):
+        self.axes = axes
+        self.dilation = dilation
+
+    def compute(self, a):
+        ### BEGIN YOUR SOLUTION
+        raise NotImplementedError()
+        ### END YOUR SOLUTION
+
+    def gradient(self, out_grad, node):
+        ### BEGIN YOUR SOLUTION
+        raise NotImplementedError()
+        ### END YOUR SOLUTION
+
+
+def dilate(a, axes, dilation):
+    return Dilate(axes, dilation)(a)
+
+
+class UnDilate(TensorOp):
+    def __init__(self, axes: tuple, dilation: int):
+        self.axes = axes
+        self.dilation = dilation
+
+    def compute(self, a):
+        ### BEGIN YOUR SOLUTION
+        raise NotImplementedError()
+        ### END YOUR SOLUTION
+
+    def gradient(self, out_grad, node):
+        ### BEGIN YOUR SOLUTION
+        raise NotImplementedError()
+        ### END YOUR SOLUTION
+
+
+def undilate(a, axes, dilation):
+    return UnDilate(axes, dilation)(a)
+
+
+class Conv(TensorOp):
+    def __init__(self, stride: int | None = 1, padding: int | None = 0):
+        self.stride = stride
+        self.padding = padding
+
+    def compute(self, A, B):
+        ### BEGIN YOUR SOLUTION
+        raise NotImplementedError()
+        ### END YOUR SOLUTION
+
+    def gradient(self, out_grad, node):
+        ### BEGIN YOUR SOLUTION
+        raise NotImplementedError()
+        ### END YOUR SOLUTION
+
+
+def conv(a, b, stride=1, padding=1):
+    return Conv(stride, padding)(a, b)

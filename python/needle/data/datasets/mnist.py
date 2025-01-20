@@ -5,6 +5,13 @@ import numpy as np
 from needle.data.dataset import Dataset
 
 
+class MNISTPaths:
+    TRAIN_IMAGES = "data/mnist/train-images-idx3-ubyte.gz"
+    TRAIN_LABELS = "data/mnist/train-labels-idx1-ubyte.gz"
+    TEST_IMAGES = "data/mnist/t10k-images-idx3-ubyte.gz"
+    TEST_LABELS = "data/mnist/t10k-labels-idx1-ubyte.gz"
+
+
 class MNISTDataset(Dataset):
     IMAGE_SIZE = 28 * 28
 

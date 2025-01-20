@@ -6,7 +6,7 @@ class MakeTensorTuple(TensorTupleOp):
     def compute(self, *args) -> tuple:
         return tuple(args)
 
-    def gradient(self, out_grad, node):
+    def gradient(self, out_grad, node) -> tuple:
         assert isinstance(out_grad, TensorTuple)
         return tuple([out_grad[i] for i in range(len(out_grad))])
 
