@@ -265,12 +265,14 @@ class NDArray:
             as the original NDArray.
 
         """
+        # TODO: Reshape does not respect flatten and reducing with -1 axis
+        if -1 in new_shape:
+            # flatten the array
+            pass
         if self.size != math.prod(new_shape):
-            msg = "Cannot reshape array to new shape"
-            raise ValueError(msg)
+            raise ValueError(f"Cannot reshape from {self.shape} to {new_shape}")
         if not self.is_compact():
-            msg = "Cannot reshape array that is not compact"
-            raise ValueError(msg)
+            raise ValueError("Cannot reshape array that is not compact")
 
         new_strides = self.compact_strides(new_shape)
         return self.as_strided(new_shape, new_strides)
@@ -295,8 +297,9 @@ class NDArray:
 
         """
         if len(new_axes) != self.ndim:
-            msg = "New axes has different number of axes"
-            raise ValueError(msg)
+            raise ValueError(
+                f"New axes {new_axes} has different number of axes than {self.ndim}"
+            )
 
         # gets new shape
         new_shape = tuple(self._shape[d] for d in new_axes)
@@ -327,8 +330,9 @@ class NDArray:
 
         for ax, new_ax in zip(self._shape, new_shape, strict=False):
             if ax not in (1, new_ax):
-                msg = "Cannot broadcast to new dimensions"
-                raise AssertionError(msg)
+                raise AssertionError(
+                    f"Cannot broadcast from {self.shape} to {new_shape}"
+                )
 
         leading_dims = len(new_shape) - len(self._shape)
         broadcast_strides = (0,) * leading_dims + self._strides
@@ -550,9 +554,15 @@ class NDArray:
         The GPU (and numpy) versions don't have any tiled version (or rather,
         the GPU version will just work natively by tiling any input size).
         """
-        assert self.ndim == 2
-        assert other.ndim == 2
-        assert self.shape[1] == other.shape[0]
+        assert (
+            self.ndim == 2
+        ), f"Matrix multiplication requires 2D arrays, got {self.ndim} in {self.shape}"
+        assert other.ndim == 2, f"""Matrix multiplication requires 2D arrays,
+            got {other.ndim} in {other.shape}"""
+        assert (
+            self.shape[1] == other.shape[0]
+        ), f"""Matrix multiplication requires inner dimensions to match,
+        but {self.shape[1]} != {other.shape[0]}"""
 
         m, n, p = self.shape[0], self.shape[1], other.shape[1]
 

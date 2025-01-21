@@ -456,7 +456,7 @@ def test_broadcast_to_backward():
 
 def test_broadcast_to_backward_my():
     gradient_check(
-        ndl.broadcast_to, ndl.Tensor(np.random.randn(3, 1, 5)), shape=(2, 3, 4, 5)
+        ndl.broadcast_to, ndl.Tensor(np.random.randn(2, 3, 1, 5)), shape=(2, 3, 4, 5)
     )
 
 

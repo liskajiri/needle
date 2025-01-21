@@ -118,4 +118,4 @@ bench_matmul = "py-spy record -o profile.svg -- python reports/test_matmul_bench
 
 [activation.env]
 PYTHONPATH = "./python:./apps"
-NEEDLE_BACKEND = "np"
+NEEDLE_BACKEND = "nd"
