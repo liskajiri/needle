@@ -1,4 +1,5 @@
 import gzip
+from pathlib import Path
 
 import numpy as np
 
@@ -6,10 +7,10 @@ from needle.data.dataset import Dataset
 
 
 class MNISTPaths:
-    TRAIN_IMAGES = "data/mnist/train-images-idx3-ubyte.gz"
-    TRAIN_LABELS = "data/mnist/train-labels-idx1-ubyte.gz"
-    TEST_IMAGES = "data/mnist/t10k-images-idx3-ubyte.gz"
-    TEST_LABELS = "data/mnist/t10k-labels-idx1-ubyte.gz"
+    TRAIN_IMAGES = Path("data/mnist/train-images-idx3-ubyte.gz")
+    TRAIN_LABELS = Path("data/mnist/train-labels-idx1-ubyte.gz")
+    TEST_IMAGES = Path("data/mnist/t10k-images-idx3-ubyte.gz")
+    TEST_LABELS = Path("data/mnist/t10k-labels-idx1-ubyte.gz")
 
 
 class MNISTDataset(Dataset):
@@ -17,8 +18,8 @@ class MNISTDataset(Dataset):
 
     def __init__(
         self,
-        image_filename: str,
-        label_filename: str,
+        images: Path,
+        labels: Path,
         transforms: list | None = None,
     ):
         """Read an images and labels file in MNIST format.  See this page:
@@ -45,14 +46,12 @@ class MNISTDataset(Dataset):
                     for MNIST will contain the values 0-9.
 
         """
-        if transforms is None:
-            transforms = []
-        self.X, self.y = MNISTDataset.parse_mnist(image_filename, label_filename)
+        super().__init__(transforms)
+        self.X, self.y = MNISTDataset.parse_mnist(images, labels)
 
         # TODO: should be (n, 784)
         # Fix tests afterwards
         self.X = self.X.reshape(-1, 28, 28, 1)
-        self.transforms = transforms
 
     def __getitem__(self, index: int) -> object:
         (x, y) = self.X[index], self.y[index]
@@ -65,20 +64,18 @@ class MNISTDataset(Dataset):
 
     @staticmethod
     def parse_mnist(
-        image_filename: str, label_filename: str
+        images_file: Path, labels_file: Path
     ) -> tuple[np.ndarray, np.ndarray]:
         # Read the images file
-        with gzip.open(image_filename, "rb") as image_file:
+        with gzip.open(images_file, "rb") as image_file:
             image_file.read(16)  # Skip the header
             buffer = image_file.read()
-            num_images = len(buffer) // (
-                MNISTDataset.IMAGE_SIZE
-            )  # Each image is 28x28 pixels
+            num_images = len(buffer) // (MNISTDataset.IMAGE_SIZE)
             X = np.frombuffer(buffer, dtype=np.uint8).astype(np.float32) / 255.0
             X = X.reshape(num_images, MNISTDataset.IMAGE_SIZE)
 
         # Read the labels file
-        with gzip.open(label_filename, "rb") as label_file:
+        with gzip.open(labels_file, "rb") as label_file:
             label_file.read(8)  # Skip the header
             buffer = label_file.read()
             y = np.frombuffer(buffer, dtype=np.uint8)

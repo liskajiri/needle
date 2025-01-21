@@ -7,7 +7,9 @@ class Dataset:
     """
 
     def __init__(self, transforms: list | None = None):
-        self.transforms = transforms
+        if transforms is None:
+            transforms = []
+        self.transforms: list = transforms
 
     def __getitem__(self, index) -> object:
         raise NotImplementedError
