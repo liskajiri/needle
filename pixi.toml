@@ -33,10 +33,11 @@ download_tree_bank = { cmd = [
 ], outputs = ["data/tree_bank/test.txt", "data/tree_bank/train.txt", "data/tree_bank/valid.txt"]}
 
 download_cifar = { cmd = [
-    "mkdir", "-p", "data/cifar/", "&&",
-    "curl", "-o",
-    "data/cifar/cifar-10-python.tar.gz", "https://www.cs.toronto.edu/$HOMEkriz/cifar-10-python.tar.gz"
-], outputs = ["data/cifar/cifar-10-python.tar.gz"]}
+    "mkdir", "-p", "data/cifar-10/", "&&",
+    "curl", "-o", "data/cifar-10/cifar-10-python.tar.gz",
+    "\"https://www.cs.toronto.edu/~kriz/cifar-10-python.tar.gz\"",
+    "tar", "-xvzf", "data/cifar-10/cifar-10-python.tar.gz", "-C", "data/cifar-10"
+], outputs = ["data/cifar-10/cifar-10-python.tar.gz"]}
 
 download_datasets ={ cmd = ["echo", "All datasets downloaded!"], depends-on = ["download_mnist", "download_tree_bank", "download_cifar"]}
 
