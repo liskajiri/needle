@@ -1,35 +1,46 @@
-"""Logic for backend selection"""
+"""
+Logic for backend selection
+"""
 
+import enum
 import os
-from typing import NewType
+
+
+class BACKENDS(enum.StrEnum):
+    NEEDLE = "nd"
+    NUMPY = "np"
+
 
 BACKEND = os.environ.get("NEEDLE_BACKEND", "nd")
 
 
-if BACKEND == "nd":
+if BACKENDS.NEEDLE == BACKEND:
     print("Using needle backend")
-    from . import backend_ndarray as array_api  # noqa: I001
-    from .backend_ndarray import (
-        all_devices,
+    from needle import backend_ndarray as array_api  # noqa: I001
+    from needle.backend_ndarray import (
         BackendDevice as Device,
+    )
+    from needle.backend_ndarray import (
+        NDArray,
+        all_devices,
         cpu,
-        cuda,
         cpu_numpy,  # noqa: F401
+        cuda,
         default_device,
+        DType,  # noqa: F401
     )
 
-    # NDArray = array_api.NDArray
-    NDArray = NewType("NDArray", array_api.NDArray)
-elif BACKEND == "np":
+elif BACKENDS.NUMPY == BACKEND:
     print("Using numpy backend")
-    import numpy as array_api  # noqa: I001
+    import numpy as array_api  # noqa: F401
+    from numpy import ndarray as NDArray  # noqa: F401
 
-    # TODO: 2024 version
-    # from .backend_ndarray import cuda
-    from .backend_numpy import Device, all_devices, cpu, default_device, cuda  # noqa: F401
-
-    # NDArray = array_api.ndarray
-    # type annotation for NDArray
-    NDArray = NewType("NDArray", array_api.ndarray)
+    from needle.backend_ndarray.backend_numpy import (
+        Device,  # noqa: F401
+        all_devices,  # noqa: F401
+        cpu,  # noqa: F401
+        cuda,  # noqa: F401
+        default_device,  # noqa: F401
+    )
 else:
     raise RuntimeError(f"Unknown needle array backend {BACKEND}")

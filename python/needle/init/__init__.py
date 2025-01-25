@@ -1,5 +1,5 @@
-from . import init_basic, init_distributions
-from .init_basic import (
+from needle.init import init_basic, init_distributions
+from needle.init.init_basic import (
     constant,
     one_hot,
     ones,
@@ -10,7 +10,7 @@ from .init_basic import (
     zeros,
     zeros_like,
 )
-from .init_distributions import (
+from needle.init.init_distributions import (
     kaiming_normal,
     kaiming_uniform,
     xavier_normal,

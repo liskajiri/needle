@@ -5,7 +5,7 @@ from needle.ops.ops_mathematic import broadcast_to_new_axis, exp, summation
 
 # TODO: not covered by current tests - Convert to 2024 edition
 class LogSoftmax(TensorOp):
-    def compute(self, Z: NDArray):
+    def compute(self, Z: NDArray) -> NDArray:
         # 2d input array
         # Subtract the maximum value along axis=1 for numerical stability
         assert Z.ndim == 2, "Input must be a 2D array"
@@ -20,8 +20,6 @@ class LogSoftmax(TensorOp):
 
     def gradient(self, out_grad, node):
         Z = node.inputs[0]
-        print(node, node.inputs[0])
-        # Z = Z.numpy()
         log_softmax_Z = self.compute(Z)
 
         # Compute softmax values from log-softmax

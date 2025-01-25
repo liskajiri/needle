@@ -1,25 +1,37 @@
 """Core data structures."""
 
+from __future__ import annotations
+
 from collections import defaultdict
-from typing import Union
+from typing import TYPE_CHECKING
 
 import numpy as np
 
 import needle as ndl
-from needle.backend_selection import Device, NDArray, array_api, cpu
+from needle.backend_selection import Device, NDArray, array_api, cpu, default_device
+
+if TYPE_CHECKING:
+    from typing import Any, Self
+
+    from needle.autograd import Tensor, TensorTuple
+    from needle.backend_selection import DType
+
 
 # needle version
 LAZY_MODE = False
 TENSOR_COUNTER = 0
 
+type Scalar = int | float
+
 
 class Op:
     """Operator definition."""
 
-    def __call__(self, *args):
-        raise NotImplementedError
+    def __call__(self, *args) -> Any:
+        raise NotImplementedError()
 
-    def compute(self, *args: tuple[NDArray]):
+    # TODO: Always one arg, second optional
+    def compute(self, *args: list[NDArray]) -> NDArray:
         """Calculate forward pass of operator.
 
         Parameters
@@ -33,11 +45,9 @@ class Op:
             Array output of the operation
 
         """
-        raise NotImplementedError
+        raise NotImplementedError()
 
-    def gradient(
-        self, out_grad: "Value", node: "Value"
-    ) -> Union["Value", tuple["Value"]]:
+    def gradient(self, out_grad: Value, _node: Value) -> Value | tuple[Value]:
         """Compute partial adjoint for each input value for a given output adjoint.
 
         Parameters
@@ -53,16 +63,15 @@ class Op:
         input_grads: Value or Tuple[Value]
             A list containing partial gradient adjoints to be propagated to
             each of the input node.
-
         """
-        raise NotImplementedError
+        raise NotImplementedError()
 
-    def gradient_as_tuple(self, out_grad: "Value", node: "Value") -> tuple["Value"]:
+    def gradient_as_tuple(self, out_grad: Value, node: Value) -> tuple[Value]:
         """Convenience method to always return a tuple from gradient call."""
         output = self.gradient(out_grad, node)
         if isinstance(output, tuple):
             return output
-        if isinstance(output, list):
+        elif isinstance(output, list):
             return tuple(output)
         return (output,)
 
@@ -86,13 +95,30 @@ class Value:
 
     # trace of computational graph
     op: Op | None
-    inputs: list["Value"]
+    inputs: list[Self]
     # The following fields are cached fields for
     # dynamic computation
     cached_data: NDArray
     requires_grad: bool
 
-    def realize_cached_data(self):
+    # TODO: Use more functools - cached_property, lru_cache...
+    # @cached_property
+    # def realize_cached_data(self) -> NDArray:
+    #     """
+    #     Computes and caches tensor data lazily.
+    #     Returns cached result on subsequent calls.
+    #     """
+    #     # if self._cached_data is not None:
+    #     #     return self._cached_data
+
+    #     def input_data() -> Generator[NDArray, None, None]:
+    #         for x in self.inputs:
+    #             yield x.realize_cached_data
+
+    #     self.cached_data = self.op.compute(*input_data())
+    #     return self.cached_data
+
+    def realize_cached_data(self) -> NDArray:
         """Run compute to realize the cached data."""
         # avoid recomputation
         if self.cached_data is not None:
@@ -103,22 +129,23 @@ class Value:
         )
         return self.cached_data
 
-    def is_leaf(self):
+    def is_leaf(self) -> bool:
         return self.op is None
 
-    def __del__(self):
+    def __del__(self) -> None:
         global TENSOR_COUNTER
         TENSOR_COUNTER -= 1
 
     def _init(
         self,
         op: Op | None,
-        inputs: list["Tensor"],
+        inputs: list[Tensor],
+        # TODO
         *,
         num_outputs: int = 1,
-        cached_data: list[object] | None = None,
+        cached_data: NDArray | None = None,
         requires_grad: bool | None = None,
-    ):
+    ) -> None:
         global TENSOR_COUNTER
         TENSOR_COUNTER += 1
         if requires_grad is None:
@@ -130,7 +157,7 @@ class Value:
         self.requires_grad = requires_grad
 
     @classmethod
-    def make_const(cls, data, *, requires_grad=False):
+    def make_const(cls, data, *, requires_grad: bool = False):
         value = cls.__new__(cls)
         value._init(
             None,
@@ -141,7 +168,7 @@ class Value:
         return value
 
     @classmethod
-    def make_from_op(cls, op: Op, inputs: list["Value"]):
+    def make_from_op(cls, op: Op, inputs: list[Self]):
         value = cls.__new__(cls)
         value._init(op, inputs)
 
@@ -158,44 +185,45 @@ class TensorTuple(Value):
     To keep things simple, we do not support nested tuples.
     """
 
-    def __len__(self):
+    def __len__(self) -> int:
         cdata = self.realize_cached_data()
         return len(cdata)
 
     def __getitem__(self, index: int):
         return ndl.ops.tuple_get_item(self, index)
 
-    def tuple(self):
-        return tuple(self)
+    def tuple(self) -> tuple[Self]:
+        return tuple([x for x in self])
+        # return tuple(self)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "ndl.TensorTuple" + str(self.tuple())
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.__repr__()
 
-    def __add__(self, other):
+    def __add__(self, other: TensorTuple) -> TensorTuple:
         assert isinstance(other, TensorTuple)
         assert len(self) == len(other)
         return ndl.ops.make_tuple(*[self[i] + other[i] for i in range(len(self))])
 
-    def detach(self):
+    def detach(self) -> TensorTuple:
         """Create a new tensor that shares the data but detaches from the graph."""
         return TensorTuple.make_const(self.realize_cached_data())
 
 
 class Tensor(Value):
-    grad: "Tensor"
+    grad: Self
 
     def __init__(
         self,
-        array,
+        array: NDArray | Tensor,
         *,
-        device: Device | None = None,
-        dtype=None,
-        requires_grad=True,
+        device: type[Device] | None = None,
+        dtype: DType | None = None,
+        requires_grad: bool = True,
         **kwargs,
-    ):
+    ) -> None:
         if isinstance(array, Tensor):
             if device is None:
                 device = array.device
@@ -209,7 +237,7 @@ class Tensor(Value):
                     array.numpy(), device=device, dtype=dtype
                 )
         else:
-            device = device if device else cpu()
+            device = device if device else default_device()
             cached_data = Tensor._array_from_numpy(array, device=device, dtype=dtype)
 
         self._init(
@@ -220,45 +248,28 @@ class Tensor(Value):
         )
 
     @staticmethod
-    def _array_from_numpy(numpy_array, device, dtype):
+    def _array_from_numpy(numpy_array: np.ndarray, device: Device, dtype: DType):
         if array_api is np:
             return np.array(numpy_array, dtype=dtype)
         return array_api.array(numpy_array, device=device, dtype=dtype)
 
-    @staticmethod
-    def make_from_op(op: Op, inputs: list["Value"]):
-        tensor = Tensor.__new__(Tensor)
-        tensor._init(op, inputs)
-        if not LAZY_MODE:
-            if not tensor.requires_grad:
-                return tensor.detach()
-            tensor.realize_cached_data()
-        return tensor
-
-    @staticmethod
-    def make_const(data, requires_grad=False):
-        tensor = Tensor.__new__(Tensor)
-        tensor._init(
-            None,
-            [],
-            cached_data=data
-            if not isinstance(data, Tensor)
-            else data.realize_cached_data(),
-            requires_grad=requires_grad,
-        )
-        return tensor
+    @classmethod
+    def make_const(cls, data, *, requires_grad: bool = False) -> Self:
+        if isinstance(data, Tensor):
+            data = data.realize_cached_data()
+        return super().make_const(data, requires_grad=requires_grad)
 
     @property
-    def data(self):
+    def data(self) -> Tensor:
         return self.detach()
 
     @data.setter
-    def data(self, value):
+    def data(self, value) -> None:
         assert isinstance(value, Tensor)
         assert value.dtype == self.dtype, f"{value.dtype} {self.dtype}"
         self.cached_data = value.realize_cached_data()
 
-    def detach(self):
+    def detach(self) -> Tensor:
         """Create a new tensor that shares the data but detaches from the graph."""
         return Tensor.make_const(self.realize_cached_data())
 
@@ -278,7 +289,7 @@ class Tensor(Value):
             return cpu()
         return data.device
 
-    def backward(self, out_grad=None):
+    def backward(self, out_grad: Tensor | None = None) -> None:
         out_grad = (
             out_grad
             if out_grad
@@ -288,19 +299,20 @@ class Tensor(Value):
         )
         compute_gradient_of_variables(self, out_grad)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "ndl.Tensor(" + str(self.realize_cached_data()) + ")"
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.realize_cached_data().__str__()
 
     def numpy(self):
         data = self.realize_cached_data()
+        # TODO: no need for this? numpy_api is patched
         if array_api is np:
             return data
         return data.numpy()
 
-    def __add__(self, other):
+    def __add__(self, other: Tensor | Scalar) -> Tensor:
         if isinstance(other, Tensor):
             return ndl.ops.EWiseAdd()(self, other)
         return ndl.ops.AddScalar(other)(self)
@@ -349,20 +361,26 @@ class Tensor(Value):
         return self.transpose()
 
     @property
-    def ndim(self):
+    def ndim(self) -> int:
         return len(self.shape)
 
     __radd__ = __add__
     __rmul__ = __mul__
-    __rsub__ = __sub__
-    __rmatmul__ = __matmul__
 
 
 def compute_gradient_of_variables(output_tensor: Tensor, out_grad: Tensor) -> None:
-    """Take gradient of output node with respect to each node in node_list.
-
+    """
+    Take gradient of output node with respect to each node in node_list.
     Store the computed result in the grad field of each Variable.
     """
+
+    def _sum_node_list(node_list: list[Tensor]) -> Tensor:
+        """Avoid creating redundant nodes in Python sum implementation."""
+        from functools import reduce
+        from operator import add
+
+        return reduce(add, node_list)
+
     # a map from node to a list of gradient contributions from each output node
     node_to_output_grads: defaultdict[Tensor, list[Tensor]] = defaultdict(list)
     # Special note on initializing gradient of
@@ -375,19 +393,19 @@ def compute_gradient_of_variables(output_tensor: Tensor, out_grad: Tensor) -> No
     reverse_topo_order = list(reversed(find_topo_sort([output_tensor])))
 
     for node in reverse_topo_order:
-        node.grad = sum_node_list(node_to_output_grads[node])
+        node.grad = _sum_node_list(node_to_output_grads[node])
 
         if node.op:
             # partial adjoints
             grads = node.op.gradient_as_tuple(node.grad, node)
-            for i, input_node in enumerate(node.inputs):
-                node_to_output_grads[input_node].append(grads[i])
+            for input_node, grad in zip(node.inputs, grads):
+                node_to_output_grads[input_node].append(grad)
 
             # Gradients do not need to be kept further in the AD graph
             node.grad = node.grad.detach()
 
 
-def find_topo_sort(node_list: list[Value]) -> list[Value]:
+def find_topo_sort(node_list: list[Tensor]) -> list[Tensor]:
     """Given a list of nodes, return a topological sort list of nodes ending in them.
 
     A simple algorithm is to do a post-order DFS traversal on the given nodes,
@@ -402,7 +420,7 @@ def find_topo_sort(node_list: list[Value]) -> list[Value]:
     return topo_order
 
 
-def topo_sort_dfs(node, visited, topo_order) -> None:
+def topo_sort_dfs(node: Tensor, visited: set, topo_order: list[Tensor]) -> None:
     """Post-order DFS."""
     if node in visited:
         return
@@ -410,16 +428,3 @@ def topo_sort_dfs(node, visited, topo_order) -> None:
     for input_node in node.inputs:
         topo_sort_dfs(input_node, visited, topo_order)
     topo_order.append(node)
-
-
-##############################
-####### Helper Methods #######
-##############################
-
-
-def sum_node_list(node_list):
-    """Avoid creating redundant nodes in Python sum implementation."""
-    from functools import reduce
-    from operator import add
-
-    return reduce(add, node_list)
