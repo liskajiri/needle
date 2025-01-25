@@ -1,3 +1,5 @@
+import random
+
 import needle as ndl
 import numdifftools as nd
 import numpy as np
@@ -346,7 +348,7 @@ def test_transpose_forward():
 ### TESTS for backward passes
 
 
-def gradient_check(f, *args, tol=1e-6, backward=False, **kwargs):
+def gradient_check(f, *args, tol: float = 1e-6, backward: bool = False, **kwargs):
     eps = 1e-4
     numerical_grads = [np.zeros(a.shape) for a in args]
     for i in range(len(args)):
@@ -389,7 +391,7 @@ def test_divide_scalar_backward():
     gradient_check(
         ndl.ops.divide_scalar,
         ndl.Tensor(np.random.randn(5, 4)),
-        scalar=np.random.randn(1),
+        scalar=random.random(),
     )
 
 
