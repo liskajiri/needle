@@ -58,7 +58,7 @@ export void ScalarSetitem(const size_t size, const scalar_t val,
 
 // scalar operations
 template <typename Func>
-void ScalarOp(const AlignedArray &a, const float scalar, AlignedArray *out,
+void ScalarOp(const AlignedArray &a, const scalar_t scalar, AlignedArray *out,
               Func func) {
 #pragma omp parallel for schedule(static)
     for (size_t i = 0; i < a.size; ++i) {
@@ -66,39 +66,39 @@ void ScalarOp(const AlignedArray &a, const float scalar, AlignedArray *out,
     }
 }
 
-export void ScalarAdd(const AlignedArray &a, const float scalar,
+export void ScalarAdd(const AlignedArray &a, const scalar_t scalar,
                       AlignedArray *out) {
-    ScalarOp(a, scalar, out, std::plus<float>());
+    ScalarOp(a, scalar, out, std::plus<scalar_t>());
 }
 
-export void ScalarMul(const AlignedArray &a, const float scalar,
+export void ScalarMul(const AlignedArray &a, const scalar_t scalar,
                       AlignedArray *out) {
-    ScalarOp(a, scalar, out, std::multiplies<float>());
+    ScalarOp(a, scalar, out, std::multiplies<scalar_t>());
 }
 
-export void ScalarDiv(const AlignedArray &a, const float scalar,
+export void ScalarDiv(const AlignedArray &a, const scalar_t scalar,
                       AlignedArray *out) {
-    ScalarOp(a, scalar, out, std::divides<float>());
+    ScalarOp(a, scalar, out, std::divides<scalar_t>());
 }
 
-export void ScalarPower(const AlignedArray &a, const float scalar,
+export void ScalarPower(const AlignedArray &a, const scalar_t scalar,
                         AlignedArray *out) {
-    ScalarOp(a, scalar, out, [](float x, float y) { return std::pow(x, y); });
+    ScalarOp(a, scalar, out, [](scalar_t x, scalar_t y) { return std::pow(x, y); });
 }
 
-export void ScalarMaximum(const AlignedArray &a, const float scalar,
+export void ScalarMaximum(const AlignedArray &a, const scalar_t scalar,
                           AlignedArray *out) {
-    ScalarOp(a, scalar, out, [](float x, float y) { return std::max(x, y); });
+    ScalarOp(a, scalar, out, [](scalar_t x, scalar_t y) { return std::max(x, y); });
 }
 
-export void ScalarEq(const AlignedArray &a, const float scalar,
+export void ScalarEq(const AlignedArray &a, const scalar_t scalar,
                      AlignedArray *out) {
-    ScalarOp(a, scalar, out, std::equal_to<float>());
+    ScalarOp(a, scalar, out, std::equal_to<scalar_t>());
 }
 
-export void ScalarGe(const AlignedArray &a, const float scalar,
+export void ScalarGe(const AlignedArray &a, const scalar_t scalar,
                      AlignedArray *out) {
-    ScalarOp(a, scalar, out, std::greater_equal<float>());
+    ScalarOp(a, scalar, out, std::greater_equal<scalar_t>());
 }
 
 } // namespace cpu
