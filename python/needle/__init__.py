@@ -1,19 +1,29 @@
-from . import data, init, nn, ops, optim
-from .autograd import Op, Tensor, TensorOp, TensorTuple, Value, cpu
-from .backend_selection import *  # noqa: F403
+from needle import autograd, data, init, nn, ops, optim
+from needle.backend_selection import (
+    Device,
+    NDArray,
+    all_devices,
+    array_api,
+    cpu,
+    cuda,
+    default_device,
+)
 
 # Provides array_api.functions
-from .ops import *  # noqa: F403
+from needle.ops import *  # noqa: F403
+from needle.tensor import Tensor
 
 __all__ = [
-    # autograd
-    "Op",
+    "Device",
+    "NDArray",
     "Tensor",
-    "TensorOp",
-    "TensorTuple",
-    "Value",
+    "all_devices",
+    "array_api",
+    "autograd",
     "cpu",
+    "cuda",
     "data",
+    "default_device",
     "init",
     "nn",
     "ops",

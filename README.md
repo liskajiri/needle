@@ -55,6 +55,7 @@
 - [ ] release packages
   - [ ] conda
   - [ ] pypi
+  - [ ] docker container
 - [ ] use hidden _ for utility functions
 - examples: notebooks - fully static wasm notebook
   - [ ] runnable notebook - marimo or google colab

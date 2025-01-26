@@ -1,8 +1,8 @@
 """The module."""
 
 from needle import init, ops
-from needle.autograd import Tensor
 from needle.nn.nn_basic import Module, Parameter
+from needle.tensor import Tensor
 
 __all__ = [
     "BatchNorm1d",

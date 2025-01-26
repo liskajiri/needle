@@ -1,9 +1,6 @@
 set(CMAKE_CXX_COMPILER $ENV{CONDA_PREFIX}/bin/clang)
 message(STATUS "CMake prefix path: ${CMAKE_PREFIX_PATH}")
 
-
-
-
 cmake_minimum_required(VERSION 3.28..3.31)
 project(needle LANGUAGES CXX)
 cmake_policy(SET CMP0146 OLD)
@@ -38,7 +35,7 @@ link_directories(
 
 # Compiler flags
 if(NOT MSVC)
-    set(CMAKE_CXX_FLAGS "-std=c++20 -O3 -march=native -mavx2 -stdlib=libc++ ${CMAKE_CXX_FLAGS}")
+    set(CMAKE_CXX_FLAGS "-std=c++20 -O2 -march=native -mavx2 -stdlib=libc++ ${CMAKE_CXX_FLAGS}")
 else()
     set(CMAKE_CXX_FLAGS "/std:c++20 /O2 /arch:AVX2 ${CMAKE_CXX_FLAGS}")
 endif()

@@ -3,7 +3,6 @@ import numpy as np
 import pytest
 import torch
 from needle import backend_ndarray as nd
-from needle.backend_numpy import CUDANotSupportedError
 
 np.random.seed(1)
 
@@ -36,7 +35,7 @@ _DEVICES = [
     pytest.param(
         ndl.cuda(),
         marks=pytest.mark.skipif(
-            not ndl.cuda().enabled() or isinstance(ndl.cuda(), CUDANotSupportedError),
+            not ndl.cuda().enabled(),
             reason="No GPU",
         ),
     ),
@@ -163,12 +162,12 @@ STACK_PARAMETERS = [
     ((5, 5), 0, 1),
     ((5, 5), 0, 2),
     ((1, 5, 7), 2, 5),
+    ((1, 3, 3), 0, 3),
 ]
 
 
 @pytest.mark.parametrize("shape, axis, i", STACK_PARAMETERS)
 @pytest.mark.parametrize("device", _DEVICES, ids=["cpu", "cuda"])
-@pytest.mark.gpu
 def test_stack(shape, axis, i, device):
     _A = [np.random.randn(*shape).astype(np.float32) for i in range(i)]
     A = [ndl.Tensor(nd.array(_A[i]), device=device) for i in range(i)]
@@ -180,7 +179,6 @@ def test_stack(shape, axis, i, device):
 
 @pytest.mark.parametrize("shape, axis, i", STACK_PARAMETERS)
 @pytest.mark.parametrize("device", _DEVICES, ids=["cpu", "cuda"])
-@pytest.mark.gpu
 def test_stack_backward(shape, axis, i, device):
     _A = [np.random.randn(*shape).astype(np.float32) for i in range(i)]
     A = [ndl.Tensor(nd.array(_A[i]), device=device) for i in range(i)]
@@ -266,7 +264,6 @@ def test_transpose(shape, axes, device):
 
 @pytest.mark.parametrize("shape, axes", SUMMATION_PARAMETERS)
 @pytest.mark.parametrize("device", _DEVICES, ids=["cpu", "cuda"])
-@pytest.mark.gpu
 def test_logsumexp(shape, axes, device):
     _A = np.random.randn(*shape).astype(np.float32)
     A = ndl.Tensor(nd.array(_A), device=device)

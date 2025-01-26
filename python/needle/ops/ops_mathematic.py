@@ -1,34 +1,49 @@
 """Operator implementations."""
 
-from needle.autograd import NDArray, Tensor, TensorOp, TensorTupleOp
+import logging
+
 from needle.backend_selection import array_api
+from needle.ops.op import TensorOp, TensorTupleOp
 from needle.ops.ops_tuple import make_tuple
+from needle.tensor import NDArray, Tensor
+
+logger = logging.getLogger(__name__)
+
+# TODO: split ops:
+# - ewise / scalar
+# - transformations
+# pure math
+# specialized
+
+type Scalar = int | float
 
 
 class EWiseAdd(TensorOp):
-    def compute(self, a: NDArray, b: NDArray):
+    def compute(self, a: NDArray, b: NDArray) -> NDArray:
         return a + b
 
-    def gradient(self, out_grad: Tensor, node: Tensor):
+    def gradient(self, out_grad: Tensor, node: Tensor) -> tuple[Tensor, Tensor]:
         return out_grad, out_grad
 
 
-def add(a, b):
+def add(a: Tensor, b: Tensor) -> Tensor:
     return EWiseAdd()(a, b)
 
 
 class AddScalar(TensorOp):
-    def __init__(self, scalar):
+    # TODO: Can this function only have compute(a + scalar)?
+    # That would simplify other things if all ops had always two params
+    def __init__(self, scalar: Scalar) -> None:
         self.scalar = scalar
 
-    def compute(self, a: NDArray):
+    def compute(self, a: NDArray) -> NDArray:
         return a + self.scalar
 
-    def gradient(self, out_grad: Tensor, node: Tensor):
+    def gradient(self, out_grad: Tensor, node: Tensor) -> Tensor:
         return out_grad
 
 
-def add_scalar(a, scalar):
+def add_scalar(a: Tensor, scalar: Scalar) -> Tensor:
     return AddScalar(scalar)(a)
 
 
@@ -36,27 +51,27 @@ class EWiseMul(TensorOp):
     def compute(self, a: NDArray, b: NDArray) -> NDArray:
         return a * b
 
-    def gradient(self, out_grad: Tensor, node: Tensor):
+    def gradient(self, out_grad: Tensor, node: Tensor) -> tuple[Tensor, Tensor]:
         lhs, rhs = node.inputs
         return out_grad * rhs, out_grad * lhs
 
 
-def multiply(a, b):
+def multiply(a: Tensor, b: Tensor) -> Tensor:
     return EWiseMul()(a, b)
 
 
 class MulScalar(TensorOp):
-    def __init__(self, scalar):
+    def __init__(self, scalar: Scalar) -> None:
         self.scalar = scalar
 
-    def compute(self, a: NDArray):
+    def compute(self, a: NDArray) -> NDArray:
         return a * self.scalar
 
-    def gradient(self, out_grad: Tensor, node: Tensor):
-        return (out_grad * self.scalar,)
+    def gradient(self, out_grad: Tensor, node: Tensor) -> Tensor:
+        return out_grad * self.scalar
 
 
-def mul_scalar(a, scalar):
+def mul_scalar(a: Tensor, scalar: Scalar) -> Tensor:
     return MulScalar(scalar)(a)
 
 
@@ -80,28 +95,28 @@ def power(a, b):
 class PowerScalar(TensorOp):
     """Op raise a tensor to an (integer) power."""
 
-    def __init__(self, scalar: int):
+    def __init__(self, scalar: Scalar) -> None:
         self.scalar = scalar
 
     def compute(self, a: NDArray) -> NDArray:
         return a**self.scalar
 
-    def gradient(self, out_grad: Tensor, node: Tensor):
+    def gradient(self, out_grad: Tensor, node: Tensor) -> Tensor:
         child = node.inputs[0]
         return self.scalar * out_grad * child ** (self.scalar - 1)
 
 
-def power_scalar(a, scalar):
+def power_scalar(a: Tensor, scalar: Scalar) -> Tensor:
     return PowerScalar(scalar)(a)
 
 
 class EWiseDiv(TensorOp):
     """Op to element-wise divide two nodes."""
 
-    def compute(self, a: NDArray, b: NDArray):
+    def compute(self, a: NDArray, b: NDArray) -> NDArray:
         return a / b
 
-    def gradient(self, out_grad: Tensor, node: Tensor):
+    def gradient(self, out_grad: Tensor, node: Tensor) -> tuple[Tensor, Tensor]:
         lhs, rhs = node.inputs
         return (
             divide(out_grad, rhs),
@@ -109,22 +124,31 @@ class EWiseDiv(TensorOp):
         )
 
 
-def divide(a, b):
+def divide(a: Tensor, b: Tensor) -> Tensor:
     return EWiseDiv()(a, b)
 
 
 class DivScalar(TensorOp):
-    def __init__(self, scalar):
-        self.scalar = scalar
+    """
+    Divide a tensor by a scalar.
+    """
 
-    def compute(self, a: NDArray):
+    def __init__(self, scalar: float) -> None:
+        if scalar == 0:
+            raise ValueError("Cannot divide by 0")
+        if isinstance(scalar, int):
+            scalar = float(scalar)
+
+        self.scalar = float(scalar)
+
+    def compute(self, a: NDArray) -> NDArray:
         return a / self.scalar
 
-    def gradient(self, out_grad, node):
-        return divide_scalar(out_grad, self.scalar)
+    def gradient(self, out_grad: Tensor, node: Tensor) -> Tensor:
+        return out_grad / self.scalar
 
 
-def divide_scalar(a, scalar):
+def divide_scalar(a: Tensor, scalar: float) -> Tensor:
     return DivScalar(scalar)(a)
 
 

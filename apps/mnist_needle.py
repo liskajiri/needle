@@ -20,16 +20,16 @@ def softmax_loss(Z: ndl.Tensor, y: ndl.Tensor) -> ndl.Tensor:
     of the log-sum-exp computation, but can just compute this directly.
 
     Args:
-        Z (ndl.Tensor[np.float32]): 2D Tensor of shape
+        Z (Tensor[np.float32]): 2D Tensor of shape
             (batch_size, num_classes), containing the logits predictions for
             each class.
-        y (ndl.Tensor[np.int8]): 2D Tensor of shape (batch_size, num_classes)
+        y (Tensor[np.int8]): 2D Tensor of shape (batch_size, num_classes)
             containing a 1 at the index of the true label of each example and
             zeros elsewhere.
 
     Returns
     -------
-        Average softmax loss over the sample. (ndl.Tensor[np.float32])
+        Average softmax loss over the sample. (Tensor[np.float32])
 
     """
     batch_size = Z.shape[0]
@@ -59,9 +59,9 @@ def nn_epoch(
         X (np.ndarray[np.float32]): 2D input array of size
             (num_examples x input_dim).
         y (np.ndarray[np.uint8]): 1D class label array of size (num_examples,)
-        W1 (ndl.Tensor[np.float32]): 2D array of first layer weights, of shape
+        W1 (Tensor[np.float32]): 2D array of first layer weights, of shape
             (input_dim, hidden_dim)
-        W2 (ndl.Tensor[np.float32]): 2D array of second layer weights, of shape
+        W2 (Tensor[np.float32]): 2D array of second layer weights, of shape
             (hidden_dim, num_classes)
         lr (float): step size (learning rate) for SGD
         batch (int): size of SGD mini-batch
@@ -69,8 +69,8 @@ def nn_epoch(
     Returns
     -------
         Tuple: (W1, W2)
-            W1: ndl.Tensor[np.float32]
-            W2: ndl.Tensor[np.float32]
+            W1: Tensor[np.float32]
+            W2: Tensor[np.float32]
 
     """
     n_batches = X.shape[0] // batch
