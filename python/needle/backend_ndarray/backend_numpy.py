@@ -1,4 +1,13 @@
+"""
+This file defies specific implementations of devices
+when using numpy as NDArray backend.
+"""
+
 import numpy as np
+from numpy import ndarray as NDArray
+
+from needle.backend_ndarray.device import AbstractBackend
+from needle.backend_ndarray.utils import DType, Scalar, Shape
 
 __device_name__ = "numpy"
 _datatype = np.float32
@@ -6,18 +15,90 @@ _datetype_size = np.dtype(_datatype).itemsize
 
 
 class Array:
-    def __init__(self, size):
+    def __init__(self, size) -> None:
         self.array = np.empty(size, dtype=np.float32)
 
     @property
-    def size(self):
+    def size(self) -> int:
         return self.array.size
 
 
-def to_numpy(a, shape, strides, offset):
+def to_numpy(a, shape, strides, offset) -> NDArray:
     return np.lib.stride_tricks.as_strided(
         a.array[offset:], shape, tuple([s * _datetype_size for s in strides])
     )
+
+
+class BackendDevice(AbstractBackend):
+    # note: numpy doesn't support types within standard random routines, and
+    # .astype("float32") does work if we're generating a singleton
+
+    def randn(self, *shape: Shape, dtype: DType = "float32") -> NDArray:
+        return np.random.randn(*shape)
+
+    def rand(self, *shape: Shape, dtype: DType = "float32") -> NDArray:
+        return np.random.rand(*shape)
+
+    def one_hot(self, n: int, i: int, dtype: DType) -> NDArray:
+        """Create a one-hot vector.
+
+        Args:
+            n (int): Length of the vector.
+            i (int): Index of the one-hot element.
+            dtype (_type_, optional):
+
+        Raises:
+            NotImplementedError: If the method is not implemented.
+
+        Returns:
+            NDArray: A one-hot vector.
+        """
+        return np.eye(n, dtype=dtype)[i]
+
+    def zeros(self, shape: Shape, dtype: DType) -> NDArray:
+        return np.zeros(shape, dtype=dtype)
+
+    def ones(self, shape: Shape, dtype: DType) -> NDArray:
+        return np.ones(shape, dtype=dtype)
+
+    def empty(self, shape: Shape, dtype: DType) -> NDArray:
+        return np.empty(shape, dtype=dtype)
+
+    def full(self, shape: Shape, fill_value: Scalar, dtype: DType) -> NDArray:
+        return np.full(shape, fill_value, dtype=dtype)
+
+
+### Devices ###
+
+
+def cpu() -> BackendDevice:
+    """Return cpu device."""
+    return BackendDevice("numpy", module=np)
+
+
+def default_device() -> BackendDevice:
+    return cpu()
+
+
+def all_devices() -> list[BackendDevice]:
+    """Return a list of all available devices."""
+    return [cpu()]
+
+
+class NumpyCUDADevice:
+    def __init__(self, name: str) -> None:
+        self.name = name
+
+    def enabled(self) -> bool:
+        return False
+
+
+def cuda():
+    # raise NotImplementedError("CUDA is not supported with numpy backend")
+    return NumpyCUDADevice("np_dummy-cuda")
+
+
+### API functions ###
 
 
 def from_numpy(a, out):
