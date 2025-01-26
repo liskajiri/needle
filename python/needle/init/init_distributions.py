@@ -1,19 +1,8 @@
 import math
 
-from needle.autograd import Tensor
 from needle.init.init_basic import rand, randn
 from needle.nn.activations import ReLU
-
-__all__ = [
-    "kaiming_normal",
-    "kaiming_uniform",
-    "xavier_normal",
-    "xavier_uniform",
-]
-
-
-Number = int | float
-DType = str
+from needle.tensor import Tensor
 
 
 def xavier_uniform(

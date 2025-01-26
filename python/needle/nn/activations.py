@@ -1,6 +1,6 @@
 from needle import ops
-from needle.autograd import Tensor
 from needle.nn.nn_basic import Module
+from needle.tensor import Tensor
 
 __all__ = ["ReLU"]
 

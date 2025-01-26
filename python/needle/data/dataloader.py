@@ -3,9 +3,9 @@ from typing import Self, cast
 
 import numpy as np
 
-from needle.autograd import Tensor
 from needle.backend_ndarray.ndarray import NDArray
 from needle.data.dataset import Dataset
+from needle.tensor import Tensor
 
 BatchType = tuple[Tensor, ...]
 

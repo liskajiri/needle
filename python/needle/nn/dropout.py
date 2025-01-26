@@ -4,8 +4,8 @@ which will cause type errors downstream.
 """
 
 from needle import init
-from needle.autograd import Tensor
 from needle.nn.nn_basic import Module
+from needle.tensor import Tensor
 
 
 class Dropout(Module):

@@ -1,5 +1,6 @@
 from needle import init
-from needle.autograd import Tensor, TensorOp, TensorTuple, TensorTupleOp, Value
+from needle.ops.op import TensorOp, TensorTupleOp
+from needle.tensor import Tensor, TensorTuple, Value
 
 
 class MakeTensorTuple(TensorTupleOp):

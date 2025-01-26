@@ -1,4 +1,5 @@
 from needle.ops import ops_logarithmic, ops_mathematic, ops_tuple
+from needle.ops.op import Op, TensorOp, TensorTupleOp
 from needle.ops.ops_logarithmic import LogSumExp, logsoftmax, logsumexp
 from needle.ops.ops_mathematic import (
     AddScalar,
@@ -59,11 +60,14 @@ __all__ = [
     "MatMul",
     "MulScalar",
     "Negate",
+    "Op",
     "PowerScalar",
     "ReLU",
     "Reshape",
     "SquareRoot",
     "Summation",
+    "TensorOp",
+    "TensorTupleOp",
     "Transpose",
     "add",
     "add_scalar",

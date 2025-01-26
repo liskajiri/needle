@@ -1,32 +1,18 @@
 from typing import TYPE_CHECKING
 
 import needle as ndl
-from needle.autograd import Tensor
-
-Shape = int | tuple[int, ...]
-DType = str
+from needle.backend_ndarray.utils import DType, Shape
+from needle.tensor import Tensor
 
 if TYPE_CHECKING:
-    from needle.autograd import Device
-
-__all__ = [
-    "constant",
-    "one_hot",
-    "ones",
-    "ones_like",
-    "rand",
-    "randb",
-    "randn",
-    "zeros",
-    "zeros_like",
-]
+    from needle.backend_ndarray.device import AbstractBackend as Device
 
 
 def rand(
     *shape: Shape,
     low: float = 0.0,
     high: float = 1.0,
-    device: Device | None = None,
+    device: "Device | None" = None,
     dtype: DType = "float32",
     requires_grad: bool = False,
 ) -> Tensor:
@@ -36,7 +22,7 @@ def rand(
         *shape: The shape of the output tensor
         low: Lower bound of uniform distribution
         high: Upper bound of uniform distribution
-        device: Device to store the tensor
+        device: "Device" to store the tensor
         dtype: Data type of the tensor
         requires_grad: Whether to track gradients
 
@@ -52,7 +38,7 @@ def randn(
     *shape: Shape,
     mean: float = 0.0,
     std: float = 1.0,
-    device: Device | None = None,
+    device: "Device | None" = None,
     dtype: DType = "float32",
     requires_grad: bool = False,
 ) -> Tensor:
@@ -62,7 +48,7 @@ def randn(
         *shape: The shape of the output tensor
         mean: Mean of normal distribution
         std: Standard deviation of normal distribution
-        device: Device to store the tensor
+        device: "Device" to store the tensor
         dtype: Data type of the tensor
         requires_grad: Whether to track gradients
 
@@ -77,7 +63,7 @@ def randn(
 def constant(
     *shape: Shape,
     c: float = 1.0,
-    device: Device | None = None,
+    device: "Device | None" = None,
     dtype: DType = "float32",
     requires_grad: bool = False,
 ) -> Tensor:
@@ -86,7 +72,7 @@ def constant(
     Args:
         *shape: The shape of the output tensor
         c: Constant value to fill tensor with
-        device: Device to store the tensor
+        device: "Device" to store the tensor
         dtype: Data type of the tensor
         requires_grad: Whether to track gradients
 
@@ -100,7 +86,7 @@ def constant(
 
 def ones(
     *shape: Shape,
-    device: Device | None = None,
+    device: "Device | None" = None,
     dtype: DType = "float32",
     requires_grad: bool = False,
 ) -> Tensor:
@@ -108,7 +94,7 @@ def ones(
 
     Args:
         *shape: The shape of the output tensor
-        device: Device to store the tensor
+        device: "Device" to store the tensor
         dtype: Data type of the tensor
         requires_grad: Whether to track gradients
 
@@ -122,7 +108,7 @@ def ones(
 
 def zeros(
     *shape: Shape,
-    device: Device | None = None,
+    device: "Device | None" = None,
     dtype: DType = "float32",
     requires_grad: bool = False,
 ) -> Tensor:
@@ -130,7 +116,7 @@ def zeros(
 
     Args:
         *shape: The shape of the output tensor
-        device: Device to store the tensor
+        device: "Device" to store the tensor
         dtype: Data type of the tensor
         requires_grad: Whether to track gradients
 
@@ -145,7 +131,7 @@ def zeros(
 def randb(
     *shape: Shape,
     p: float = 0.5,
-    device: Device | None = None,
+    device: "Device | None" = None,
     dtype: DType = "bool",
     requires_grad: bool = False,
 ) -> Tensor:
@@ -154,7 +140,7 @@ def randb(
     Args:
         *shape: The shape of the output tensor
         p: Probability of 1 in binary distribution
-        device: Device to store the tensor
+        device: "Device" to store the tensor
         dtype: Data type of the tensor
         requires_grad: Whether to track gradients
 
@@ -169,7 +155,7 @@ def randb(
 def one_hot(
     n: int,
     i: Tensor,
-    device: Device | None = None,
+    device: "Device | None" = None,
     dtype: DType = "float32",
     requires_grad: bool = False,
 ) -> Tensor:
@@ -178,7 +164,7 @@ def one_hot(
     Args:
         n: Number of classes
         i: Indices tensor
-        device: Device to store the tensor
+        device: "Device" to store the tensor
         dtype: Data type of the tensor
         requires_grad: Whether to track gradients
 
@@ -194,13 +180,13 @@ def one_hot(
 
 
 def zeros_like(
-    array: Tensor, *, device: Device | None = None, requires_grad: bool = False
+    array: Tensor, *, device: "Device | None" = None, requires_grad: bool = False
 ) -> Tensor:
     """Generate tensor of zeros with same shape as input.
 
     Args:
         array: Template tensor
-        device: Device to store the tensor
+        device: "Device" to store the tensor
         requires_grad: Whether to track gradients
 
     Returns:
@@ -213,13 +199,13 @@ def zeros_like(
 
 
 def ones_like(
-    array: Tensor, *, device: Device | None = None, requires_grad: bool = False
+    array: Tensor, *, device: "Device | None" = None, requires_grad: bool = False
 ) -> Tensor:
     """Generate tensor of ones with same shape as input.
 
     Args:
         array: Template tensor
-        device: Device to store the tensor
+        device: "Device" to store the tensor
         requires_grad: Whether to track gradients
 
     Returns:

@@ -2,9 +2,10 @@
 
 import logging
 
-from needle.autograd import NDArray, Tensor, TensorOp, TensorTupleOp
 from needle.backend_selection import array_api
+from needle.ops.op import TensorOp, TensorTupleOp
 from needle.ops.ops_tuple import make_tuple
+from needle.tensor import NDArray, Tensor
 
 logger = logging.getLogger(__name__)
 

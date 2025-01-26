@@ -1,6 +1,12 @@
-from needle.autograd import NDArray, Tensor, TensorOp, Value
-from needle.backend_selection import array_api
+from typing import TYPE_CHECKING
+
+from needle.backend_selection import NDArray, array_api
+from needle.ops.op import TensorOp
 from needle.ops.ops_mathematic import broadcast_to_new_axis, exp, summation
+from needle.tensor import Tensor
+
+if TYPE_CHECKING:
+    from needle.autograd.value import Value
 
 
 # TODO: not covered by current tests - Convert to 2024 edition
@@ -35,13 +41,13 @@ def logsoftmax(a):
 
 
 class LogSumExp(TensorOp):
-    def __init__(self, axes: tuple | None = None):
+    def __init__(self, axes: tuple | None = None) -> None:
         if isinstance(axes, int):
             self.axes = (axes,)
         else:
             self.axes = axes
 
-    def compute(self, Z: NDArray):
+    def compute(self, Z: NDArray) -> NDArray:
         """
         From the definition of LogSumExp:
         log(sum(exp(Z))) = log(exp(Z - max(Z)) * sum(exp(max(Z)))
@@ -53,7 +59,7 @@ class LogSumExp(TensorOp):
         log_sum_exp = array_api.log(array_api.sum(array_api.exp(Z), axis=self.axes))
         return log_sum_exp + array_api.reshape(max_Z, log_sum_exp.shape)
 
-    def gradient(self, out_grad: Tensor, node: Value):
+    def gradient(self, out_grad: Tensor, node: "Value"):
         # gradient of LogSumExp is softmax
         Z = node.inputs[0]
         max_Z = array_api.max(Z.cached_data, axis=self.axes, keepdims=True)
