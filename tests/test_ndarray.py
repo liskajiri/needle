@@ -1,3 +1,5 @@
+import math
+
 import numpy as np
 import pytest
 from needle import backend_ndarray as ndl
@@ -9,21 +11,13 @@ _DEVICES = [
     ),
 ]
 
-_ALL_DEVICES = [
-    ndl.cpu(),
-    pytest.param(
-        ndl.cuda(), marks=pytest.mark.skipif(not ndl.cuda().enabled(), reason="No GPU")
-    ),
-    ndl.cpu_numpy(),
-]
 
-
-def compare_strides(a_np, a_nd):
+def compare_strides(a_np, a_nd) -> None:
     size = a_np.itemsize
     assert tuple([x // size for x in a_np.strides]) == a_nd.strides
 
 
-def check_same_memory(original, view):
+def check_same_memory(original, view) -> None:
     assert original._handle.ptr() == view._handle.ptr()
 
 
@@ -396,9 +390,115 @@ def test_reshape(device, params):
     A = ndl.array(_A, device=device)
     lhs = _A.reshape(*new_shape)
     rhs = A.reshape(new_shape)
+    np.testing.assert_allclose(rhs.numpy(), lhs, atol=1e-5, rtol=1e-5)
+    compare_strides(lhs, rhs)
+    check_same_memory(A, rhs)
+
+
+@pytest.mark.parametrize(
+    "params",
+    [
+        # Reshape with -1 inference
+        {"shape": (2, 3, 4), "new_shape": (6, -1), "expected_shape": (6, 4)},
+        {"shape": (24,), "new_shape": (-1, 6), "expected_shape": (4, 6)},
+        {"shape": (8, 3), "new_shape": (2, -1, 3), "expected_shape": (2, 4, 3)},
+        {"shape": (2, 3, 4), "new_shape": (-1,), "expected_shape": (24,)},  # Flatten
+        {"shape": (4, 1, 3), "new_shape": (-1, 3), "expected_shape": (4, 3)},
+        # Edge cases
+        {"shape": (5, 1, 3), "new_shape": (5, -1), "expected_shape": (5, 3)},
+        {"shape": (1, 1, 1), "new_shape": (-1, 1), "expected_shape": (1, 1)},
+    ],
+)
+@pytest.mark.parametrize("device", _DEVICES, ids=["cpu", "cuda"])
+def test_reshape_with_inference(device, params):
+    shape, new_shape = params["shape"], params["new_shape"]
+    expected_shape = params["expected_shape"]
+
+    _A = np.arange(math.prod(shape) or 0).reshape(shape)
+    A = ndl.array(_A, device=device)
+
+    lhs = _A.reshape(expected_shape)
+    rhs = A.reshape(new_shape)
+
+    np.testing.assert_allclose(lhs, rhs.numpy(), atol=1e-5, rtol=1e-5)
+
+    compare_strides(lhs, rhs)
+    check_same_memory(A, rhs)
+
+
+@pytest.mark.parametrize(
+    "params",
+    [
+        {"shape": (4, 6), "new_shape": (5, 5)},  # Total size mismatch
+        {"shape": (2, 3, 4), "new_shape": (2, -1, -1)},  # Multiple -1s
+        {"shape": (24,), "new_shape": (-1, 7)},  # Size not divisible evenly
+    ],
+)
+@pytest.mark.parametrize("device", _DEVICES, ids=["cpu", "cuda"])
+def test_reshape_errors(device, params):
+    shape, new_shape = params["shape"], params["new_shape"]
+    _A = np.random.randn(*shape)
+    A = ndl.array(_A, device=device)
+
+    with pytest.raises((ValueError, AssertionError)):
+        A.reshape(new_shape)
+
+
+@pytest.mark.parametrize(
+    "params",
+    [
+        # Add new dimensions
+        {"shape": (3,), "broadcast_shape": (2, 3)},
+        {"shape": (5,), "broadcast_shape": (4, 5)},
+        # Expand singleton dimensions
+        {"shape": (1, 3), "broadcast_shape": (2, 3)},
+        {"shape": (3, 1), "broadcast_shape": (3, 4)},
+        {"shape": (1, 1, 3), "broadcast_shape": (2, 3, 3)},
+        # Identity cases
+        {"shape": (2, 3), "broadcast_shape": (2, 3)},
+        # Edge cases
+        {"shape": (1,), "broadcast_shape": (5,)},
+        {"shape": (1, 1), "broadcast_shape": (4, 4)},
+    ],
+)
+@pytest.mark.parametrize("device", _DEVICES, ids=["cpu", "cuda"])
+def test_broadcast_to_2(device, params):
+    shape = params["shape"]
+    to_shape = params["broadcast_shape"]
+
+    _A = np.random.randn(*shape)
+    A = ndl.array(_A, device=device)
+
+    lhs = np.broadcast_to(_A, shape=to_shape)
+    rhs = A.broadcast_to(to_shape)
     np.testing.assert_allclose(lhs, rhs.numpy(), atol=1e-5, rtol=1e-5)
     compare_strides(lhs, rhs)
     check_same_memory(A, rhs)
+
+
+@pytest.mark.parametrize(
+    "params",
+    [
+        # Incompatible shapes
+        {"shape": (3,), "broadcast_shape": (2, 2)},
+        {"shape": (2, 3), "broadcast_shape": (2, 2)},
+        {"shape": (3, 2), "broadcast_shape": (2, 2)},
+        # Shrinking non-1 dimensions
+        {"shape": (2, 3), "broadcast_shape": (1, 3)},
+        # Wrong number of dimensions
+        {"shape": (2, 2, 2), "broadcast_shape": (2, 2)},
+    ],
+)
+@pytest.mark.parametrize("device", _DEVICES, ids=["cpu", "cuda"])
+def test_broadcast_to_errors(device, params):
+    shape = params["shape"]
+    broadcast_shape = params["broadcast_shape"]
+
+    _A = np.random.randn(*shape)
+    A = ndl.array(_A, device=device)
+
+    with pytest.raises((ValueError, AssertionError)):
+        A.broadcast_to(broadcast_shape)
 
 
 getitem_params = [
@@ -433,6 +533,7 @@ def test_broadcast_to(device, params):
     from_shape, to_shape = params["from_shape"], params["to_shape"]
     _A = np.random.randn(*from_shape)
     A = ndl.array(_A, device=device)
+
     lhs = np.broadcast_to(_A, shape=to_shape)
     rhs = A.broadcast_to(to_shape)
     np.testing.assert_allclose(lhs, rhs.numpy(), atol=1e-5, rtol=1e-5)

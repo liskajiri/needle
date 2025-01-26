@@ -1,22 +1,36 @@
+from typing import TYPE_CHECKING, TypedDict
+
 from needle import init
-from needle.autograd import Tensor
+from needle.backend_ndarray.backend_numpy import default_device
+from needle.backend_ndarray.device import AbstractBackend
 from needle.nn.nn_basic import Module, Parameter
 from needle.ops.ops_mathematic import broadcast_to
+from needle.tensor import Tensor
+
+if TYPE_CHECKING:
+    from needle.backend_ndarray.utils import DType
+
+
+class Config(TypedDict):
+    device: AbstractBackend
+    dtype: "DType"
+    requires_grad: bool
 
 
 class Linear(Module):
     def __init__(
-        self, in_features, out_features, bias=True, device=None, dtype="float32"
+        self,
+        in_features: int,
+        out_features: int,
+        bias: bool = True,
+        device: AbstractBackend = default_device(),
+        dtype: "DType" = "float32",
     ) -> None:
         super().__init__()
         self.in_features = in_features
         self.out_features = out_features
 
-        config = {
-            "device": device,
-            "dtype": dtype,
-            "requires_grad": True,
-        }
+        config = Config(device=device, dtype=dtype, requires_grad=True)
 
         self.weight = Parameter(
             init.kaiming_uniform(

@@ -1,4 +1,3 @@
-from pathlib import Path
 from typing import NewType
 
 import needle as ndl
@@ -105,7 +104,6 @@ def train_mnist(
     lr: float = 0.001,
     weight_decay: float = 0.001,
     hidden_dim: int = 100,
-    data_dir: Path = Path("data"),
 ) -> tuple[Accuracy, Loss, Accuracy, Loss]:  # type: ignore
     np.random.seed(4)
 

@@ -6,8 +6,8 @@ which will cause type errors downstream.
 from numpy import float32
 
 from needle import init, ops
-from needle.autograd import Tensor
 from needle.nn.nn_basic import Module
+from needle.tensor import Tensor
 
 
 class SoftmaxLoss(Module):

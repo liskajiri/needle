@@ -1,5 +1,5 @@
-from . import ndarray
-from .ndarray import (
+from needle.backend_ndarray import ndarray
+from needle.backend_ndarray.ndarray import (
     BackendDevice,
     NDArray,
     all_devices,
@@ -12,6 +12,7 @@ from .ndarray import (
     empty,
     exp,
     flip,
+    from_numpy,
     full,
     log,
     max,
@@ -23,10 +24,14 @@ from .ndarray import (
     tanh,
     transpose,
 )
+from needle.backend_ndarray.utils import DType, Scalar, Shape
 
 __all__ = [
     "BackendDevice",
+    "DType",
     "NDArray",
+    "Scalar",
+    "Shape",
     "all_devices",
     "array",
     "broadcast_to",
@@ -37,6 +42,7 @@ __all__ = [
     "empty",
     "exp",
     "flip",
+    "from_numpy",
     "full",
     "log",
     "max",

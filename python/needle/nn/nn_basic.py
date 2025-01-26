@@ -1,7 +1,7 @@
 """The module."""
 
 from needle import ops
-from needle.autograd import Tensor
+from needle.tensor import Tensor
 
 __all__ = [
     "Flatten",

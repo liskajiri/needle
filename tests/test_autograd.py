@@ -1,3 +1,5 @@
+import random
+
 import needle as ndl
 import numdifftools as nd
 import numpy as np
@@ -346,7 +348,7 @@ def test_transpose_forward():
 ### TESTS for backward passes
 
 
-def gradient_check(f, *args, tol=1e-6, backward=False, **kwargs):
+def gradient_check(f, *args, tol: float = 1e-6, backward: bool = False, **kwargs):
     eps = 1e-4
     numerical_grads = [np.zeros(a.shape) for a in args]
     for i in range(len(args)):
@@ -389,13 +391,15 @@ def test_divide_scalar_backward():
     gradient_check(
         ndl.ops.divide_scalar,
         ndl.Tensor(np.random.randn(5, 4)),
-        scalar=np.random.randn(1),
+        scalar=random.random(),
     )
 
 
 def test_matmul_simple_backward():
     gradient_check(
-        ndl.matmul, ndl.Tensor(np.random.randn(5, 4)), ndl.Tensor(np.random.randn(4, 5))
+        ndl.matmul,
+        ndl.Tensor(np.random.randn(5, 4)),
+        ndl.Tensor(np.random.randn(4, 5)),
     )
 
 
@@ -456,19 +460,27 @@ def test_broadcast_to_backward():
 
 def test_broadcast_to_backward_my():
     gradient_check(
-        ndl.broadcast_to, ndl.Tensor(np.random.randn(3, 1, 5)), shape=(2, 3, 4, 5)
+        ndl.broadcast_to,
+        ndl.Tensor(np.random.randn(2, 3, 1, 5)),
+        shape=(2, 3, 4, 5),
     )
 
 
 def test_summation_backward():
     gradient_check(
-        ndl.ops.ops_mathematic.summation, ndl.Tensor(np.random.randn(5, 4)), axes=(1,)
+        ndl.ops.ops_mathematic.summation,
+        ndl.Tensor(np.random.randn(5, 4)),
+        axes=(1,),
     )
     gradient_check(
-        ndl.ops.ops_mathematic.summation, ndl.Tensor(np.random.randn(5, 4)), axes=(0,)
+        ndl.ops.ops_mathematic.summation,
+        ndl.Tensor(np.random.randn(5, 4)),
+        axes=(0,),
     )
     gradient_check(
-        ndl.ops.ops_mathematic.summation, ndl.Tensor(np.random.randn(5, 4)), axes=(0, 1)
+        ndl.ops.ops_mathematic.summation,
+        ndl.Tensor(np.random.randn(5, 4)),
+        axes=(0, 1),
     )
     gradient_check(
         ndl.ops.ops_mathematic.summation,
