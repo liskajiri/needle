@@ -381,7 +381,7 @@ def mlp_resnet_num_params(dim, hidden_dim, num_blocks, num_classes, norm):
 
 def mlp_resnet_forward(dim, hidden_dim, num_blocks, num_classes, norm, drop_prob):
     np.random.seed(4)
-    input_tensor = ndl.Tensor(np.random.randn(2, dim), dtype=np.float32)
+    input_tensor = ndl.Tensor(np.random.randn(2, dim), dtype="float32")
     output_tensor = MLPResNet(
         dim, hidden_dim, num_blocks, num_classes, norm, drop_prob
     )(input_tensor)

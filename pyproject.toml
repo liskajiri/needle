@@ -1,7 +1,13 @@
 [tool.pytest.ini_options]
 pythonpath = "python/needle"
 testpaths = "tests/"
-addopts = "-ra  --strict-markers -n 8 -m 'not benchmark'"
+addopts = [
+    "-ras -n 8",
+    "--strict-markers",
+    "--strict-config",
+    "-m 'not benchmark'",
+    # "--import-mode=importlib",
+]
 markers = [
     "slow: marks tests as slow",
     "proptest: marks tests as property tests",

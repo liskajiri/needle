@@ -1,9 +1,8 @@
 import pickle
 from pathlib import Path
 
-import numpy as np
-
 from needle.backend_ndarray.ndarray import NDArray
+from needle.backend_selection import array_api
 from needle.data.dataset import Dataset
 
 CIFARPath = Path("data/cifar-10/cifar-10-batches-py")
@@ -32,20 +31,24 @@ class CIFAR10Dataset(Dataset):
         super().__init__(transforms)
         self.train = train
 
+        # X = array_api.empty((1, *CIFAR10Dataset.IMAGE_SHAPE))
         X = []
         Y = []
 
-        for file in base_folder.iterdir():
+        new_shape = (-1, *CIFAR10Dataset.IMAGE_SHAPE)
+        for i, file in enumerate(base_folder.iterdir()):
             if (file.name.startswith("data_batch") and train) or (
                 file.name == "test_batch" and not train
             ):
                 x, y = self._unpickle(file)
-                X.extend(x.reshape(-1, *CIFAR10Dataset.IMAGE_SHAPE))
+                # TODO: Will work once reshape is fixed
+                x = array_api.array(x).reshape(new_shape)
+                X.append(x)
                 Y.extend(y)
-        self.X = np.stack(X)
-        self.Y = np.array(Y)
+        self.X = array_api.stack(X)
+        self.Y = array_api.array(Y)
 
-    def __getitem__(self, index: int | np.ndarray) -> tuple[NDArray, LabelType]:
+    def __getitem__(self, index: int | tuple | NDArray) -> tuple[NDArray, NDArray]:
         """
         Returns the image, label at given index
         Image should be of shape (3, 32, 32)
@@ -53,12 +56,23 @@ class CIFAR10Dataset(Dataset):
         x = self.apply_transforms(self.X[index])
         y = self.Y[index]
 
-        expected_shape = (
-            (index.size, *CIFAR10Dataset.IMAGE_SHAPE)
-            if isinstance(index, np.ndarray)
-            else CIFAR10Dataset.IMAGE_SHAPE
-        )
-        assert x.shape == expected_shape, f"Expected shape (3, 32, 32), got {x.shape}"
+        if isinstance(index, int):
+            expected_shape = CIFAR10Dataset.IMAGE_SHAPE
+        # elif isinstance(index, tuple):
+        else:
+            size = len(index)
+            if size == 1:
+                expected_shape = CIFAR10Dataset.IMAGE_SHAPE
+            else:
+                expected_shape = (size, *CIFAR10Dataset.IMAGE_SHAPE)
+        # expected_shape = (
+        #     (index.size, *CIFAR10Dataset.IMAGE_SHAPE)
+        #     if isinstance(index, NDArray)
+        #     else CIFAR10Dataset.IMAGE_SHAPE
+        # )
+        assert (
+            x.shape == expected_shape
+        ), f"Expected shape {expected_shape}, got {x.shape}"
 
         return x, y
 
@@ -69,7 +83,7 @@ class CIFAR10Dataset(Dataset):
         return self.Y.shape[0]
 
     @staticmethod
-    def _unpickle(file: Path) -> tuple[np.ndarray, list[int]]:
+    def _unpickle(file: Path) -> tuple[NDArray, list[int]]:
         file_data = Path.read_bytes(file)
         unpickled = pickle.loads(file_data, encoding="bytes")
         return unpickled[b"data"], unpickled[b"labels"]

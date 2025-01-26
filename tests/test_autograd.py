@@ -397,7 +397,9 @@ def test_divide_scalar_backward():
 
 def test_matmul_simple_backward():
     gradient_check(
-        ndl.matmul, ndl.Tensor(np.random.randn(5, 4)), ndl.Tensor(np.random.randn(4, 5))
+        ndl.matmul,
+        ndl.Tensor(np.random.randn(5, 4)),
+        ndl.Tensor(np.random.randn(4, 5)),
     )
 
 
@@ -458,19 +460,27 @@ def test_broadcast_to_backward():
 
 def test_broadcast_to_backward_my():
     gradient_check(
-        ndl.broadcast_to, ndl.Tensor(np.random.randn(2, 3, 1, 5)), shape=(2, 3, 4, 5)
+        ndl.broadcast_to,
+        ndl.Tensor(np.random.randn(2, 3, 1, 5)),
+        shape=(2, 3, 4, 5),
     )
 
 
 def test_summation_backward():
     gradient_check(
-        ndl.ops.ops_mathematic.summation, ndl.Tensor(np.random.randn(5, 4)), axes=(1,)
+        ndl.ops.ops_mathematic.summation,
+        ndl.Tensor(np.random.randn(5, 4)),
+        axes=(1,),
     )
     gradient_check(
-        ndl.ops.ops_mathematic.summation, ndl.Tensor(np.random.randn(5, 4)), axes=(0,)
+        ndl.ops.ops_mathematic.summation,
+        ndl.Tensor(np.random.randn(5, 4)),
+        axes=(0,),
     )
     gradient_check(
-        ndl.ops.ops_mathematic.summation, ndl.Tensor(np.random.randn(5, 4)), axes=(0, 1)
+        ndl.ops.ops_mathematic.summation,
+        ndl.Tensor(np.random.randn(5, 4)),
+        axes=(0, 1),
     )
     gradient_check(
         ndl.ops.ops_mathematic.summation,

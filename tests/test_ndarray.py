@@ -11,21 +11,13 @@ _DEVICES = [
     ),
 ]
 
-_ALL_DEVICES = [
-    ndl.cpu(),
-    pytest.param(
-        ndl.cuda(), marks=pytest.mark.skipif(not ndl.cuda().enabled(), reason="No GPU")
-    ),
-    ndl.cpu_numpy(),
-]
 
-
-def compare_strides(a_np, a_nd):
+def compare_strides(a_np, a_nd) -> None:
     size = a_np.itemsize
     assert tuple([x // size for x in a_np.strides]) == a_nd.strides
 
 
-def check_same_memory(original, view):
+def check_same_memory(original, view) -> None:
     assert original._handle.ptr() == view._handle.ptr()
 
 

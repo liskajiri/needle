@@ -83,12 +83,14 @@ export void ScalarDiv(const AlignedArray &a, const scalar_t scalar,
 
 export void ScalarPower(const AlignedArray &a, const scalar_t scalar,
                         AlignedArray *out) {
-    ScalarOp(a, scalar, out, [](scalar_t x, scalar_t y) { return std::pow(x, y); });
+    ScalarOp(a, scalar, out,
+             [](scalar_t x, scalar_t y) { return std::pow(x, y); });
 }
 
 export void ScalarMaximum(const AlignedArray &a, const scalar_t scalar,
                           AlignedArray *out) {
-    ScalarOp(a, scalar, out, [](scalar_t x, scalar_t y) { return std::max(x, y); });
+    ScalarOp(a, scalar, out,
+             [](scalar_t x, scalar_t y) { return std::max(x, y); });
 }
 
 export void ScalarEq(const AlignedArray &a, const scalar_t scalar,

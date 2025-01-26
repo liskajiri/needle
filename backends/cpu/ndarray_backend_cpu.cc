@@ -4,6 +4,7 @@ module;
 #include <nanobind/ndarray.h>
 
 #include <algorithm>
+#include <memory>
 
 import ndarray;
 import elementwise;
