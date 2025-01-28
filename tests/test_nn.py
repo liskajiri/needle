@@ -6,6 +6,7 @@ from needle.data.datasets.mnist import MNISTPaths
 from resnet_mnist import MLPResNet, ResidualBlock, epoch, train_mnist
 
 """Deterministically generate a matrix"""
+# TODO: rework this whole files
 
 
 # TODO: replace with hypothesis tests
