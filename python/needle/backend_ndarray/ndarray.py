@@ -802,51 +802,52 @@ class NDArray:
             )
         return out
 
-    # TODO: Reductions over multiple axes
     ### Reductions, i.e., sum/max over all element or over given axis
     def reduce_view_out(
         self, axis: tuple | None, keepdims: bool = False
     ) -> tuple[NDArray, NDArray]:
-        """
-        Return a view to the array set up for reduction functions and output array.
-        TODO: Doc, doctest
+        """Return a view to the array set up for reduction functions and output array.
+
+        Args:
+            axis: Axes to reduce over. Either None to reduce all axes, or tuple of axes.
+            keepdims: If true, reduced axes are kept with size 1
+
+        Returns:
+            tuple of (view, out) where:
+            - view is arranged for reduction
+            - out is the output array
         """
         if isinstance(axis, tuple) and not axis:
-            msg = "Empty axis in reduce"
-            raise ValueError(msg)
+            raise ValueError("Empty axis in reduce")
 
         if axis is None:
-            # view: (1, 1, ..., N)
-            # out: (1, )
-            view = self.compact().reshape(
-                (1,) * (self.ndim - 1) + (math.prod(self.shape),)
-            )
+            view = self.compact().reshape((1,) * (self.ndim - 1) + (self.size,))
             out = NDArray.make((1,), device=self.device)
+            return view, out
 
+        if isinstance(axis, int):
+            axis = (axis,)
+        elif isinstance(axis, list):
+            axis = tuple(axis)
+
+        # handle negative axes - probably not needed
+        axis = tuple(sorted([ax if ax >= 0 else self.ndim + ax for ax in axis]))
+
+        # move reduction axes to the end
+        other_axes = tuple(i for i in range(self.ndim) if i not in axis)
+        view = self.permute(other_axes + axis)
+
+        if keepdims:
+            new_shape = tuple(1 if i in axis else s for i, s in enumerate(self.shape))
         else:
-            if isinstance(axis, tuple | list):
-                assert (
-                    len(axis) == 1
-                ), f"Only support reduction over a single axis, got {axis}"
-                # axis = axis[0]
+            new_shape = tuple(s for i, s in enumerate(self.shape) if i not in axis)
 
-            # view: (x, y, z, ...) without axis
-            # out: same, or 1 instead of axis if keepdims
-            print(f"Reducing {self.shape} with axis {axis}")
+        out = NDArray.make(new_shape, device=self.device)
 
-            view = self.permute(
-                (*tuple([a for a in range(self.ndim) if a != axis]), axis)
-            )
-
-            if keepdims:
-                new_shape = tuple(
-                    [1 if i == axis else s for i, s in enumerate(self.shape)]
-                )
-            else:
-                new_shape = tuple([s for i, s in enumerate(self.shape) if i != axis])
-
-            print(f"Keep dims; {keepdims} | new_shape: {new_shape}")
-            out = NDArray.make(new_shape, device=self.device)
+        # reshape reduction axes to a single axis
+        reduce_size = math.prod(self.shape[i] for i in axis)
+        view_shape = view.shape[: -len(axis)] + (reduce_size,)
+        view = view.compact().reshape(view_shape)
 
         return view, out
 
