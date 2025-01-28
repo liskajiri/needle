@@ -704,19 +704,54 @@ class NDArray:
 
     ### Matrix multiplication
     def __matmul__(self, other: NDArray) -> NDArray:
-        """Matrix multiplication of two arrays.  This requires that both arrays
-        be 2D (i.e., we don't handle batch matrix multiplication), and that the
-        sizes match up properly for matrix multiplication.
+        """
+        Matrix multiplication of two arrays.
+        This requires that both arrays be 2D
+        (i.e., we don't handle batch matrix multiplication),
+        and that the sizes match up properly for matrix multiplication.
         In the case of the CPU backend, you will implement an efficient "tiled"
         version of matrix multiplication for the case when all dimensions of
-        the array are divisible by self.device.__tile_size__.  In this case,
-        the code below will re-stride and compact the matrix into tiled form,
-        and then pass to the relevant CPU backend.  For the CPU version we will
-        just fall back to the naive CPU implementation if the array shape is not
-        a multiple of the tile size
+        the array are divisible by self.device.__tile_size__.
+        In this case, the code below will re-stride and compact the matrix
+        into tiled form, and then pass to the relevant CPU backend.
+        For the CPU version we will just fall back to the naive CPU implementation
+        if the array shape is not a multiple of the tile size.
         The GPU (and numpy) versions don't have any tiled version (or rather,
         the GPU version will just work natively by tiling any input size).
         """
+        # TODO: tests for batched matmul
+        # TODO: efficiency : probably crazy inefficient
+        if self.ndim > 2 or other.ndim > 2:
+            # Broadcast batch dimensions
+            batch_shape = tuple(broadcast_shapes(self.shape[:-2], other.shape[:-2]))
+            m, n = self.shape[-2], other.shape[-1]
+            assert self.shape[-1] == other.shape[-2], f"""
+            Inner batch-matmul dimensions must match,
+            got {self.shape[-1]} != {other.shape[-2]}
+            """
+            k = self.shape[-1]
+
+            # Reshape to 3D
+            a_new_shape = (*batch_shape, m, k)
+            b_new_shape = (*batch_shape, k, n)
+            a = self.broadcast_to(a_new_shape).compact()
+            b = other.broadcast_to(b_new_shape).compact()
+
+            # Flatten batch dims
+            batch_size = math.prod(batch_shape)
+            a = a.reshape((batch_size, m, k))
+            b = b.reshape((batch_size, k, n))
+
+            # Create output
+            out = NDArray.make((batch_size, m, n), device=self.device)
+            for i in range(batch_size):
+                a_i = a[i].compact().reshape((m, k))
+                b_i = b[i].compact().reshape((k, n))
+                out[i] = a_i @ b_i
+
+            # Restore batch dimensions
+            return out.reshape((*batch_shape, m, n))
+
         assert (
             self.ndim == 2
         ), f"Matrix multiplication requires 2D arrays, got {self.ndim} in {self.shape}"
@@ -843,6 +878,42 @@ class NDArray:
         """
         # TODO:
         raise NotImplementedError
+
+
+# TODO: really needed?
+def broadcast_shapes(*shapes: tuple) -> tuple:
+    """
+    Return broadcasted shape for multiple input shapes.
+
+    Args:
+        *shapes: one or more shapes as tuples
+    Returns:
+        tuple: broadcast compatible shape
+    Raises:
+        ValueError: If shapes cannot be broadcast together
+    """
+    # If only one shape provided, return it
+    if len(shapes) == 1:
+        return shapes[0]
+
+    from builtins import max as pymax
+
+    # Convert all shapes to lists and left-pad shorter ones with 1s
+    max_dims = pymax([len(shape) for shape in shapes])
+    padded = [[1] * (max_dims - len(shape)) + list(shape) for shape in shapes]
+
+    # Compute output shape according to broadcasting rules
+    result = []
+    for dims in zip(*padded):
+        non_ones = set(d for d in dims if d != 1)
+        if len(non_ones) > 1:
+            if len(set(non_ones)) > 1:
+                raise ValueError(f"Incompatible shapes for broadcasting: {shapes}")
+            result.append(non_ones.pop())
+        else:
+            result.append(pymax(dims))
+
+    return tuple(result)
 
 
 def from_numpy(a):
