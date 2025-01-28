@@ -333,6 +333,22 @@ class NDArray:
             as the original NDArray.
 
         """
+        # TODO: simplify this
+        if (
+            len(self.shape) == 1
+            and len(new_shape) == 2
+            and self.shape[0] == new_shape[0]
+            and new_shape[1] == 1
+        ):
+            return NDArray.make(
+                new_shape,
+                device=self.device,
+                handle=self._handle,
+                strides=(self.strides[0], 0),
+            )
+
+        if self.shape == new_shape:
+            return self
         if not self.is_compact():
             raise ValueError("Cannot reshape array that is not compact")
 
