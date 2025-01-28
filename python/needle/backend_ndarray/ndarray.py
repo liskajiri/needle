@@ -593,17 +593,18 @@ class NDArray:
         Run either an element-wise or scalar version of a function,
         depending on whether "other" is an NDArray or scalar.
         """
-        out = NDArray.make(self.shape, device=self.device)
         if isinstance(other, NDArray):
-            assert self.shape == other.shape, f"""
-                operation needs two equal-sized arrays,
-                got {self.shape} and {other.shape}
-                """
+            # if (1, ), treat it like a scalar
+            if other.shape == (1,):
+                other = other.broadcast_to(self.shape)
+            elif self.shape == (1,):
+                self = self.broadcast_to(other.shape)
+
+            out = NDArray.make(self.shape, device=self.device)
+            other = other.broadcast_to(self.shape)
             ewise_func(self.compact()._handle, other.compact()._handle, out._handle)
         elif isinstance(other, float | int):
-            scalar_func(self.compact()._handle, other, out._handle)
-        else:
-            logger.error(f"Unsupported type {type(other)} for ewise_or_scalar")
+            out = NDArray.make(self.shape, device=self.device)
             scalar_func(self.compact()._handle, other, out._handle)
         return out
 
