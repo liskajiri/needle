@@ -2,10 +2,11 @@
 
 import logging
 
-from needle.backend_selection import array_api
+from needle.backend_selection import NDArray, array_api
 from needle.ops.op import TensorOp, TensorTupleOp
 from needle.ops.ops_tuple import make_tuple
-from needle.tensor import NDArray, Tensor
+from needle.tensor import Tensor
+from needle.typing.utils import Shape
 
 logger = logging.getLogger(__name__)
 
@@ -176,28 +177,28 @@ def transpose(a, axes=None):
 
 
 class Reshape(TensorOp):
-    def __init__(self, shape):
+    def __init__(self, shape: Shape) -> None:
         self.shape = shape
 
-    def compute(self, a):
+    def compute(self, a: NDArray) -> NDArray:
         return array_api.reshape(a, self.shape)
 
-    def gradient(self, out_grad: Tensor, node: Tensor):
+    def gradient(self, out_grad: Tensor, node: Tensor) -> Tensor:
         return reshape(out_grad, node.inputs[0].shape)
 
 
-def reshape(a, shape):
+def reshape(a: Tensor, shape: Shape) -> Tensor:
     return Reshape(shape)(a)
 
 
 class BroadcastTo(TensorOp):
-    def __init__(self, shape):
+    def __init__(self, shape: Shape) -> None:
         self.shape = shape
 
-    def compute(self, a: NDArray):
+    def compute(self, a: NDArray) -> NDArray:
         return array_api.broadcast_to(a, self.shape)
 
-    def gradient(self, out_grad: Tensor, node: Tensor):
+    def gradient(self, out_grad: Tensor, node: Tensor) -> Tensor:
         # [7, 7, 7] -> [1, 7]
         in_shape = node.inputs[0].shape
 
@@ -215,52 +216,59 @@ class BroadcastTo(TensorOp):
         return out_grad
 
 
-def broadcast_to(a, shape):
+def broadcast_to(a: Tensor, shape: Shape) -> Tensor:
     return BroadcastTo(shape)(a)
 
 
 class Summation(TensorOp):
-    def __init__(self, axes: tuple | None = None, keepdims: bool = False):
+    def __init__(self, axes: tuple | None = None, keepdims: bool = False) -> None:
         if isinstance(axes, int):
             self.axes = (axes,)
         else:
             self.axes = axes
         self.keepdims = keepdims
 
-    def compute(self, a):
+    def compute(self, a: NDArray) -> NDArray:
         return array_api.sum(a, axis=self.axes, keepdims=self.keepdims)
 
-    def gradient(self, out_grad: Tensor, node: Tensor):
+    def gradient(self, out_grad: Tensor, node: Tensor) -> Tensor:
         # Function from (m, ) -> (m, 1) -> (m, n)
         target_shape = node.inputs[0].shape
         if self.axes is None:
             return broadcast_to(out_grad, target_shape)
         # adds new axes: (m, ) -> (m, 1)
         return broadcast_to_new_axis(out_grad, self.axes, target_shape)
+        # for axis in sorted(self.axes):
+        #     out_grad = reshape(
+        #         out_grad,
+        #         list(out_grad.shape[:axis]) + [1] + list(out_grad.shape[axis:]),
+        #     )
+        # return broadcast_to(out_grad, target_shape)
 
 
-def summation(a, axes=None, keepdims=False):
+def summation(a: Tensor, axes: tuple | None = None, keepdims: bool = False) -> Tensor:
     return Summation(axes, keepdims)(a)
 
 
 class MatMul(TensorOp):
-    def compute(self, a, b):
+    def compute(self, a: NDArray, b: NDArray) -> NDArray:
         return a @ b
 
-    def gradient(self, out_grad: Tensor, node: Tensor):
+    def gradient(self, out_grad: Tensor, node: Tensor) -> tuple[Tensor, Tensor]:
         lhs, rhs = node.inputs
         grad_lhs = matmul(out_grad, rhs.T)
         grad_rhs = matmul(lhs.T, out_grad)
-        if grad_lhs.shape != lhs.shape:
+        # Broadcasting and extra dimensions
+        if len(grad_lhs.shape) > len(lhs.shape):
             n_axes = grad_lhs.ndim - lhs.ndim
             grad_lhs = summation(grad_lhs, tuple(range(n_axes)))
-        if grad_rhs.shape != rhs.shape:
+        if len(grad_rhs.shape) > len(rhs.shape):
             n_axes = grad_rhs.ndim - rhs.ndim
             grad_rhs = summation(grad_rhs, tuple(range(n_axes)))
         return grad_lhs, grad_rhs
 
 
-def matmul(a, b):
+def matmul(a: Tensor, b: Tensor) -> Tensor:
     return MatMul()(a, b)
 
 
@@ -348,7 +356,7 @@ def tanh(a):
 
 
 class Stack(TensorOp):
-    def __init__(self, axis: int):
+    def __init__(self, axis: int) -> None:
         """
         Concatenates a sequence of arrays along a new dimension.
         Parameters:
@@ -360,16 +368,16 @@ class Stack(TensorOp):
     def compute(self, args: tuple[NDArray]) -> NDArray:
         return array_api.stack(args, self.axis)
 
-    def gradient(self, out_grad, node):
+    def gradient(self, out_grad: Tensor, node: Tensor) -> Tensor:
         return Split(self.axis)(out_grad)
 
 
-def stack(args, axis):
+def stack(args: list[Tensor], axis: int) -> Tensor:
     return Stack(axis)(make_tuple(*args))
 
 
 class Split(TensorTupleOp):
-    def __init__(self, axis: int):
+    def __init__(self, axis: int) -> None:
         """
         Splits a tensor along an axis into a tuple of tensors.
         (The "inverse" of Stack)
@@ -381,11 +389,11 @@ class Split(TensorTupleOp):
     def compute(self, A: NDArray) -> tuple[NDArray]:
         return tuple(array_api.split(A, self.axis))
 
-    def gradient(self, out_grad, node):
+    def gradient(self, out_grad, node: Tensor) -> Tensor:
         return Stack(self.axis)(out_grad)
 
 
-def split(a, axis):
+def split(a: Tensor, axis: int) -> Tensor:
     return Split(axis)(a)
 
 

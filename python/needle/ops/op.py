@@ -1,12 +1,12 @@
 from typing import TYPE_CHECKING, Any
 
-from needle.tensor import Tensor, TensorTuple
+from needle.tensor import Tensor, TensorTuple, Value
 
 if TYPE_CHECKING:
     from needle.backend_selection import NDArray
-    from needle.tensor import Value
 
 
+# TODO: Abstract class with ABC checking
 class Op:
     """Operator definition."""
 
@@ -30,7 +30,7 @@ class Op:
         """
         raise NotImplementedError()
 
-    def gradient(self, out_grad: "Value", _node: "Value") -> "Value | tuple[Value]":
+    def gradient(self, out_grad: Value, _node: Value) -> Value | tuple[Value]:
         """Compute partial adjoint for each input value for a given output adjoint.
 
         Parameters
@@ -49,7 +49,7 @@ class Op:
         """
         raise NotImplementedError()
 
-    def gradient_as_tuple(self, out_grad: "Value", node: "Value") -> tuple["Value"]:
+    def gradient_as_tuple(self, out_grad: Value, node: Value) -> tuple[Value]:
         """Convenience method to always return a tuple from gradient call."""
         output = self.gradient(out_grad, node)
         if isinstance(output, tuple):

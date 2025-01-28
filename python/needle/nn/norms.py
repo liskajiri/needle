@@ -1,6 +1,8 @@
 """The module."""
 
 from needle import init, ops
+from needle.backend_ndarray.device import AbstractBackend
+from needle.backend_selection import default_device
 from needle.nn.nn_basic import Module, Parameter
 from needle.tensor import Tensor
 
@@ -16,7 +18,7 @@ class BatchNorm1d(Module):
         dim: int,
         eps: float = 1e-5,
         momentum: float = 0.1,
-        device=None,
+        device: AbstractBackend = default_device(),
         dtype="float32",
     ):
         super().__init__()
@@ -62,7 +64,11 @@ class BatchNorm1d(Module):
 
 class LayerNorm1d(Module):
     def __init__(
-        self, dim: tuple, eps: float = 1e-5, device=None, dtype="float32"
+        self,
+        dim: tuple,
+        eps: float = 1e-5,
+        device: AbstractBackend = default_device(),
+        dtype="float32",
     ) -> None:
         super().__init__()
         self.dim = dim

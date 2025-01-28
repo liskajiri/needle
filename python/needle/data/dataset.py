@@ -5,6 +5,7 @@ from typing import Any, TypeVar
 T = TypeVar("T")
 
 
+# TODO: ABC? If no runtime cost
 class Dataset(Sequence):
     r"""
     An abstract class representing a `Dataset`.

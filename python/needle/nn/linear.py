@@ -8,7 +8,7 @@ from needle.ops.ops_mathematic import broadcast_to
 from needle.tensor import Tensor
 
 if TYPE_CHECKING:
-    from needle.backend_ndarray.utils import DType
+    from needle.typing.utils import DType
 
 
 class Config(TypedDict):

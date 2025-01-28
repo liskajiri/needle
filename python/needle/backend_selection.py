@@ -9,9 +9,14 @@ import os
 class BACKENDS(enum.StrEnum):
     NEEDLE = "nd"
     NUMPY = "np"
+    CUDA = "cuda"
 
 
-BACKEND = os.environ.get("NEEDLE_BACKEND", "nd")
+DEFAULT_BACKEND = BACKENDS.NEEDLE
+
+BACKEND = os.getenv("NEEDLE_BACKEND", DEFAULT_BACKEND)
+if BACKEND not in BACKENDS:
+    raise RuntimeError(f"Unknown needle array backend {BACKEND}")
 
 
 if BACKENDS.NEEDLE == BACKEND:
@@ -35,14 +40,12 @@ elif BACKENDS.NUMPY == BACKEND:
     import numpy as array_api  # noqa: F401
 
     from needle.backend_ndarray.backend_numpy import (
-        BackendDevice as Device,  # noqa: F401
-    )
-    from needle.backend_ndarray.backend_numpy import (
         NDArray,  # noqa: F401
         all_devices,  # noqa: F401
         cpu,  # noqa: F401
         cuda,  # noqa: F401
         default_device,  # noqa: F401
     )
-else:
-    raise RuntimeError(f"Unknown needle array backend {BACKEND}")
+    from needle.backend_ndarray.backend_numpy import (
+        NumpyBackend as Device,  # noqa: F401
+    )

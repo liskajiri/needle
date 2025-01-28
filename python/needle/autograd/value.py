@@ -79,6 +79,7 @@ class Value:
         self.cached_data = cached_data
         self.requires_grad = requires_grad
 
+    # TODO: this class should be abstract
     @classmethod
     def make_const(cls, data, *, requires_grad: bool = False):
         value = cls.__new__(cls)
