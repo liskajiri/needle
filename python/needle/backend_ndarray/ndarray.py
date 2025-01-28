@@ -10,7 +10,7 @@ import numpy as np
 from needle.backend_ndarray.device import AbstractBackend
 
 if TYPE_CHECKING:
-    from needle.backend_ndarray.utils import DType, Scalar, Shape
+    from needle.typing.utils import DType, Scalar, Shape, Strides
 
 logger = logging.getLogger(__name__)
 
@@ -86,7 +86,7 @@ class BackendDevice(AbstractBackend):
 def cuda() -> AbstractBackend:
     """Return cuda device."""
     try:
-        from . import ndarray_backend_cuda  # type: ignore
+        from needle.backend_ndarray import ndarray_backend_cuda  # type: ignore
 
         return BackendDevice("cuda", ndarray_backend_cuda)
     except ImportError:
@@ -96,9 +96,10 @@ def cuda() -> AbstractBackend:
 def cpu_numpy() -> AbstractBackend:
     """Return numpy device."""
     try:
-        from . import backend_numpy
+        from needle.backend_ndarray import BackendDevice as NumpyBackend
+        from needle.backend_ndarray import backend_numpy
 
-        return BackendDevice("cpu_numpy", backend_numpy)
+        return NumpyBackend("cpu_numpy", backend_numpy)
     except ImportError:
         raise ImportError("Numpy backend not available")
 
@@ -106,7 +107,7 @@ def cpu_numpy() -> AbstractBackend:
 def cpu() -> AbstractBackend:
     """Return cpu device."""
     try:
-        from . import ndarray_backend_cpu  # type: ignore
+        from needle.backend_ndarray import ndarray_backend_cpu  # type: ignore
 
         return BackendDevice("cpu", ndarray_backend_cpu)
     except ImportError:
@@ -114,7 +115,7 @@ def cpu() -> AbstractBackend:
 
 
 def default_device() -> AbstractBackend:
-    return cpu_numpy()
+    return cpu()
 
 
 def all_devices() -> list[AbstractBackend]:
@@ -138,12 +139,15 @@ class NDArray:
         """Create by copying another NDArray, or from numpy."""
         if isinstance(other, NDArray):
             # create a copy of existing NDArray
-            if device is None:
-                device = other.device
+            if device != other.device:
+                logger.error(
+                    f"Creating NDArray with different device {device} != {other.device}"
+                )
             self._init(other.to(device) + 0.0)  # this creates a copy
         elif isinstance(other, np.ndarray):
             # create copy from numpy array
             # device = device if device is not None else default_device()
+            # device = default_device()
             array = self.make(other.shape, device=device)
             array.device.from_numpy(np.ascontiguousarray(other), array._handle)
             self._init(array)
@@ -152,7 +156,7 @@ class NDArray:
             array = NDArray(np.array(other), device=device)
             self._init(array)
 
-    def _init(self, other: NDArray):
+    def _init(self, other: NDArray) -> None:
         self._shape = other._shape
         self._strides = other._strides
         self._offset = other._offset
@@ -160,7 +164,7 @@ class NDArray:
         self._handle = other._handle
 
     @staticmethod
-    def compact_strides(shape: tuple):
+    def compact_strides(shape: Shape) -> Strides:
         """Utility function to compute compact strides."""
         stride = 1
         res = []
@@ -176,7 +180,7 @@ class NDArray:
         device: AbstractBackend = default_device(),
         handle: NDArray | None = None,
         offset: int = 0,
-    ):
+    ) -> NDArray:
         """
         Create a new NDArray with the given properties
         This will allocate the memory if handle=None,
@@ -195,50 +199,59 @@ class NDArray:
 
     ### Properties and string representations
     @property
-    def shape(self):
+    def shape(self) -> Shape:
         return self._shape
 
     @property
-    def strides(self):
+    def strides(self) -> Strides:
         return self._strides
 
     @property
-    def device(self):
+    def device(self) -> AbstractBackend:
         return self._device
 
     @property
-    def dtype(self):
+    def dtype(self) -> DType:
         # only support float32 for now
         return "float32"
 
     @property
-    def ndim(self):
+    def ndim(self) -> int:
         """Return number of dimensions."""
         return len(self._shape)
 
+    # TODO: set at creation time
     @property
-    def size(self):
+    def size(self) -> int:
         return math.prod(self._shape)
 
-    def __repr__(self):
-        return "NDArray(" + self.numpy().__str__()  # + f", device={self.device})"
-        # return "NDArray(" + self.numpy().__str__() + f", device={self.device})"
+    def __repr__(self) -> str:
+        return f"NDArray( shape: {self.shape} | device={self.device}"
 
-    def __str__(self):
+    def __str__(self) -> str:
+        return f"NDArray( shape: {self.shape} | device={self.device}"
         return self.numpy().__str__()
 
+    def __len__(self) -> int:
+        """Returns the size of the first dimension.
+
+        Returns:
+            int: The size of the first dimension.
+        """
+        return self.shape[0]
+
     ### Basic array manipulation
-    def fill(self, value: float):
+    def fill(self, value: float) -> None:
         """Fill (in place) with a constant value."""
         self._device.fill(self._handle, value)
 
-    def to(self, device: BackendDevice):
+    def to(self, device: AbstractBackend) -> NDArray:
         """Convert between devices, using to/from numpy calls as the unifying bridge."""
         if device == self.device:
             return self
         return NDArray(self.numpy(), device=device)
 
-    def numpy(self):
+    def numpy(self) -> np.ndarray:
         """Convert to a numpy array."""
         return self.device.to_numpy(
             self._handle, self.shape, self.strides, self._offset
@@ -274,17 +287,17 @@ class NDArray:
 
     ### Shapes and strides
 
-    def is_compact(self):
+    def is_compact(self) -> bool:
         """
         Return true if array is compact in memory and
         internal size equals math.product of the shape dimensions.
         """
         return (
             self._strides == self.compact_strides(self._shape)
-            and math.prod(self.shape) == self._handle.size
+            and self.size == self._handle.size
         )
 
-    def compact(self):
+    def compact(self) -> NDArray:
         """Convert a matrix to be compact."""
         if self.is_compact():
             return self
@@ -294,14 +307,18 @@ class NDArray:
         )
         return out
 
-    def as_strided(self, shape, strides):
+    def as_strided(self, shape: Shape, strides: Strides) -> NDArray:
         """Re-stride the matrix without copying memory."""
         assert len(shape) == len(strides)
         return NDArray.make(
-            shape, strides=strides, device=self.device, handle=self._handle
+            shape,
+            strides=strides,
+            device=self.device,
+            handle=self._handle,
+            offset=self._offset,
         )
 
-    def astype(self, dtype):
+    def astype(self, dtype: DType = "float32") -> NDArray:
         # TODO: support other types
         """Return a copy of the array with a different type."""
         if dtype != "float32":
@@ -312,11 +329,11 @@ class NDArray:
         assert dtype == "float32", f"Only support float32 for now, got {dtype}"
         return self + 0.0
 
-    @property
-    def flat(self):
+    def flatten(self) -> NDArray:
+        """Return a 1D view of the array."""
         return self.reshape((self.size,))
 
-    def reshape(self, new_shape: tuple) -> NDArray:
+    def reshape(self, new_shape: Shape) -> NDArray:
         """Reshape the matrix without copying memory.  This will return a matrix
         that corresponds to a reshaped array but points to the same memory as
         the original array.
@@ -414,13 +431,13 @@ class NDArray:
 
         return self.as_strided(new_shape, new_strides)
 
-    def broadcast_to(self, new_shape: tuple[int]) -> NDArray:
-        """Broadcast an array to a new shape.  new_shape's elements must be the
-        same as the original shape, except for dimensions in the self where
-        the size = 1 (which can then be broadcast to any size).  As with the
+    def broadcast_to(self, new_shape: Shape) -> NDArray:
+        """Broadcast an array to a new shape.
+        New_shape's elements must be the same as the original shape,
+        except for dimensions in the self where the size = 1
+        (which can then be broadcast to any size). As with the
         previous calls, this will not copy memory, and just achieves
         broadcasting by manipulating the strides.
-
 
         Args:
             new_shape (tuple): shape to broadcast to
@@ -432,9 +449,8 @@ class NDArray:
             AssertionError if new_shape[i] != shape[i] for all i where
             shape[i] != 1
         """
-        curr_size = math.prod(self._shape)
         new_size = math.prod(new_shape)
-        if len(new_shape) < len(self._shape) or new_size % curr_size != 0:
+        if len(new_shape) < len(self._shape) or new_size % self.size != 0:
             raise ValueError(f"Cannot broadcast shape {self._shape} to {new_shape}")
 
         leading_dims = len(new_shape) - len(self._shape)
@@ -471,13 +487,17 @@ class NDArray:
 
     # TODO: errors out
     def __getitem__(self, idxs: int | tuple[int] | NDArray) -> NDArray:
-        """The __getitem__ operator in Python allows us to access elements of our
-        array.  When passed notation such as a[1:5,:-1:2,4,:] etc, Python will
+        """
+        The __getitem__ operator in Python allows us to access elements of our
+        array.
+        When passed notation such as a[1:5,:-1:2,4,:] etc, Python will
         convert this to a tuple of slices and integers (for singletons like the
-        '4' in this example).  Slices can be a bit odd to work with (they have
-        three elements .start .stop .step), which can be None or have negative
-        entries, so for simplicity we wrote the code for you to convert these
-        to always be a tuple of slices, one of each dimension.
+        '4' in this example).
+        Slices can be a bit odd to work with
+        (they have three elements .start .stop .step), which can be None
+        or have negative entries, so for simplicity we wrote the code
+        for you to convert these to always be a tuple of slices,
+        one of each dimension.
         For this tuple of slices, return an array that subsets the desired
         elements.  As before, this can be done entirely through compute a new
         shape, stride, and offset for the new "view" into the original array,
@@ -560,7 +580,8 @@ class NDArray:
             offset=new_offset,
         )
 
-    def __setitem__(self, idxs: tuple, other):
+    # TODO: standardize idxs type: int | iterable[int]
+    def __setitem__(self, idxs: tuple | int, other):
         """Set the values of a view into an array, using the same semantics
         as __getitem__().
         """
@@ -687,7 +708,7 @@ class NDArray:
     ### Element-wise functions
 
     # TODO: auto derive inplace functions
-    def log(self):
+    def log(self) -> NDArray:
         out = NDArray.make(self.shape, device=self.device)
         self.device.ewise_log(self.compact()._handle, out._handle)
         return out
@@ -769,7 +790,6 @@ class NDArray:
 
         if (
             matrix_is_large
-            # if the matrix is aligned, use tiled matrix multiplication
             and hasattr(self.device, "matmul_tiled")
             and all(d % self.device.__tile_size__ == 0 for d in (m, n, p))
         ):
@@ -921,7 +941,7 @@ def from_numpy(a):
     return NDArray(a)
 
 
-def array(a, dtype="float32", device=None):
+def array(a, dtype="float32", device: AbstractBackend = default_device()) -> NDArray:
     """Convenience methods to match numpy a bit more closely."""
     if dtype != "float32":
         logger.warning(f"Only support float32 for now, got {dtype}")
