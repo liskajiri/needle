@@ -499,8 +499,30 @@ class NDArray:
         """
         # handle singleton as tuple, everything as slices
         # TODO: allow idxs: NDArray
+        if isinstance(idxs, list | np.ndarray | NDArray):
+            # Convert to NDArray if needed
+            if not isinstance(idxs, NDArray):
+                idxs = NDArray(idxs, device=self.device)
+
+            # Create output array
+            out_shape = idxs.shape + self.shape[1:]
+            out = NDArray.make(out_shape, device=self.device)
+
+            # Copy selected elements
+            for i, idx in enumerate(idxs.numpy().flatten()):
+                # Get source slice
+                src_idx = (int(idx),) + (slice(None),) * (self.ndim - 1)
+                # Get dest slice
+                dst_idx = (i,) + (slice(None),) * (self.ndim - 1)
+                out[dst_idx] = self[src_idx]
+            out.compact()
+
+            return out
+
         if not isinstance(idxs, tuple):
             idxs = (idxs,)
+        idxs = idxs + (slice(None),) * (self.ndim - len(idxs))
+
         idxs = tuple(
             [
                 self.process_slice(s, i) if isinstance(s, slice) else slice(s, s + 1, 1)
@@ -526,6 +548,10 @@ class NDArray:
             # distance to the first element
             new_offset += self._strides[i] * ax.start
 
+        # TODO: This array is smaller and so its size is smaller
+        # That is not however changed, so the check is_compact fails, because
+        # the sub array still thinks it is the larger array
+        # This leads to needed unnecessary calls to compact
         return NDArray.make(
             tuple(new_shape),
             strides=tuple(new_strides),
