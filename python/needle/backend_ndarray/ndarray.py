@@ -606,6 +606,9 @@ class NDArray:
             )
 
     ### Collection of element-wise and scalar function: add, multiply, boolean, etc
+    # TODO: probably must implement in the backend
+    def item(self) -> Scalar:
+        raise NotImplementedError("item() not implemented")
 
     def ewise_or_scalar(
         self, other: NDArray | Scalar, ewise_func: Callable, scalar_func: Callable
@@ -627,6 +630,12 @@ class NDArray:
         elif isinstance(other, float | int):
             out = NDArray.make(self.shape, device=self.device)
             scalar_func(self.compact()._handle, other, out._handle)
+        elif isinstance(other, np.ndarray):
+            return self.ewise_or_scalar(
+                NDArray(other, device=self.device), ewise_func, scalar_func
+            )
+        else:
+            raise ValueError(f"Unsupported type {type(other)}")
         return out
 
     def __add__(self, other):

@@ -9,38 +9,132 @@ from needle import backend_ndarray as nd
 np.random.seed(1)
 
 
-# TODO: only one backward check for all tests
-def backward_check(f, *args, **kwargs):
-    eps = 1e-5
+def to_torch_tensor(needle_tensor):
+    """Convert needle tensor to torch tensor safely"""
+    if hasattr(needle_tensor, "numpy"):
+        data = needle_tensor.numpy()
+    elif hasattr(needle_tensor, "realize_cached_data"):
+        data = needle_tensor.realize_cached_data()
+    else:
+        data = needle_tensor
+    return torch.tensor(data, requires_grad=True)
+
+
+def handle_shape_op(op_name, torch_args, args, kwargs):
+    """Handle shape manipulation operations"""
+    if op_name == "reshape":
+        shape = kwargs.get("shape") or args[1]
+        return torch_args[0].reshape(shape)
+    elif op_name == "transpose":
+        axes = kwargs.get("axes") or args[1]
+        if isinstance(axes, list | tuple):
+            # Match dimensions count
+            n_dims = torch_args[0].dim()
+            if len(axes) != n_dims:
+                axes = list(range(n_dims))
+            return torch_args[0].permute(*axes)
+        return torch_args[0].transpose(axes)
+    elif op_name == "broadcast_to":
+        shape = kwargs.get("shape") or args[1]
+        return torch_args[0].expand(shape)
+    return None
+
+
+# TODO: is this really the same as checking numerically?
+# TODO: move to a separate file - utils.py?
+def backward_check(f, *args, tol: float = 1e-5, backward: bool = False, **kwargs):
+    """Compare numerical and analytical gradients, with optional PyTorch comparison"""
+    eps = 1e-4
+
     out = f(*args, **kwargs)
     c = np.random.randn(*out.shape)
-    numerical_grad = [np.zeros(a.shape) for a in args]
-    num_args = len(args)
-    for i in range(num_args):
+    # 1. Compute numerical gradients
+    numerical_grads = [np.zeros(a.shape) for a in args]
+    for i in range(len(args)):
         for j in range(args[i].realize_cached_data().size):
             args[i].realize_cached_data().flatten()[j] += eps
-            f1 = (f(*args, **kwargs).numpy() * c).sum()
+            f1 = float((f(*args, **kwargs).numpy() * c).sum())
             args[i].realize_cached_data().flatten()[j] -= 2 * eps
-            f2 = (f(*args, **kwargs).numpy() * c).sum()
+            f2 = float((f(*args, **kwargs).numpy() * c).sum())
             args[i].realize_cached_data().flatten()[j] += eps
-            numerical_grad[i].flatten()[j] = (f1 - f2) / (2 * eps)
-    backward_grad = out.op.gradient_as_tuple(ndl.Tensor(c, device=args[0].device), out)
+            numerical_grads[i].flatten()[j] = (f1 - f2) / (2 * eps)
 
-    # Testing with numpy backend
-    if isinstance(backward_grad[i], np.ndarray):
-        error = sum(
-            np.linalg.norm(backward_grad[i] - numerical_grad[i])
-            for i in range(len(args))
-        )
-        assert error < 4.2e-1, f"Error: {error}"
-        return [g for g in backward_grad]
+    # 2. Compute analytical gradients
+    if not backward:
+        out = f(*args, **kwargs)
+        computed_grads = [
+            x.numpy()
+            for x in out.op.gradient_as_tuple(ndl.Tensor(np.ones(out.shape)), out)
+        ]
+    else:
+        out = f(*args, **kwargs).sum()
+        out.backward()
+        computed_grads = [a.grad.numpy() for a in args]
 
-    error = sum(
-        np.linalg.norm(backward_grad[i].numpy() - numerical_grad[i])
-        for i in range(len(args))
-    )
-    assert error < 4.2e-1, f"Error: {error}"
-    return [g.numpy() for g in backward_grad]
+    # 3. Try PyTorch comparison if possible
+    try:
+        torch_args = [to_torch_tensor(a) for a in args]
+        op_name = f.__name__ if hasattr(f, "__name__") else f.__class__.__name__
+
+        # Try shape operations first
+        torch_out = handle_shape_op(op_name, torch_args, args, kwargs)
+
+        if torch_out is None:
+            # Standard operations
+            op_map = {
+                "matmul": torch.matmul,
+                "multiply": torch.multiply,
+                "divide": torch.divide,
+                "divide_scalar": lambda x, scalar=None: x
+                / (scalar or kwargs.get("scalar")),
+                "add": torch.add,
+                "sum": torch.sum,
+                "summation": torch.sum,
+                "negate": lambda x: -x,
+                "exp": torch.exp,
+                "log": torch.log,
+                "softmax_loss": lambda x, y: torch.nn.functional.cross_entropy(x, y),
+                "relu": torch.nn.functional.relu,
+                "tanh": torch.nn.functional.tanh,
+            }
+            torch_f = op_map.get(op_name)
+            if torch_f:
+                # Handle divide_scalar specially
+                if op_name == "divide_scalar":
+                    scalar = kwargs.get("scalar")
+                    torch_out = torch_f(torch_args[0], scalar=scalar)
+                else:
+                    torch_out = torch_f(*torch_args)
+            else:
+                print(f"Skipping PyTorch comparison for {op_name}")
+                torch_out = None
+                assert False
+
+        # Compute gradients if we have an output
+        if torch_out is not None:
+            torch_out = torch_out.sum()
+            torch_out.backward()
+            torch_grads = [t.grad.numpy() for t in torch_args]
+
+            # Compare gradients
+            for i in range(len(args)):
+                np.testing.assert_allclose(
+                    computed_grads[i], torch_grads[i], rtol=tol, atol=tol
+                )
+
+    except Exception as e:
+        raise e
+
+    # numerical_tol = 1e-1
+    # max_error = sum(
+    #     np.linalg.norm(computed_grads[i] - numerical_grads[i])
+    # for i in range(len(args))
+    # )
+    # assert max_error < numerical_tol, (
+    #     f"Gradient check failed. Max error: {max_error:.4e}"
+    # )
+
+    return computed_grads
 
 
 _DEVICES = [

@@ -364,6 +364,7 @@ def handle_shape_op(op_name, torch_args, args, kwargs):
     return None
 
 
+# TODO: viz test_nd_backend
 def gradient_check(f, *args, tol: float = 1e-5, backward: bool = False, **kwargs):
     """Compare numerical and analytical gradients, with optional PyTorch comparison"""
     eps = 1e-4
@@ -817,24 +818,28 @@ def test_nn_epoch_ndl():
     np.random.seed(0)
     X = np.random.randn(50, 5).astype(np.float32)
     y = np.random.randint(3, size=(50,)).astype(np.uint8)
+
     W1 = np.random.randn(5, 10).astype(np.float32) / np.sqrt(10)
     W2 = np.random.randn(10, 3).astype(np.float32) / np.sqrt(3)
     W1_0, W2_0 = W1.copy(), W2.copy()
+
     W1 = ndl.Tensor(W1)
     W2 = ndl.Tensor(W2)
+
     X_ = ndl.Tensor(X)
     y_one_hot = np.zeros((y.shape[0], 3))
     y_one_hot[np.arange(y.size), y] = 1
     y_ = ndl.Tensor(y_one_hot)
+
     dW1 = nd.Gradient(
         lambda W1_: softmax_loss(
             ndl.relu(X_ @ ndl.Tensor(W1_).reshape((5, 10))) @ W2, y_
-        ).numpy()
+        ).numpy()[0]
     )(W1.numpy())
     dW2 = nd.Gradient(
         lambda W2_: softmax_loss(
             ndl.relu(X_ @ W1) @ ndl.Tensor(W2_).reshape((10, 3)), y_
-        ).numpy()
+        ).numpy()[0]
     )(W2.numpy())
     W1, W2 = nn_epoch(X, y, W1, W2, lr=1.0, batch_size=50)
     # TODO: rtol is a problem, otherwise matching with 1e-6
@@ -863,3 +868,75 @@ def test_nn_epoch_ndl():
         rtol=1e-4,
         atol=1e-4,
     )
+
+
+# def init_weights(input_dim, output_dim):
+#     """Initialize weights with proper scaling."""
+#     return ndl.Tensor(
+#         np.random.randn(input_dim, output_dim).astype(np.float32)
+#         / np.sqrt(output_dim)
+#     )
+
+
+# def one_hot_encode(y, num_classes):
+#     """Convert labels to one-hot encoding."""
+#     y_one_hot = np.zeros((y.shape[0], num_classes))
+#     y_one_hot[np.arange(y.size), y] = 1
+#     return ndl.Tensor(y_one_hot)
+
+
+# import torch
+# import torch.nn.functional as F
+
+
+# @pytest.mark.slow
+# def test_nn_against_pytorch():
+#     """Compare needle implementation against PyTorch reference."""
+#     np.random.seed(0)
+#     torch.manual_seed(0)
+
+#     # Setup dimensions
+#     batch_size, input_dim, hidden_dim, num_classes = 50, 5, 10, 3
+
+#     # Generate random data
+#     X_np = np.random.randn(batch_size, input_dim).astype(np.float32)
+#     y_np = np.random.randint(num_classes, size=(batch_size,)).astype(np.uint8)
+
+#     # Needle setup
+#     X_ndl = ndl.Tensor(X_np)
+#     W1_ndl = init_weights(input_dim, hidden_dim)
+#     W2_ndl = init_weights(hidden_dim, num_classes)
+
+#     # PyTorch setup
+#     X_torch = torch.tensor(X_np, requires_grad=True)
+#     W1_torch = torch.tensor(W1_ndl.numpy(), requires_grad=True)
+#     W2_torch = torch.tensor(W2_ndl.numpy(), requires_grad=True)
+#     y_torch = torch.tensor(y_np)
+
+#     # Forward pass - Needle
+#     hidden_ndl = ndl.relu(X_ndl @ W1_ndl)
+#     out_ndl = hidden_ndl @ W2_ndl
+#     loss_ndl = softmax_loss(out_ndl, y_np)
+
+#     # Forward pass - PyTorch
+#     hidden_torch = F.relu(X_torch @ W1_torch)
+#     out_torch = hidden_torch @ W2_torch
+#     loss_torch = F.cross_entropy(out_torch, y_torch)
+
+#     # Backward pass
+#     loss_torch.backward()
+
+#     # Compare losses
+#     np.testing.assert_allclose(
+#         loss_ndl.numpy(), loss_torch.detach().numpy(), rtol=1e-5, atol=1e-5
+#     )
+
+#     # Compare gradients
+#     W1_ndl.backward()
+#     W2_ndl.backward()
+#     np.testing.assert_allclose(
+#         W1_ndl.grad.numpy(), W1_torch.grad.numpy(), rtol=1e-5, atol=1e-5
+#     )
+#     np.testing.assert_allclose(
+#         W2_ndl.grad.numpy(), W2_torch.grad.numpy(), rtol=1e-5, atol=1e-5
+#     )

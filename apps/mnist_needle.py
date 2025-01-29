@@ -7,7 +7,7 @@ def loss_err(h, y):
     y_one_hot = np.zeros((y.shape[0], h.shape[-1]))
     y_one_hot[np.arange(y.size), y] = 1
     y_ = ndl.Tensor(y_one_hot)
-    return softmax_loss(h, y_).numpy(), np.mean(h.numpy().argmax(axis=1) != y)
+    return softmax_loss(h, y_).numpy()[0], np.mean(h.numpy().argmax(axis=1) != y)
 
 
 def softmax(X: np.ndarray) -> np.ndarray:

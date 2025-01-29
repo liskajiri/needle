@@ -343,15 +343,15 @@ def mean(a: Tensor, axes=0) -> Tensor:
 
 
 class Tanh(TensorOp):
-    def compute(self, a: NDArray):
+    def compute(self, a: NDArray) -> NDArray:
         return array_api.tanh(a)
 
-    def gradient(self, out_grad, node):
+    def gradient(self, out_grad: Tensor, node: Tensor) -> Tensor:
         tanh = array_api.tanh(node.inputs[0].realize_cached_data())
         return out_grad.cached_data * (1 - tanh**2)
 
 
-def tanh(a):
+def tanh(a: Tensor) -> Tensor:
     return Tanh()(a)
 
 
