@@ -1,11 +1,11 @@
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Self
 
 if TYPE_CHECKING:
     from typing import Any
 
-    from needle.backend_ndarray.utils import DType, Scalar, Shape
     from needle.backend_selection import NDArray
+    from needle.typing.utils import DType, Scalar, Shape
 
 
 class AbstractBackend(ABC):
@@ -16,7 +16,7 @@ class AbstractBackend(ABC):
         # A module that implements the backend.
         self.module = module
 
-    def __eq__(self, other: "AbstractBackend") -> bool:
+    def __eq__(self, other: Self) -> bool:
         return self.name == other.name
 
     def __repr__(self) -> str:

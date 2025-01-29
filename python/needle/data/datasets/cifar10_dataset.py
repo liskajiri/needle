@@ -31,7 +31,6 @@ class CIFAR10Dataset(Dataset):
         super().__init__(transforms)
         self.train = train
 
-        # X = array_api.empty((1, *CIFAR10Dataset.IMAGE_SHAPE))
         X = []
         Y = []
 
@@ -45,34 +44,26 @@ class CIFAR10Dataset(Dataset):
                 x = array_api.array(x).reshape(new_shape)
                 X.append(x)
                 Y.extend(y)
-        self.X = array_api.stack(X)
+        # X: (5, 10_000, 3, 32, 32) -> (50_000, 3, 32, 32)
+        self.X = array_api.stack(X).reshape(new_shape)
         self.Y = array_api.array(Y)
 
+    # TODO: change shape to Iterable[int]
     def __getitem__(self, index: int | tuple | NDArray) -> tuple[NDArray, NDArray]:
         """
         Returns the image, label at given index
         Image should be of shape (3, 32, 32)
         """
-        x = self.apply_transforms(self.X[index])
+        if isinstance(index, int) or len(index) == 1:
+            new_shape = CIFAR10Dataset.IMAGE_SHAPE
+        else:
+            new_shape = (len(index), *CIFAR10Dataset.IMAGE_SHAPE)
+
+        i = self.X[index].compact().reshape(new_shape)
+        x = self.apply_transforms(i)
         y = self.Y[index]
 
-        if isinstance(index, int):
-            expected_shape = CIFAR10Dataset.IMAGE_SHAPE
-        # elif isinstance(index, tuple):
-        else:
-            size = len(index)
-            if size == 1:
-                expected_shape = CIFAR10Dataset.IMAGE_SHAPE
-            else:
-                expected_shape = (size, *CIFAR10Dataset.IMAGE_SHAPE)
-        # expected_shape = (
-        #     (index.size, *CIFAR10Dataset.IMAGE_SHAPE)
-        #     if isinstance(index, NDArray)
-        #     else CIFAR10Dataset.IMAGE_SHAPE
-        # )
-        assert (
-            x.shape == expected_shape
-        ), f"Expected shape {expected_shape}, got {x.shape}"
+        assert x.shape == new_shape, f"Expected shape {new_shape}, got {x.shape}"
 
         return x, y
 

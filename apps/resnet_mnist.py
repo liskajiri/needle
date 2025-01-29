@@ -52,16 +52,16 @@ def MLPResNet(
     )
 
 
-ErrorRate = NewType("error_rate", float)
-Loss = NewType("loss", float)
-Accuracy = NewType("accuracy", float)
+ErrorRate = NewType("ErrorRate", float)
+Loss = NewType("Loss", float)
+Accuracy = NewType("Accuracy", float)
 
 
 def epoch(
     dataloader: ndl.data.DataLoader,
     model: nn.Module,
     opt: ndl.optim.Optimizer | None = None,
-) -> tuple[ErrorRate, Loss]:  # type: ignore
+) -> tuple[ErrorRate, Loss]:
     np.random.seed(4)
 
     if opt:
@@ -70,7 +70,7 @@ def epoch(
         model.eval()
 
     correct_preds, avg_loss = 0.0, 0.0
-    n_rows = dataloader.dataset.X.shape[0]
+    n_rows = len(dataloader.dataset)
     softmax_loss = nn.SoftmaxLoss()
 
     n_batches = 0
@@ -81,7 +81,7 @@ def epoch(
         loss = softmax_loss(preds, y)
 
         correct_preds += (preds.numpy().argmax(axis=1) == y.numpy()).sum()
-        avg_loss += loss.numpy()
+        avg_loss += loss.numpy()[0]  # 1d tensor
 
         if opt:
             opt.zero_grad()

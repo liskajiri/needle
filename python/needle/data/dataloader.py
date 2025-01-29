@@ -1,13 +1,12 @@
 from collections.abc import Iterator
-from typing import Self, cast
+from typing import Self
 
 import numpy as np
 
 from needle.backend_ndarray.ndarray import NDArray
 from needle.data.dataset import Dataset
 from needle.tensor import Tensor
-
-BatchType = tuple[Tensor, ...]
+from needle.typing import BatchType
 
 
 class DataLoader(Iterator[BatchType]):
@@ -47,6 +46,7 @@ class DataLoader(Iterator[BatchType]):
         else:
             orders = np.arange(len(self.dataset))
 
+        # TODO: array_api
         self.ordering = np.array_split(
             orders,
             range(self.batch_size, len(self.dataset), self.batch_size),
@@ -57,10 +57,11 @@ class DataLoader(Iterator[BatchType]):
         return self
 
     def __next__(self) -> BatchType:
+        # TODO: generator
         if self.index >= len(self.ordering):
             raise StopIteration
 
         indices = self.ordering[self.index]
         self.index += 1
 
-        return cast(BatchType, tuple(Tensor(i) for i in self.dataset[indices]))
+        return tuple(Tensor(i) for i in self.dataset[indices])

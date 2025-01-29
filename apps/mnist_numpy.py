@@ -1,4 +1,5 @@
 import gzip
+from pathlib import Path
 
 import numpy as np
 import numpy.typing as npt
@@ -6,7 +7,7 @@ from needle.data.datasets.mnist import MNISTPaths
 
 
 def parse_mnist(
-    image_filename: str, label_filename: str
+    image_filename: Path, label_filename: Path
 ) -> tuple[npt.NDArray[np.float32], npt.NDArray[np.uint8]]:
     """Read an images and labels file in MNIST format.  See this page:
     http://yann.lecun.com/exdb/mnist/ for a description of the file format.

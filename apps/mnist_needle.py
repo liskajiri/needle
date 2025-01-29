@@ -7,7 +7,7 @@ def loss_err(h, y):
     y_one_hot = np.zeros((y.shape[0], h.shape[-1]))
     y_one_hot[np.arange(y.size), y] = 1
     y_ = ndl.Tensor(y_one_hot)
-    return softmax_loss(h, y_).numpy(), np.mean(h.numpy().argmax(axis=1) != y)
+    return softmax_loss(h, y_).numpy()[0], np.mean(h.numpy().argmax(axis=1) != y)
 
 
 def softmax(X: np.ndarray) -> np.ndarray:
@@ -35,9 +35,9 @@ def softmax_loss(Z: ndl.Tensor, y: ndl.Tensor) -> ndl.Tensor:
     batch_size = Z.shape[0]
 
     diff = (Z * y).sum(axes=1)
+    lse = ndl.ops.logsumexp(Z, axes=1)
+    total = lse - diff
 
-    log_Z = ndl.log(ndl.exp(Z).sum(axes=1))
-    total = log_Z - diff
     return total.sum() / batch_size
 
 
@@ -47,7 +47,7 @@ def nn_epoch(
     W1: ndl.Tensor,
     W2: ndl.Tensor,
     lr: float = 0.1,
-    batch: int = 100,
+    batch_size: int = 100,
 ) -> tuple[ndl.Tensor, ndl.Tensor]:
     """Run a single epoch of SGD for a two-layer neural network defined by the
     weights W1 and W2 (with no bias terms):
@@ -73,13 +73,11 @@ def nn_epoch(
             W2: Tensor[np.float32]
 
     """
-    n_batches = X.shape[0] // batch
+    n_batches = X.shape[0] // batch_size
 
     for n in range(n_batches):
-        X_batch = X[n * batch : (n + 1) * batch]
-        y_batch = y[n * batch : (n + 1) * batch]
-
-        X_batch = ndl.Tensor(X_batch)
+        X_batch = ndl.Tensor(X[n * batch_size : (n + 1) * batch_size])
+        y_batch = y[n * batch_size : (n + 1) * batch_size]
 
         k = W2.shape[1]
         # creates one hot vector by permuting the eye matrix
@@ -89,14 +87,12 @@ def nn_epoch(
 
         # forward pass
         Z = ndl.relu(X_batch @ W1)
-        loss = softmax_loss((Z @ W2), y_batch)
+        logits = Z @ W2
+        loss = softmax_loss(logits, y_batch)
 
         loss.backward()
 
-        W1 -= lr * W1.grad.numpy()
-        W2 -= lr * W2.grad.numpy()
-
-        W1 = ndl.Tensor(W1)
-        W2 = ndl.Tensor(W2)
+        W1.data -= lr * W1.grad
+        W2.data -= lr * W2.grad
 
     return W1, W2

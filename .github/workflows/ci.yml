@@ -25,7 +25,7 @@ jobs:
         - name: Test
           uses: prefix-dev/setup-pixi@v0.8.1
           with:
-            pixi-version: v0.40.2
+            pixi-version: v0.40.3
             cache: true
             cache-write: ${{ github.event_name == 'push' && github.ref_name == 'main' }}
         - run: pixi run build
@@ -33,9 +33,35 @@ jobs:
 
   test:
     runs-on: ubuntu-latest
+    # test report needs write permissions
+    permissions:
+      contents: read
+      issues: read
+      checks: write
+      pull-requests: write
+
     steps:
         - uses: actions/checkout@v4
         - name: Test
+          uses: prefix-dev/setup-pixi@v0.8.1
+        # also runs slow tests
+        - run: pixi run test_all
+        - name: Publish Test Results
+          uses: EnricoMi/publish-unit-test-result-action@v2
+          if: always()
+          with:
+            files: |
+              test-results/**/*.xml
+              test-results/**/*.trx
+              test-results/**/*.json
+
+  test_numpy_backend:
+    runs-on: ubuntu-latest
+    steps:
+        - uses: actions/checkout@v4
+        - name: Set numpy backend
+          run: echo "NEEDLE_BACKEND=np" >> "$GITHUB_ENV"
+        - name: Test_numpy_backend
           uses: prefix-dev/setup-pixi@v0.8.1
         # also runs slow tests
         - run: pixi run test_all

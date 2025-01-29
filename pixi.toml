@@ -39,9 +39,11 @@ download_cifar = { cmd = [
     "curl", "-o", "data/cifar-10/cifar-10-python.tar.gz",
     "\"https://www.cs.toronto.edu/~kriz/cifar-10-python.tar.gz\"",
 ], outputs = ["data/cifar-10/cifar-10-python.tar.gz"]}
-unpack_cifar = {cmd = "tar -xvzf data/cifar-10/cifar-10-python.tar.gz -C data/cifar-10/", inputs = ["data/cifar-10/cifar-10-batches-py/"], outputs = ["data/cifar-10/cifar-10-batches-py/"], depends-on = ["download_cifar"]}
+unpack_cifar = {cmd = "tar -xvzf data/cifar-10/cifar-10-python.tar.gz -C data/cifar-10/", inputs = ["data/cifar-10/cifar-10-python.tar.gz"], outputs = ["data/cifar-10/cifar-10-batches-py/"], depends-on = ["download_cifar"]}
 
 download_datasets ={ cmd = ["echo", "All datasets downloaded!"], depends-on = ["download_mnist", "download_tree_bank", "unpack_cifar"]}
+
+see_updated_deps = "pixi update --no-install --json | pixi exec pixi-diff-to-markdown > diff.md"
 
 # TODO: gpu test/bench environment
 [environments]
@@ -100,22 +102,22 @@ pytorch = ">=2.5.1,<3"
 
 [feature.test.tasks]
 test = {cmd = "pytest -m 'not slow and not benchmark' -k 'not dataset'", depends-on = ["build", "print_backend"]}
-test_numpy_backend = {cmd = "pytest -m 'not slow and not benchmark' -k 'not dataset and not nd_backend'", depends-on = ["build"], env = { NEEDLE_BACKEND = "np" }}
+# test_numpy_backend = {cmd = "pytest -m 'not slow and not benchmark' -k 'not dataset'", depends-on = ["build"], env = { NEEDLE_BACKEND = "np" }}
 test_datasets = {cmd = "pytest tests/test_datasets", depends-on = ["build"]} # download_datasets
 # TODO: depends on download_datasets
-test_all = {cmd = "pytest $PYTEST_OPTIONS", depends-on = ["build", "print_backend"]}
+test_all = {cmd = """pytest
+--html=$TEST_REPORT_PATH.html
+--junitxml=$TEST_REPORT_PATH.xml
+--cov-report html:$COVERAGE_REPORT_PATH --cov=python/needle/ tests/ --cov-fail-under=$COVERAGE_FAIL_UNDER
+""", depends-on = ["build", "print_backend", "download_datasets"]}
 
 [feature.test.activation.env]
 # Save results of test to html
-TEST_REPORT_PATH = "reports/test_report.html"
+TEST_REPORT_PATH = "reports/test_report"
 # Save code coverage report
 COVERAGE_REPORT_PATH = "reports/coverage"
 # Fails tests if code coverage is below 80%
 COVERAGE_FAIL_UNDER = "80"
-PYTEST_OPTIONS = """
---html=$TEST_REPORT_PATH
---cov-report html:$COVERAGE_REPORT_PATH --cov=python/needle/ tests/ --cov-fail-under=$COVERAGE_FAIL_UNDER
-"""
 
 [feature.benchmark.dependencies]
 # TODO: remove when Codspeed is ready
@@ -134,4 +136,3 @@ benchmark_matmul = {cmd = "pytest benchmarks/ --benchmark-sort=mean --benchmark-
 
 [activation.env]
 PYTHONPATH = "./python:./apps"
-NEEDLE_BACKEND = "nd"

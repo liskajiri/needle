@@ -78,7 +78,6 @@ def test_init_xavier_normal():
 # import torch
 
 
-# @pytest.mark.proptest
 # @given(fan_in=st.integers(1, 5), fan_out=st.integers(1, 5))
 # def test_init_xavier_normal_proptest(fan_in: int, fan_out: int):
 #     gain: float = 2**0.5
@@ -87,7 +86,6 @@ def test_init_xavier_normal():
 #     np.testing.assert_allclose(_ndl.numpy(), _pytorch.numpy(), rtol=1e-4, atol=1e-4)
 
 
-# @pytest.mark.proptest
 # @given(fan_in=st.integers(1, 5), fan_out=st.integers(1, 5))
 # def test_init_kaiming_normal_proptest(fan_in: int, fan_out: int):
 #     gain: float = 2**0.5
@@ -98,7 +96,6 @@ def test_init_xavier_normal():
 #     np.testing.assert_allclose(_ndl.numpy(), _pytorch.numpy(), rtol=1e-4, atol=1e-4)
 
 
-# @pytest.mark.proptest
 # @given(fan_in=st.integers(1, 5), fan_out=st.integers(1, 5))
 # def test_init_xavier_uniform_proptest(fan_in: int, fan_out: int):
 #     gain: float = 2**0.5
@@ -111,7 +108,6 @@ def test_init_xavier_normal():
 #     )
 
 
-# @pytest.mark.proptest
 # @given(fan_in=st.integers(1, 5), fan_out=st.integers(1, 5))
 # def test_init_xavier_normal_proptest(fan_in: int, fan_out: int):
 #     gain: float = 2**0.5
