@@ -1812,6 +1812,7 @@ def test_mlp_train_epoch_1():
     )
 
 
+@pytest.mark.slow
 def test_mlp_eval_epoch_1():
     np.testing.assert_allclose(
         eval_epoch_1(10, 150),

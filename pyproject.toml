@@ -2,11 +2,12 @@
 pythonpath = "python/needle"
 testpaths = "tests/"
 addopts = [
-    "-ras -n auto",
+    "-ra",
+    "-n", "auto",
     "--strict-markers",
     "--strict-config",
-    "-m not benchmark",
     "--hypothesis-show-statistics",
+    "-m not benchmark",
     # "--import-mode=importlib",
 ]
 markers = [

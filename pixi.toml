@@ -39,7 +39,7 @@ download_cifar = { cmd = [
     "curl", "-o", "data/cifar-10/cifar-10-python.tar.gz",
     "\"https://www.cs.toronto.edu/~kriz/cifar-10-python.tar.gz\"",
 ], outputs = ["data/cifar-10/cifar-10-python.tar.gz"]}
-unpack_cifar = {cmd = "tar -xvzf data/cifar-10/cifar-10-python.tar.gz -C data/cifar-10/", inputs = ["data/cifar-10/cifar-10-batches-py/"], outputs = ["data/cifar-10/cifar-10-batches-py/"], depends-on = ["download_cifar"]}
+unpack_cifar = {cmd = "tar -xvzf data/cifar-10/cifar-10-python.tar.gz -C data/cifar-10/", inputs = ["data/cifar-10/cifar-10-python.tar.gz"], outputs = ["data/cifar-10/cifar-10-batches-py/"], depends-on = ["download_cifar"]}
 
 download_datasets ={ cmd = ["echo", "All datasets downloaded!"], depends-on = ["download_mnist", "download_tree_bank", "unpack_cifar"]}
 
@@ -109,7 +109,7 @@ test_all = {cmd = """pytest
 --html=$TEST_REPORT_PATH.html
 --junitxml=$TEST_REPORT_PATH.xml
 --cov-report html:$COVERAGE_REPORT_PATH --cov=python/needle/ tests/ --cov-fail-under=$COVERAGE_FAIL_UNDER
-""", depends-on = ["build", "print_backend"]}
+""", depends-on = ["build", "print_backend", "download_datasets"]}
 
 [feature.test.activation.env]
 # Save results of test to html

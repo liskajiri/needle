@@ -33,6 +33,13 @@ jobs:
 
   test:
     runs-on: ubuntu-latest
+    # test report needs write permissions
+    permissions:
+      contents: read
+      issues: read
+      checks: write
+      pull-requests: write
+
     steps:
         - uses: actions/checkout@v4
         - name: Test
@@ -53,7 +60,7 @@ jobs:
     steps:
         - uses: actions/checkout@v4
         - name: Set numpy backend
-          run: echo "NEEDLE_BACKEND=numpy" >> "$GITHUB_ENV"
+          run: echo "NEEDLE_BACKEND=np" >> "$GITHUB_ENV"
         - name: Test_numpy_backend
           uses: prefix-dev/setup-pixi@v0.8.1
         # also runs slow tests

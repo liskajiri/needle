@@ -482,6 +482,7 @@ def test_matmul_simple_backward():
 
 
 # TODO: forward pass
+@pytest.mark.slow
 def test_matmul_batched_backward():
     gradient_check(
         ndl.matmul,
@@ -685,6 +686,7 @@ def test_complex_expression_vs_torch():
     np.testing.assert_allclose(C_ndl.grad.numpy(), C_torch.grad.numpy(), rtol=1e-4)
 
 
+@pytest.mark.slow
 def test_compute_gradient():
     gradient_check(
         lambda A, B, C: ndl.ops.ops_mathematic.summation(
