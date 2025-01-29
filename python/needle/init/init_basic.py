@@ -1,8 +1,8 @@
 from typing import TYPE_CHECKING
 
-import needle as ndl
-from needle.backend_ndarray.utils import DType, Shape
+from needle.backend_selection import default_device
 from needle.tensor import Tensor
+from needle.typing.utils import DType, Shape
 
 if TYPE_CHECKING:
     from needle.backend_ndarray.device import AbstractBackend as Device
@@ -12,7 +12,7 @@ def rand(
     *shape: Shape,
     low: float = 0.0,
     high: float = 1.0,
-    device: "Device | None" = None,
+    device: "Device" = default_device(),
     dtype: DType = "float32",
     requires_grad: bool = False,
 ) -> Tensor:
@@ -29,7 +29,6 @@ def rand(
     Returns:
         Tensor with random uniform values
     """
-    device = ndl.cpu() if device is None else device
     array = device.rand(*shape) * (high - low) + low
     return Tensor(array, device=device, dtype=dtype, requires_grad=requires_grad)
 
@@ -38,7 +37,7 @@ def randn(
     *shape: Shape,
     mean: float = 0.0,
     std: float = 1.0,
-    device: "Device | None" = None,
+    device: "Device" = default_device(),
     dtype: DType = "float32",
     requires_grad: bool = False,
 ) -> Tensor:
@@ -55,7 +54,6 @@ def randn(
     Returns:
         Tensor with random normal values
     """
-    device = ndl.cpu() if device is None else device
     array = device.randn(*shape) * std + mean
     return Tensor(array, device=device, dtype=dtype, requires_grad=requires_grad)
 
@@ -63,7 +61,7 @@ def randn(
 def constant(
     *shape: Shape,
     c: float = 1.0,
-    device: "Device | None" = None,
+    device: "Device" = default_device(),
     dtype: DType = "float32",
     requires_grad: bool = False,
 ) -> Tensor:
@@ -79,14 +77,13 @@ def constant(
     Returns:
         Tensor filled with constant value
     """
-    device = ndl.cpu() if device is None else device
     array = device.full(shape, c, dtype=dtype)
     return Tensor(array, device=device, dtype=dtype, requires_grad=requires_grad)
 
 
 def ones(
     *shape: Shape,
-    device: "Device | None" = None,
+    device: "Device" = default_device(),
     dtype: DType = "float32",
     requires_grad: bool = False,
 ) -> Tensor:
@@ -108,7 +105,7 @@ def ones(
 
 def zeros(
     *shape: Shape,
-    device: "Device | None" = None,
+    device: "Device" = default_device(),
     dtype: DType = "float32",
     requires_grad: bool = False,
 ) -> Tensor:
@@ -131,7 +128,7 @@ def zeros(
 def randb(
     *shape: Shape,
     p: float = 0.5,
-    device: "Device | None" = None,
+    device: "Device" = default_device(),
     dtype: DType = "bool",
     requires_grad: bool = False,
 ) -> Tensor:
@@ -147,7 +144,6 @@ def randb(
     Returns:
         Binary tensor with random values
     """
-    device = ndl.cpu() if device is None else device
     array = device.rand(*shape) <= p
     return Tensor(array, device=device, dtype=dtype, requires_grad=requires_grad)
 
@@ -155,7 +151,7 @@ def randb(
 def one_hot(
     n: int,
     i: Tensor,
-    device: "Device | None" = None,
+    device: "Device" = default_device(),
     dtype: DType = "float32",
     requires_grad: bool = False,
 ) -> Tensor:
@@ -171,7 +167,6 @@ def one_hot(
     Returns:
         One-hot encoded tensor
     """
-    device = ndl.cpu() if device is None else device
     return Tensor(
         device.one_hot(n, i.numpy().astype("int32"), dtype=dtype),
         device=device,
@@ -180,7 +175,10 @@ def one_hot(
 
 
 def zeros_like(
-    array: Tensor, *, device: "Device | None" = None, requires_grad: bool = False
+    array: Tensor,
+    *,
+    device: "Device" = default_device(),
+    requires_grad: bool = False,
 ) -> Tensor:
     """Generate tensor of zeros with same shape as input.
 
@@ -192,14 +190,16 @@ def zeros_like(
     Returns:
         Tensor of zeros with same shape as input
     """
-    device = device if device else array.device
     return zeros(
         array.shape, dtype=array.dtype, device=device, requires_grad=requires_grad
     )
 
 
 def ones_like(
-    array: Tensor, *, device: "Device | None" = None, requires_grad: bool = False
+    array: Tensor,
+    *,
+    device: "Device" = default_device(),
+    requires_grad: bool = False,
 ) -> Tensor:
     """Generate tensor of ones with same shape as input.
 
@@ -211,7 +211,6 @@ def ones_like(
     Returns:
         Tensor of ones with same shape as input
     """
-    device = device if device else array.device
     return ones(
         array.shape, dtype=array.dtype, device=device, requires_grad=requires_grad
     )

@@ -2,6 +2,7 @@ import needle as ndl
 import numpy as np
 import pytest
 from needle import backend_ndarray as nd
+from needle.backend_selection import NDArray
 from needle.data.datasets import CIFAR10Dataset, CIFARPath
 
 np.random.seed(2)
@@ -27,7 +28,7 @@ def test_cifar10_dataset(train):
     example = dataset[np.random.randint(len(dataset))]
     assert isinstance(example, tuple)
     X, y = example
-    assert isinstance(X, np.ndarray)
+    assert isinstance(X, NDArray)
     assert X.shape == (3, 32, 32)
 
 
@@ -37,7 +38,6 @@ BATCH_SIZES = [1, 15]
 @pytest.mark.parametrize("batch_size", BATCH_SIZES)
 @pytest.mark.parametrize("train", TRAIN)
 @pytest.mark.parametrize("device", _DEVICES, ids=["cpu", "cuda"])
-# TODO: device
 def test_cifar10_loader(batch_size, train, device):
     cifar10_train_dataset = CIFAR10Dataset(CIFARPath, train=train)
     train_loader = ndl.data.DataLoader(cifar10_train_dataset, batch_size)

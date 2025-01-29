@@ -8,13 +8,14 @@ import numpy as np
 
 import needle as ndl
 from needle.autograd.value import Value
-from needle.backend_selection import NDArray, array_api, cpu, default_device
+from needle.backend_ndarray.device import AbstractBackend
+from needle.backend_selection import NDArray, array_api, default_device
 
 if TYPE_CHECKING:
     from typing import Self
 
     from needle.backend_ndarray.device import AbstractBackend as Device
-    from needle.backend_ndarray.utils import DType
+    from needle.typing.utils import DType
 
 
 # needle version
@@ -94,11 +95,9 @@ class Tensor(Value):
         return self.realize_cached_data().dtype
 
     @property
-    def device(self):
+    def device(self) -> AbstractBackend:
         data = self.realize_cached_data()
         # numpy array always sits on cpu
-        if array_api is np:
-            return cpu()
         return data.device
 
     def backward(self, out_grad: Tensor | None = None) -> None:
@@ -129,7 +128,7 @@ class Tensor(Value):
             return ndl.ops.EWiseAdd()(self, other)
         return ndl.ops.AddScalar(other)(self)
 
-    def __mul__(self, other):
+    def __mul__(self, other: Tensor | Scalar) -> Tensor:
         if isinstance(other, Tensor):
             return ndl.ops.EWiseMul()(self, other)
         return ndl.ops.MulScalar(other)(self)
@@ -169,7 +168,7 @@ class Tensor(Value):
         return ndl.ops.Transpose(axes)(self)
 
     @property
-    def T(self):
+    def T(self) -> Tensor:
         return self.transpose()
 
     @property

@@ -3,11 +3,13 @@ This file defies specific implementations of devices
 when using numpy as NDArray backend.
 """
 
+import sys
+
 import numpy as np
 from numpy import ndarray as NDArray
 
 from needle.backend_ndarray.device import AbstractBackend
-from needle.backend_ndarray.utils import DType, Scalar, Shape
+from needle.typing.utils import DType, Scalar, Shape
 
 __device_name__ = "numpy"
 _datatype = np.float32
@@ -29,10 +31,9 @@ def to_numpy(a, shape, strides, offset) -> NDArray:
     )
 
 
-class BackendDevice(AbstractBackend):
+class NumpyBackend(AbstractBackend):
     # note: numpy doesn't support types within standard random routines, and
     # .astype("float32") does work if we're generating a singleton
-
     def randn(self, *shape: Shape, dtype: DType = "float32") -> NDArray:
         return np.random.randn(*shape)
 
@@ -71,16 +72,16 @@ class BackendDevice(AbstractBackend):
 ### Devices ###
 
 
-def cpu() -> BackendDevice:
+def cpu() -> AbstractBackend:
     """Return cpu device."""
-    return BackendDevice("numpy", module=np)
+    return NumpyBackend("numpy", sys.modules[__name__])
 
 
-def default_device() -> BackendDevice:
+def default_device() -> AbstractBackend:
     return cpu()
 
 
-def all_devices() -> list[BackendDevice]:
+def all_devices() -> list[AbstractBackend]:
     """Return a list of all available devices."""
     return [cpu()]
 

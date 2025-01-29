@@ -1,13 +1,11 @@
 import needle as ndl
 import numpy as np
-import pytest
 from hypothesis import given
 from hypothesis import strategies as st
 from hypothesis.extra.numpy import array_shapes, arrays
 from needle.backend_ndarray.ndarray import NDArray
 
 
-@pytest.mark.proptest
 @given(arrays(dtype=np.float32, shape=(5, 5, 5), elements=st.floats(0, 1)))
 def test_flip_horizontal_hypothesis(a: NDArray):
     transform = ndl.data.RandomFlipHorizontal(p=1)
@@ -55,7 +53,6 @@ def numpy_crop(img: NDArray, padding: int = 3) -> NDArray:
     ]
 
 
-@pytest.mark.proptest
 @given(
     arrays(
         dtype=np.float32,

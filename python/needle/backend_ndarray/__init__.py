@@ -24,14 +24,10 @@ from needle.backend_ndarray.ndarray import (
     tanh,
     transpose,
 )
-from needle.backend_ndarray.utils import DType, Scalar, Shape
 
 __all__ = [
     "BackendDevice",
-    "DType",
     "NDArray",
-    "Scalar",
-    "Shape",
     "all_devices",
     "array",
     "broadcast_to",

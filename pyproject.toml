@@ -2,15 +2,17 @@
 pythonpath = "python/needle"
 testpaths = "tests/"
 addopts = [
-    "-ras -n 8",
+    "-ra",
+    "-n", "auto",
     "--strict-markers",
     "--strict-config",
-    "-m 'not benchmark'",
+    "--hypothesis-show-statistics",
+    "-m not benchmark",
     # "--import-mode=importlib",
 ]
 markers = [
     "slow: marks tests as slow",
-    "proptest: marks tests as property tests",
+    "hypothesis: marks tests as property (hypothesis-based) tests",
     "gpu: marks tests as requiring a GPU",
     "datasets: marks tests as requiring datasets",
     "benchmark: marks tests as benchmark tests",
@@ -22,10 +24,20 @@ target-version = "py312"
 
 [tool.ruff.lint]
 extend-select = ["UP", "E", "W", "F", "I", "SIM", "TID", "PTH", "PERF", "RUF"]
+# extend-select = ["ALL"]
+# ignore = ["D", "ANN", "FIX", "TD", "COM", "ARG", "PLR", "NPY002", "N", "ERA001"]
 fixable = ["ALL"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = [
+    "S101", # asserts allowed in tests
+]
 
 [tool.ruff.lint.pydocstyle]
 convention = "numpy"
 
 [tool.ruff.format]
 docstring-code-format = true
+
+[tool.ruff.lint.flake8-tidy-imports]
+ban-relative-imports = "all"
