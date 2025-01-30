@@ -18,7 +18,7 @@ def compare_strides(a_np, a_nd) -> None:
 
 
 def check_same_memory(original, view) -> None:
-    assert original._handle.ptr() == view._handle.ptr()
+    assert original._handle.ptr() == view._handle.ptr()  # noqa: SLF001
 
 
 @pytest.mark.parametrize(
@@ -262,10 +262,10 @@ def test_setitem_ewise(params, device):
     _B = np.random.randn(*rhs_shape)
     A = ndl.array(_A, device=device)
     B = ndl.array(_B, device=device)
-    start_ptr = A._handle.ptr()
+    start_ptr = A._handle.ptr()  # noqa: SLF001
     A[lhs_slices] = B[rhs_slices]
     _A[lhs_slices] = _B[rhs_slices]
-    end_ptr = A._handle.ptr()
+    end_ptr = A._handle.ptr()  # noqa: SLF001
     assert start_ptr == end_ptr, "you should modify in-place"
     compare_strides(_A, A)
     np.testing.assert_allclose(A.numpy(), _A, atol=1e-5, rtol=1e-5)
@@ -287,10 +287,10 @@ def test_setitem_scalar(params, device):
     _A = np.random.randn(*shape)
     A = ndl.array(_A, device=device)
     # probably tear these out using lambdas
-    start_ptr = A._handle.ptr()
+    start_ptr = A._handle.ptr()  # noqa: SLF001
     _A[slices] = 4.0
     A[slices] = 4.0
-    end_ptr = A._handle.ptr()
+    end_ptr = A._handle.ptr()  # noqa: SLF001
     assert start_ptr == end_ptr, "you should modify in-place"
     np.testing.assert_allclose(A.numpy(), _A, atol=1e-5, rtol=1e-5)
     compare_strides(_A, A)
@@ -307,7 +307,7 @@ def test_matmul_tiled(m, n, p):
     A = ndl.array(np.random.randn(m, n, t, t), device=ndl.cpu())
     B = ndl.array(np.random.randn(n, p, t, t), device=ndl.cpu())
     C = ndl.NDArray.make((m, p, t, t), device=ndl.cpu())
-    device.matmul_tiled(A._handle, B._handle, C._handle, m * t, n * t, p * t)
+    device.matmul_tiled(A._handle, B._handle, C._handle, m * t, n * t, p * t)  # noqa: SLF001
 
     lhs = A.numpy().transpose(0, 2, 1, 3).flatten().reshape(
         m * t, n * t
@@ -661,11 +661,27 @@ def test_ewise_tanh(device):
     np.testing.assert_allclose(np.tanh(A), (B.tanh()).numpy(), atol=1e-5, rtol=1e-5)
 
 
+# examples from numpy documentation for np.array_split
+SPLITTED_SHAPES = [(np.arange(8.0), 3), (np.arange(9), 4)]
+
+
+@pytest.mark.parametrize(("x", "indices"), SPLITTED_SHAPES)
+@pytest.mark.parametrize("device", _DEVICES, ids=["cpu", "cuda"])
+def test_array_split(x, indices, device):
+    ndl_x = ndl.array(x, device=device)
+    splitted_numpy = np.array_split(x, indices)
+    splitted_ndl = ndl.array_split(ndl_x, indices)
+    for i in range(3):
+        np.testing.assert_allclose(
+            splitted_numpy[i], splitted_ndl[i].numpy(), atol=1e-5, rtol=1e-5
+        )
+
+
 def Prepare(A):
     return (A.numpy().flatten()[:128], A.strides, A.shape)
 
 
-def Rand(*shape, device=ndl.cpu(), entropy=1):
+def Rand(*shape, device=ndl.default_device, entropy=1):
     np.random.seed(np.prod(shape) * len(shape) * entropy)
     _A = np.random.randint(low=1, high=100, size=shape)
     return ndl.array(_A, device=device)
@@ -676,7 +692,3 @@ def RandC(*shape, entropy=1):
         return Rand(*shape, device=ndl.cuda(), entropy=2)
     msg = "You need a GPU to run these tests."
     raise NotImplementedError(msg)
-
-
-if __name__ == "__main__":
-    pass

@@ -51,9 +51,7 @@ jobs:
           if: always()
           with:
             files: |
-              test-results/**/*.xml
-              test-results/**/*.trx
-              test-results/**/*.json
+              reports/test_report/**/*.xml
 
   test_numpy_backend:
     runs-on: ubuntu-latest

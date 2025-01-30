@@ -180,76 +180,6 @@ def residual_backward(shape=(5, 5)):
     return x.grad.cached_data
 
 
-def learn_model_1d(feature_size, nclasses, _model, optimizer, epochs=1, **kwargs):
-    np.random.seed(42)
-    model = _model([])
-    X = get_tensor(1024, feature_size).cached_data
-    y = get_int_tensor(1024, low=0, high=nclasses).cached_data.astype(np.uint8)
-    m = X.shape[0]
-    batch = 32
-
-    loss_func = nn.SoftmaxLoss()
-    opt = optimizer(model.parameters(), **kwargs)
-
-    for _ in range(epochs):
-        for _i, (X0, y0) in enumerate(
-            zip(
-                np.array_split(X, m // batch),
-                np.array_split(y, m // batch),
-                strict=False,
-            )
-        ):
-            opt.reset_grad()
-            X0, y0 = ndl.Tensor(X0, dtype="float32"), ndl.Tensor(y0)
-            out = model(X0)
-            loss = loss_func(out, y0)
-            loss.backward()
-            # Opt should not change gradients.
-            grad_before = model.parameters()[0].grad.detach().cached_data
-            opt.step()
-            grad_after = model.parameters()[0].grad.detach().cached_data
-            np.testing.assert_allclose(
-                grad_before,
-                grad_after,
-                rtol=1e-5,
-                atol=1e-5,
-                err_msg="Optim should not modify gradients in place",
-            )
-
-    return np.array(loss.cached_data)
-
-
-def learn_model_1d_eval(feature_size, nclasses, _model, optimizer, epochs=1, **kwargs):
-    np.random.seed(42)
-    model = _model([])
-    X = get_tensor(1024, feature_size).cached_data
-    y = get_int_tensor(1024, low=0, high=nclasses).cached_data.astype(np.uint8)
-    m = X.shape[0]
-    batch = 32
-
-    loss_func = nn.SoftmaxLoss()
-    opt = optimizer(model.parameters(), **kwargs)
-
-    for _i, (X0, y0) in enumerate(
-        zip(np.array_split(X, m // batch), np.array_split(y, m // batch), strict=False)
-    ):
-        opt.reset_grad()
-        X0, y0 = ndl.Tensor(X0, dtype="float32"), ndl.Tensor(y0)
-        out = model(X0)
-        loss = loss_func(out, y0)
-        loss.backward()
-        opt.step()
-
-    X_test = ndl.Tensor(get_tensor(batch, feature_size).cached_data)
-    y_test = ndl.Tensor(
-        get_int_tensor(batch, low=0, high=nclasses).cached_data.astype(np.uint8)
-    )
-
-    model.eval()
-
-    return np.array(loss_func(model(X_test), y_test).cached_data)
-
-
 def init_a_tensor_of_shape(shape, init_fn):
     x = get_tensor(*shape)
     np.random.seed(42)
@@ -257,14 +187,9 @@ def init_a_tensor_of_shape(shape, init_fn):
     return x.cached_data
 
 
-def global_tensor_count():
-    return np.array(ndl.autograd.TENSOR_COUNTER)
-
-
 def nn_linear_weight_init():
     np.random.seed(1337)
     f = ndl.nn.Linear(7, 4)
-    f.weight.cached_data
     return f.weight.cached_data
 
 
