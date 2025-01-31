@@ -1,24 +1,28 @@
-from needle.backend_selection import NDArray, array_api
-from needle.ops.op import TensorOp
-from needle.ops.ops_mathematic import (
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+from needle.backend_selection import array_api
+from needle.ops.mathematic import (
     broadcast_to_new_axis,
     exp,
     summation,
 )
-from needle.tensor import Tensor
-from needle.typing.utils import Shape
+from needle.ops.op import TensorOp
+
+if TYPE_CHECKING:
+    from needle.backend_selection import NDArray
+    from needle.tensor import Tensor
+    from needle.typing.types import Shape
 
 
-# TODO: not covered by current tests - Convert to 2024 edition
 class LogSoftmax(TensorOp):
     def compute(self, Z: NDArray) -> NDArray:
         # 2d input array
         # Subtract the maximum value along axis=1 for numerical stability
-        assert (
-            Z.ndim == 2
-        ), f"Input must be a 2D array, but got array with shape: {Z.shape}"
-        # TODO: this kind of broadcasting should be supported
-        # by the backend automatically
+        assert Z.ndim == 2, (
+            f"Input must be a 2D array, but got array with shape: {Z.shape}"
+        )
         max_Z = array_api.broadcast_to(array_api.max(Z, axis=1, keepdims=True), Z.shape)
         shifted_Z = Z - max_Z
         # Compute log-softmax
@@ -28,12 +32,14 @@ class LogSoftmax(TensorOp):
         )  # .broadcast_to(shifted_Z.shape)
 
     def gradient(self, out_grad: Tensor, node: Tensor) -> Tensor:
-        Z = node.inputs[0]
+        Z = node.inputs[0].realize_cached_data()
 
         # Compute softmax values from log-softmax
         softmax_Z = array_api.exp(self.compute(Z))
         # Gradient calculation
-        sum_out_grad = array_api.sum(out_grad, axis=(1,), keepdims=True)
+        sum_out_grad = array_api.sum(
+            out_grad.realize_cached_data(), axis=(1,), keepdims=True
+        )
         return out_grad - sum_out_grad * softmax_Z
 
 

@@ -1,7 +1,6 @@
-from needle.ops import ops_logarithmic, ops_mathematic, ops_tuple
-from needle.ops.op import Op, TensorOp, TensorTupleOp
-from needle.ops.ops_logarithmic import LogSumExp, logsoftmax, logsumexp
-from needle.ops.ops_mathematic import (
+from needle.ops import logarithmic, mathematic, ops_tuple
+from needle.ops.logarithmic import LogSumExp, logsoftmax, logsumexp
+from needle.ops.mathematic import (
     AddScalar,
     BroadcastTo,
     DivScalar,
@@ -22,6 +21,7 @@ from needle.ops.ops_mathematic import (
     Transpose,
     add,
     add_scalar,
+    array_split,
     broadcast_to,
     broadcast_to_new_axis,
     divide,
@@ -44,6 +44,7 @@ from needle.ops.ops_mathematic import (
     tanh,
     transpose,
 )
+from needle.ops.op import Op, TensorOp, TensorTupleOp
 from needle.ops.ops_tuple import fused_add_scalars, make_tuple, tuple_get_item
 
 __all__ = [
@@ -71,6 +72,7 @@ __all__ = [
     "Transpose",
     "add",
     "add_scalar",
+    "array_split",
     "broadcast_to",
     "broadcast_to_new_axis",
     "divide",
@@ -78,16 +80,16 @@ __all__ = [
     "exp",
     "fused_add_scalars",
     "log",
+    "logarithmic",
     "logsoftmax",
     "logsumexp",
     "make_tuple",
+    "mathematic",
     "matmul",
     "mean",
     "mul_scalar",
     "multiply",
     "negate",
-    "ops_logarithmic",
-    "ops_mathematic",
     "ops_tuple",
     "power",
     "power_scalar",

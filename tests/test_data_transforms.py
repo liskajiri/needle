@@ -37,7 +37,7 @@ def numpy_crop(img: NDArray, padding: int = 3) -> NDArray:
     """
     assert img.ndim == 3
     shift_x, shift_y = np.random.randint(low=-padding, high=padding + 1, size=2)
-    H, W, C = img.shape
+    H, W, C = tuple(img.shape)
 
     H += 2 * padding
     W += 2 * padding

@@ -1,5 +1,5 @@
 from needle import ops
-from needle.nn.nn_basic import Module
+from needle.nn.core import Module
 from needle.tensor import Tensor
 
 __all__ = ["ReLU"]

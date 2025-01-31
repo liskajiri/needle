@@ -1,8 +1,6 @@
-from needle.nn import activations, dropout, linear, nn_basic, norms, softmax
+from needle.nn import activations, core, dropout, linear, norms, softmax
 from needle.nn.activations import ReLU
-from needle.nn.dropout import Dropout
-from needle.nn.linear import Linear
-from needle.nn.nn_basic import (
+from needle.nn.core import (
     Flatten,
     Identity,
     Module,
@@ -10,6 +8,8 @@ from needle.nn.nn_basic import (
     Residual,
     Sequential,
 )
+from needle.nn.dropout import Dropout
+from needle.nn.linear import Linear
 from needle.nn.norms import BatchNorm1d, LayerNorm1d
 from needle.nn.softmax import SoftmaxLoss
 
@@ -27,9 +27,9 @@ __all__ = [
     "Sequential",
     "SoftmaxLoss",
     "activations",
+    "core",
     "dropout",
     "linear",
-    "nn_basic",
     "norms",
     "softmax",
 ]

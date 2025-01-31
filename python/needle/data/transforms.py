@@ -1,9 +1,16 @@
+from __future__ import annotations
+
+from abc import abstractmethod
+from typing import TYPE_CHECKING
+
 import numpy as array_api
 
-from needle.backend_ndarray.ndarray import NDArray
+if TYPE_CHECKING:
+    from needle.backend_ndarray.ndarray import NDArray
 
 
 class Transform:
+    @abstractmethod
     def __call__(self, x: NDArray) -> NDArray:
         raise NotImplementedError
 
@@ -39,14 +46,12 @@ class RandomCrop(Transform):
             H x W x C NDArray of clipped image
         Note: generate the image shifted by shift_x, shift_y specified below
         """
-        assert img.ndim == 3
+        assert img.ndim == 3, f"Image should be H x W x C NDArray, got {img.shape}"
         shift_x, shift_y = array_api.random.randint(
             low=-self.padding, high=self.padding + 1, size=2
         )
-        # shift_x = random.randint(-self.padding, self.padding)
-        # shift_y = random.randint(-self.padding, self.padding)
 
-        H, W, C = img.shape
+        H, W, C = tuple(img.shape)
 
         H += 2 * self.padding
         W += 2 * self.padding

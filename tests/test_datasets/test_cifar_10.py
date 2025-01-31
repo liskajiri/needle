@@ -41,9 +41,9 @@ BATCH_SIZES = [1, 15]
 def test_cifar10_loader(batch_size, train, device):
     cifar10_train_dataset = CIFAR10Dataset(CIFARPath, train=train)
     train_loader = ndl.data.DataLoader(cifar10_train_dataset, batch_size)
-    for X, y in train_loader:
+    for _X, _y in train_loader:
         break
-    assert isinstance(X.cached_data, nd.NDArray)
-    assert isinstance(X, ndl.Tensor)
-    assert isinstance(y, ndl.Tensor)
-    assert X.dtype == "float32"
+    assert isinstance(_X.cached_data, nd.NDArray)
+    assert isinstance(_X, ndl.Tensor)
+    assert isinstance(_y, ndl.Tensor)
+    assert _X.dtype == "float32"

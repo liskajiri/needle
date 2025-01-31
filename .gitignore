@@ -141,6 +141,7 @@ nn_implementations/*
 figures/*
 
 notebooks/hw3.ipynb
+notebooks/hw4.ipynb
 .build/*
 .idea/*
 *.vscode*
@@ -153,5 +154,4 @@ data/mnist
 data/cifar-10
 data/tree_bank
 
-# TODO: maybe add back?
 reports/

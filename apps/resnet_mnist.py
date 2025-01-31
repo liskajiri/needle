@@ -100,7 +100,7 @@ def epoch(
 def train_mnist(
     batch_size: int = 100,
     epochs: int = 10,
-    optimizer: ndl.optim.Optimizer = ndl.optim.Adam,
+    optimizer: type[ndl.optim.Optimizer] | None = None,
     lr: float = 0.001,
     weight_decay: float = 0.001,
     hidden_dim: int = 100,
@@ -123,11 +123,20 @@ def train_mnist(
     test_loader = ndl.data.DataLoader(mnist_test, batch_size=batch_size)
 
     model = MLPResNet(INPUT_DIM, hidden_dim)
+    if not optimizer:
+        optimizer = ndl.optim.Adam
     opt = optimizer(model.parameters(), lr=lr, weight_decay=weight_decay)
 
     for _epoch_idx in range(epochs):
         train_acc, train_loss = epoch(train_loader, model, opt)
         test_acc, test_loss = epoch(test_loader, model)
+        print(
+            f"Epoch {_epoch_idx + 1}/{epochs} "
+            f"Train Error: {train_acc:.2f} "
+            f"Train Loss: {train_loss:.2f} "
+            f"Test Error: {test_acc:.2f} "
+            f"Test Loss: {test_loss:.2f}"
+        )
 
     return (
         Accuracy(train_acc),
