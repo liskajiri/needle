@@ -22,7 +22,8 @@ class MNISTDataset(Dataset):
         labels: Path,
         transforms: list | None = None,
     ):
-        """Read an images and labels file in MNIST format.  See this page:
+        """
+        Read an images and labels file in MNIST format.  See this page:
         http://yann.lecun.com/exdb/mnist/ for a description of the file format.
 
         Args:
@@ -55,9 +56,7 @@ class MNISTDataset(Dataset):
 
     def __getitem__(self, index: int) -> object:
         (x, y) = self.X[index], self.y[index]
-        if self.transforms:
-            return self.apply_transforms(x), y
-        return x, y
+        return self.apply_transforms(x), y
 
     def __len__(self) -> int:
         return self.X.shape[0]
@@ -70,7 +69,7 @@ class MNISTDataset(Dataset):
         with gzip.open(images_file, "rb") as image_file:
             image_file.read(16)  # Skip the header
             buffer = image_file.read()
-            num_images = len(buffer) // (MNISTDataset.IMAGE_SIZE)
+            num_images = len(buffer) // MNISTDataset.IMAGE_SIZE
             X = np.frombuffer(buffer, dtype=np.uint8).astype(np.float32) / 255.0
             X = X.reshape(num_images, MNISTDataset.IMAGE_SIZE)
 

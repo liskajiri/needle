@@ -1,8 +1,21 @@
-from collections import defaultdict
-from collections.abc import Iterable
+from __future__ import annotations
 
-from needle.nn.nn_basic import Parameter
+from dataclasses import dataclass
+from typing import TYPE_CHECKING
+
+import numpy as np
+
+from needle.nn.core import Parameter
 from needle.optim.base import Optimizer
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
+
+
+@dataclass(slots=True)
+class AdamState:
+    u: Parameter
+    v: Parameter
 
 
 class Adam(Optimizer):
@@ -23,19 +36,31 @@ class Adam(Optimizer):
         self.weight_decay = weight_decay
         self.t = 0
 
-        self.u = defaultdict(lambda: 0.0)
-        self.v = defaultdict(lambda: 0.0)
+        self.state = {}
+        for p in self.params:
+            zeros = np.zeros(p.data.shape)
+            self.state[p] = AdamState(
+                # TODO: ndl.zeros has a weird bug, where it adds another tuple item
+                # ie. (64, 32) becomes ((64, 32),)
+                Parameter(zeros),
+                Parameter(zeros),
+            )
 
     def step(self) -> None:
         self.t += 1
         for p in self.params:
             grad = p.grad.data + self.weight_decay * p.data
-            self.u[p] = self.beta1 * self.u[p] + (1 - self.beta1) * grad.data
-            self.v[p] = self.beta2 * self.v[p] + (1 - self.beta2) * grad.data**2
+            curr_state = self.state[p]
+
+            curr_state.u.data = (
+                self.beta1 * curr_state.u.data + (1 - self.beta1) * grad.data
+            )
+            curr_state.v.data = (
+                self.beta2 * curr_state.v.data + (1 - self.beta2) * grad.data**2
+            )
 
             # bias corrections
-            u_hat = self.u[p] / (1 - self.beta1 ** (self.t))
-            v_hat = self.v[p] / (1 - self.beta2 ** (self.t))
+            u_hat = curr_state.u / (1 - self.beta1 ** (self.t))
+            v_hat = curr_state.v / (1 - self.beta2 ** (self.t))
 
-            # resolve issues with wrong types
             p.data -= self.lr * u_hat / ((v_hat) ** 0.5 + self.eps)

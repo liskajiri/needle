@@ -1,20 +1,28 @@
 """Optimization module."""
 
-from collections.abc import Iterable
+from __future__ import annotations
 
-from needle.nn.nn_basic import Parameter
+from abc import ABC, abstractmethod
+from typing import TYPE_CHECKING
+
+from needle.nn.core import Parameter
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
 
 
-class Optimizer:
+class Optimizer(ABC):
+    @abstractmethod
     def __init__(self, params: Iterable[Parameter]) -> None:
         self.params = params
 
+    @abstractmethod
     def step(self) -> None:
         raise NotImplementedError
 
     def reset_grad(self) -> None:
         for p in self.params:
-            p.grad = None
+            p.grad = Parameter(p * 0)
 
     def zero_grad(self) -> None:
         # method to mimic Pytorch's syntax

@@ -1,6 +1,10 @@
-from collections import defaultdict
+from __future__ import annotations
 
-from needle.tensor import Tensor
+from collections import defaultdict
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from needle.tensor import Tensor
 
 
 def compute_gradient_of_variables(output_tensor: Tensor, out_grad: Tensor) -> None:
@@ -56,7 +60,9 @@ def find_topo_sort(node_list: list[Tensor]) -> list[Tensor]:
 
 
 def topo_sort_dfs(node: Tensor, visited: set, topo_order: list[Tensor]) -> None:
-    """Post-order DFS."""
+    """
+    Post-order DFS.
+    """
     if node in visited:
         return
     visited.add(node)

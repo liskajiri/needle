@@ -18,6 +18,7 @@ BACKEND = os.getenv("NEEDLE_BACKEND", DEFAULT_BACKEND)
 if BACKEND not in BACKENDS:
     raise RuntimeError(f"Unknown needle array backend {BACKEND}")
 
+BACKEND = BACKENDS.NEEDLE
 
 if BACKENDS.NEEDLE == BACKEND:
     print("Using needle backend")
@@ -32,20 +33,22 @@ if BACKENDS.NEEDLE == BACKEND:
         all_devices,
         cpu,
         cuda,
-        default_device,
     )
+
+    default_device = cpu()
 
 elif BACKENDS.NUMPY == BACKEND:
     print("Using numpy backend")
-    import numpy as array_api  # noqa: F401
+    import numpy as array_api  # noqa: F401, ICN001
 
-    from needle.backend_ndarray.backend_numpy import (
+    from needle.backend_numpy import (
         NDArray,  # noqa: F401
         all_devices,  # noqa: F401
         cpu,  # noqa: F401
         cuda,  # noqa: F401
-        default_device,  # noqa: F401
     )
-    from needle.backend_ndarray.backend_numpy import (
+
+    default_device = cpu()
+    from needle.backend_numpy import (
         NumpyBackend as Device,  # noqa: F401
     )

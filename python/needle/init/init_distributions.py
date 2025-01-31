@@ -1,8 +1,13 @@
+from __future__ import annotations
+
 import math
+from typing import TYPE_CHECKING
 
 from needle.init.init_basic import rand, randn
 from needle.nn.activations import ReLU
-from needle.tensor import Tensor
+
+if TYPE_CHECKING:
+    from needle.tensor import Tensor
 
 
 def xavier_uniform(
@@ -61,7 +66,7 @@ def kaiming_uniform(
     fan_in: int,
     fan_out: int,
     gain: float = 2**0.5,
-    nonlinearity: ReLU = ReLU(),
+    nonlinearity: ReLU | None = None,
     **kwargs,
 ) -> Tensor:
     """Initialize weights using He/Kaiming uniform initialization.
@@ -82,8 +87,8 @@ def kaiming_uniform(
     """
     if fan_in <= 0 or fan_out <= 0:
         raise ValueError("fan_in and fan_out must be positive integers")
-    if not isinstance(nonlinearity, ReLU):
-        raise ValueError("Only relu supported currently")
+    if not nonlinearity:
+        nonlinearity = ReLU()
 
     bound = gain * math.sqrt(3 / fan_in)
     return rand(fan_in, fan_out, low=-bound, high=bound, **kwargs)
@@ -93,7 +98,7 @@ def kaiming_normal(
     fan_in: int,
     fan_out: int,
     gain: float = 2**0.5,
-    nonlinearity: ReLU = ReLU(),
+    nonlinearity: ReLU | None = None,
     **kwargs,
 ) -> Tensor:
     """Initialize weights using He/Kaiming normal initialization.
@@ -114,8 +119,8 @@ def kaiming_normal(
     """
     if fan_in <= 0 or fan_out <= 0:
         raise ValueError("fan_in and fan_out must be positive integers")
-    if not isinstance(nonlinearity, ReLU):
-        raise ValueError("Only relu supported currently")
+    if not nonlinearity:
+        nonlinearity = ReLU()
 
     std = gain / (fan_in**0.5)
     return randn(fan_in, fan_out, std=std, **kwargs)

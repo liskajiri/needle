@@ -1,20 +1,25 @@
-from typing import TYPE_CHECKING, Any
+from __future__ import annotations
 
-from needle.tensor import Tensor, TensorTuple, Value
+from abc import ABC, abstractmethod
+from typing import TYPE_CHECKING
+
+from needle.tensor import Tensor, TensorTuple
 
 if TYPE_CHECKING:
+    from typing import Any
+
+    from needle.autograd.value import Value
     from needle.backend_selection import NDArray
 
 
-# TODO: Abstract class with ABC checking
-class Op:
+class Op(ABC):
     """Operator definition."""
 
     def __call__(self, *args) -> Any:
         raise NotImplementedError()
 
-    # TODO: Always one arg, second optional
-    def compute(self, *args: list["NDArray"]) -> "NDArray":
+    @abstractmethod
+    def compute(self, *args: list[NDArray]) -> NDArray:
         """Calculate forward pass of operator.
 
         Parameters
@@ -30,6 +35,7 @@ class Op:
         """
         raise NotImplementedError()
 
+    @abstractmethod
     def gradient(self, out_grad: Value, _node: Value) -> Value | tuple[Value]:
         """Compute partial adjoint for each input value for a given output adjoint.
 

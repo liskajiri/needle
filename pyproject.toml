@@ -6,7 +6,7 @@ addopts = [
     "-n", "auto",
     "--strict-markers",
     "--strict-config",
-    "--hypothesis-show-statistics",
+    # "--hypothesis-show-statistics",
     "-m not benchmark",
     # "--import-mode=importlib",
 ]
@@ -25,12 +25,18 @@ target-version = "py312"
 [tool.ruff.lint]
 extend-select = ["UP", "E", "W", "F", "I", "SIM", "TID", "PTH", "PERF", "RUF"]
 # extend-select = ["ALL"]
-# ignore = ["D", "ANN", "FIX", "TD", "COM", "ARG", "PLR", "NPY002", "N", "ERA001"]
+ignore = ["D", "ANN", "FIX", "TD", "COM", "ARG", "PLR", "NPY002", "N", "ERA001",
+    "FBT001", # boolean args in functions
+    "S311", # non-crypto random number generation
+    "PGH003", # generic type hints ignore
+    "RUF100" # unused no-qa: Remove after fixing
+]
 fixable = ["ALL"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**/*.py" = [
     "S101", # asserts allowed in tests
+    "EXE", # ignore shebangs
 ]
 
 [tool.ruff.lint.pydocstyle]
@@ -41,3 +47,20 @@ docstring-code-format = true
 
 [tool.ruff.lint.flake8-tidy-imports]
 ban-relative-imports = "all"
+
+[tool.coverage.run]
+branch = true
+source = "python/needle"
+omit = "tests/*"
+
+[tool.coverage.report]
+show_missing = true
+# Fails tests if code coverage is below 80%
+fail_under = 80
+
+exclude_also = [
+    'raise NotImplementedError',
+    'if __name__ == .__main__.:',
+    'if TYPE_CHECKING:',
+    '@(abc\.)?abstractmethod',
+]

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Self
 
@@ -5,7 +7,7 @@ if TYPE_CHECKING:
     from typing import Any
 
     from needle.backend_selection import NDArray
-    from needle.typing.utils import DType, Scalar, Shape
+    from needle.typing.types import DType, Scalar, Shape
 
 
 class AbstractBackend(ABC):
@@ -22,22 +24,22 @@ class AbstractBackend(ABC):
     def __repr__(self) -> str:
         return self.name + "()"
 
-    def __getattr__(self, name: str) -> "Any":
+    def __getattr__(self, name: str) -> Any:
         return getattr(self.module, name)
 
     def enabled(self) -> bool:
         return self.module is not None
 
     @abstractmethod
-    def rand(self, shape: "Shape", dtype: "DType" = "float32") -> "NDArray":
+    def rand(self, shape: Shape, dtype: DType = "float32") -> NDArray:
         raise NotImplementedError
 
     @abstractmethod
-    def randn(self, shape: "Shape", dtype: "DType") -> "NDArray":
+    def randn(self, shape: Shape, dtype: DType) -> NDArray:
         raise NotImplementedError
 
     @abstractmethod
-    def one_hot(self, n: int, i: int, dtype: "DType") -> "NDArray":
+    def one_hot(self, n: int, i: int, dtype: DType) -> NDArray:
         """Create a one-hot vector.
 
         Args:
@@ -54,17 +56,17 @@ class AbstractBackend(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def zeros(self, shape: "Shape", dtype: "DType") -> "NDArray":
+    def zeros(self, shape: Shape, dtype: DType) -> NDArray:
         raise NotImplementedError
 
     @abstractmethod
-    def ones(self, shape: "Shape", dtype: "DType") -> "NDArray":
+    def ones(self, shape: Shape, dtype: DType) -> NDArray:
         raise NotImplementedError
 
     @abstractmethod
-    def empty(self, shape: "Shape", dtype: "DType") -> "NDArray":
+    def empty(self, shape: Shape, dtype: DType) -> NDArray:
         raise NotImplementedError
 
     @abstractmethod
-    def full(self, shape: "Shape", fill_value: "Scalar", dtype: "DType") -> "NDArray":
+    def full(self, shape: Shape, fill_value: Scalar, dtype: DType) -> NDArray:
         raise NotImplementedError

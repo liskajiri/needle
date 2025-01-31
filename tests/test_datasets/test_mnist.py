@@ -38,9 +38,9 @@ def test_mnist_dataset_stats(
     train_X = mnist_train.X
     test_X = mnist_test.X
 
-    assert train_X.dtype == np.float32
+    assert train_X.dtype == "float32"
     assert mnist_train.y.dtype == np.uint8
-    assert test_X.dtype == np.float32
+    assert test_X.dtype == "float32"
     assert mnist_test.y.dtype == np.uint8
 
     # assert train_X.shape == (60000, 784)
@@ -69,7 +69,7 @@ def test_mnist_train_dataset_size(mnist_train):
 
 
 @pytest.mark.parametrize(
-    "indices,expected_norms,expected_labels",
+    ("indices", "expected_norms", "expected_labels"),
     [
         (
             [1, 42, 1000, 2000, 3000, 4000, 5000, 5005],
@@ -182,8 +182,9 @@ def test_mnist_train_crop28_flip():
 #         9.361828,
 #     ]
 
-#     dataset = ndl.data.MNISTDataset(MNISTPaths.TRAIN_IMAGES, MNISTPaths.TRAIN_LABELS,
-#       transforms=transforms)
+#     dataset = ndl.data.MNISTDataset(
+#         MNISTPaths.TRAIN_IMAGES, MNISTPaths.TRAIN_LABELS, transforms=transforms
+#     )
 #     sample_norms = [np.linalg.norm(dataset[idx][0]) for idx in SAMPLE_INDICES]
 #     sample_labels = [dataset[idx][1] for idx in SAMPLE_INDICES]
 
@@ -225,7 +226,7 @@ def test_test_dataloader(
 def test_shuffle(mnist_test: ndl.data.MNISTDataset):
     not_shuffled = ndl.data.DataLoader(dataset=mnist_test, batch_size=10, shuffle=False)
     shuffled = ndl.data.DataLoader(dataset=mnist_test, batch_size=10, shuffle=True)
-    for i, j in zip(shuffled, not_shuffled):
+    for i, j in zip(shuffled, not_shuffled, strict=True):
         assert i != j, "Shuffling had no effect on the dataloader."
 
 

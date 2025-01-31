@@ -9,6 +9,8 @@ from mnist_needle import loss_err, nn_epoch, softmax_loss
 from mnist_numpy import parse_mnist
 from needle.data.datasets.mnist import MNISTPaths
 
+from tests.gradient_check import backward_check as gradient_check
+
 
 ##############################################################################
 ### TESTS for forward passes
@@ -103,7 +105,7 @@ TENSOR_MATMUL_CASES = [
 
 
 @pytest.mark.parametrize(
-    "a,b,expected",
+    ("a", "b", "expected"),
     TENSOR_MATMUL_CASES,
     ids=lambda case: f"{len(case[0])}@{len(case[1])}",
 )
@@ -116,7 +118,7 @@ def test_matmul_from_tensor(a, b, expected):
 
 def test_summation_forward():
     np.testing.assert_allclose(
-        ndl.ops.ops_mathematic.summation(
+        ndl.ops.mathematic.summation(
             ndl.Tensor(
                 [
                     [2.2, 4.35, 1.4, 0.3, 2.65],
@@ -128,7 +130,7 @@ def test_summation_forward():
         np.array(30.5),
     )
     np.testing.assert_allclose(
-        ndl.ops.ops_mathematic.summation(
+        ndl.ops.mathematic.summation(
             ndl.Tensor(
                 [
                     [1.05, 2.55, 1.0],
@@ -143,7 +145,7 @@ def test_summation_forward():
         np.array([4.6, 9.25, 7.5, 7.9, 8.65]),
     )
     np.testing.assert_allclose(
-        ndl.ops.ops_mathematic.summation(
+        ndl.ops.mathematic.summation(
             ndl.Tensor([[1.5, 3.85, 3.45], [1.35, 1.3, 0.65], [2.6, 4.55, 0.25]]),
             axes=0,
         ).numpy(),
@@ -296,167 +298,6 @@ def test_transpose_forward():
 ### TESTS for backward passes
 
 
-# def gradient_check(f, *args, tol: float = 0.05, backward: bool = False, **kwargs):
-#     eps = 1e-4
-#     numerical_grads = [np.zeros(a.shape) for a in args]
-#     for i in range(len(args)):
-#         for j in range(args[i].realize_cached_data().size):
-#             args[i].realize_cached_data().flatten()[j] += eps
-#             f1 = float(f(*args, **kwargs).numpy().sum())
-#             args[i].realize_cached_data().flatten()[j] -= 2 * eps
-#             f2 = float(f(*args, **kwargs).numpy().sum())
-#             args[i].realize_cached_data().flatten()[j] += eps
-#             numerical_grads[i].flatten()[j] = (f1 - f2) / (2 * eps)
-#     if not backward:
-#         out = f(*args, **kwargs)
-#         computed_grads = [
-#             x.numpy()
-#             for x in out.op.gradient_as_tuple(ndl.Tensor(np.ones(out.shape)), out)
-#         ]
-#     else:
-#         out = f(*args, **kwargs).sum()
-#         out.backward()
-#         computed_grads = [a.grad.numpy() for a in args]
-#     error = sum(np.linalg.norm(g - n)
-#       for g, n in zip(computed_grads, numerical_grads)
-#       )
-#     elementwise_tol = 1e-2
-#     # for i in range(len(args)):
-#     #     np.testing.assert_allclose(
-#     #         computed_grads[i],
-#     #         numerical_grads[i],
-#     #         rtol=elementwise_tol,
-#     #         atol=elementwise_tol,
-#     #     )
-#     assert error < tol, f"Gradient check failed. Error: {error:.4f}"
-#     return computed_grads
-
-
-# ==========
-def to_torch_tensor(needle_tensor):
-    """Convert needle tensor to torch tensor safely"""
-    if hasattr(needle_tensor, "numpy"):
-        data = needle_tensor.numpy()
-    elif hasattr(needle_tensor, "realize_cached_data"):
-        data = needle_tensor.realize_cached_data()
-    else:
-        data = needle_tensor
-    return torch.tensor(data, requires_grad=True)
-
-
-def handle_shape_op(op_name, torch_args, args, kwargs):
-    """Handle shape manipulation operations"""
-    if op_name == "reshape":
-        shape = kwargs.get("shape") or args[1]
-        return torch_args[0].reshape(shape)
-    elif op_name == "transpose":
-        axes = kwargs.get("axes") or args[1]
-        if isinstance(axes, list | tuple):
-            # Match dimensions count
-            n_dims = torch_args[0].dim()
-            if len(axes) != n_dims:
-                axes = list(range(n_dims))
-            return torch_args[0].permute(*axes)
-        return torch_args[0].transpose(axes)
-    elif op_name == "broadcast_to":
-        shape = kwargs.get("shape") or args[1]
-        return torch_args[0].expand(shape)
-    return None
-
-
-# TODO: viz test_nd_backend
-def gradient_check(f, *args, tol: float = 1e-5, backward: bool = False, **kwargs):
-    """Compare numerical and analytical gradients, with optional PyTorch comparison"""
-    eps = 1e-4
-
-    # 1. Compute numerical gradients
-    numerical_grads = [np.zeros(a.shape) for a in args]
-    for i in range(len(args)):
-        for j in range(args[i].realize_cached_data().size):
-            args[i].realize_cached_data().flatten()[j] += eps
-            f1 = float(f(*args, **kwargs).numpy().sum())
-            args[i].realize_cached_data().flatten()[j] -= 2 * eps
-            f2 = float(f(*args, **kwargs).numpy().sum())
-            args[i].realize_cached_data().flatten()[j] += eps
-            numerical_grads[i].flatten()[j] = (f1 - f2) / (2 * eps)
-
-    # 2. Compute analytical gradients
-    if not backward:
-        out = f(*args, **kwargs)
-        computed_grads = [
-            x.numpy()
-            for x in out.op.gradient_as_tuple(ndl.Tensor(np.ones(out.shape)), out)
-        ]
-    else:
-        out = f(*args, **kwargs).sum()
-        out.backward()
-        computed_grads = [a.grad.numpy() for a in args]
-
-    # 3. Try PyTorch comparison if possible
-    try:
-        torch_args = [to_torch_tensor(a) for a in args]
-        op_name = f.__name__ if hasattr(f, "__name__") else f.__class__.__name__
-
-        # Try shape operations first
-        torch_out = handle_shape_op(op_name, torch_args, args, kwargs)
-
-        if torch_out is None:
-            # Standard operations
-            op_map = {
-                "matmul": torch.matmul,
-                "multiply": torch.multiply,
-                "divide": torch.divide,
-                "divide_scalar": lambda x, scalar=None: x
-                / (scalar or kwargs.get("scalar")),
-                "add": torch.add,
-                "sum": torch.sum,
-                "summation": torch.sum,
-                "negate": lambda x: -x,
-                "exp": torch.exp,
-                "log": torch.log,
-                "softmax_loss": lambda x, y: torch.nn.functional.cross_entropy(x, y),
-                "relu": torch.nn.functional.relu,
-            }
-            torch_f = op_map.get(op_name)
-            if torch_f:
-                # Handle divide_scalar specially
-                if op_name == "divide_scalar":
-                    scalar = kwargs.get("scalar")
-                    torch_out = torch_f(torch_args[0], scalar=scalar)
-                else:
-                    torch_out = torch_f(*torch_args)
-            else:
-                print(f"Skipping PyTorch comparison for {op_name}")
-                torch_out = None
-
-        # Compute gradients if we have an output
-        if torch_out is not None:
-            torch_out = torch_out.sum()
-            torch_out.backward()
-            torch_grads = [t.grad.numpy() for t in torch_args]
-
-            # Compare gradients
-            for i in range(len(args)):
-                np.testing.assert_allclose(
-                    computed_grads[i], torch_grads[i], rtol=tol, atol=tol
-                )
-
-    except Exception as e:
-        raise e
-
-    # numerical_tol = 1e-1
-    # 4. Check gradient error
-    # max_error = max(
-    #     np.max(np.abs(computed_grads[i] - numerical_grads[i]))
-    #     for i in range(len(args))
-    # )
-    # assert max_error < numerical_tol, (
-    #     f"Gradient check failed. Max error: {max_error:.4e}"
-    # )
-
-    return computed_grads
-
-
 def test_divide_backward():
     gradient_check(
         ndl.ops.divide,
@@ -548,22 +389,22 @@ def test_broadcast_to_backward_my():
 
 def test_summation_backward():
     gradient_check(
-        ndl.ops.ops_mathematic.summation,
+        ndl.ops.mathematic.summation,
         ndl.Tensor(np.random.randn(5, 4)),
         axes=(1,),
     )
     gradient_check(
-        ndl.ops.ops_mathematic.summation,
+        ndl.ops.mathematic.summation,
         ndl.Tensor(np.random.randn(5, 4)),
         axes=(0,),
     )
     gradient_check(
-        ndl.ops.ops_mathematic.summation,
+        ndl.ops.mathematic.summation,
         ndl.Tensor(np.random.randn(5, 4)),
         axes=(0, 1),
     )
     gradient_check(
-        ndl.ops.ops_mathematic.summation,
+        ndl.ops.mathematic.summation,
         ndl.Tensor(np.random.randn(5, 4, 1)),
         axes=(0, 1),
     )
@@ -652,7 +493,7 @@ def test_topo_sort():
 ### TESTS for compute_gradient_of_variables
 
 
-def test_complex_expression_vs_torch():
+def test_compute_gradient_sum_matmul():
     # Set random seed for reproducibility
     np.random.seed(42)
 
@@ -666,7 +507,7 @@ def test_complex_expression_vs_torch():
     B_ndl = ndl.Tensor(B_data)
     C_ndl = ndl.Tensor(C_data)
 
-    out_ndl = ndl.ops.ops_mathematic.summation(
+    out_ndl = ndl.ops.mathematic.summation(
         (A_ndl @ B_ndl + C_ndl) * (A_ndl @ B_ndl), axes=None
     )
     out_ndl.backward()
@@ -686,39 +527,46 @@ def test_complex_expression_vs_torch():
     np.testing.assert_allclose(C_ndl.grad.numpy(), C_torch.grad.numpy(), rtol=1e-4)
 
 
-@pytest.mark.slow
-def test_compute_gradient():
-    gradient_check(
-        lambda A, B, C: ndl.ops.ops_mathematic.summation(
-            (A @ B + C) * (A @ B), axes=None
+TEST_CASES = [
+    (
+        "matmul_add_multiply",
+        lambda A, B, C: ndl.ops.mathematic.summation((A @ B + C) * (A @ B), axes=None),
+        [(10, 9), (9, 8), (10, 8)],
+        lambda A, B, C: ((A @ B + C) * (A @ B)).sum(),
+    ),
+    (
+        "broadcast_multiply",
+        lambda A, B: ndl.ops.mathematic.summation(
+            ndl.broadcast_to(A, shape=(10, 9)) * B, axes=None
         ),
-        ndl.Tensor(np.random.randn(10, 9)),
-        ndl.Tensor(np.random.randn(9, 8)),
-        ndl.Tensor(np.random.randn(10, 8)),
-        backward=True,
-    )
-    gradient_check(
-        lambda A, B: ndl.ops.ops_mathematic.summation(
-            ndl.broadcast_to(A, shape=(10, 9)) * B,  # type: ignore
-            axes=None,
-        ),
-        ndl.Tensor(np.random.randn(10, 1)),
-        ndl.Tensor(np.random.randn(10, 9)),
-        backward=True,
-    )
-    gradient_check(
-        lambda A, B, C: ndl.ops.ops_mathematic.summation(
+        [(10, 1), (10, 9)],
+        lambda A, B: (A.expand(10, 9) * B).sum(),
+    ),
+    (
+        "reshape_matmul_divide",
+        lambda A, B, C: ndl.ops.mathematic.summation(
             ndl.reshape(A, shape=(10, 10)) @ B / 5 + C, axes=None
         ),
-        ndl.Tensor(np.random.randn(100)),
-        ndl.Tensor(np.random.randn(10, 5)),
-        ndl.Tensor(np.random.randn(10, 5)),
-        backward=True,
+        [(100,), (10, 5), (10, 5)],
+        lambda A, B, C: (A.view(10, 10) @ B / 5 + C).sum(),
+    ),
+]
+
+
+@pytest.mark.parametrize(("test_id", "ndl_fn", "shapes", "torch_fn"), TEST_CASES)
+def test_compute_gradients(test_id, ndl_fn, shapes, torch_fn):
+    ndl_inputs = [ndl.Tensor(np.random.randn(*shape)) for shape in shapes]
+    torch_inputs = [torch.tensor(x.numpy(), requires_grad=True) for x in ndl_inputs]
+
+    gradient_check(
+        ndl_fn, *ndl_inputs, torch_fn=torch_fn, torch_args=torch_inputs, backward=True
     )
 
+
+def test_compute_gradient_of_gradient():
     # check gradient of gradient
-    x2 = ndl.Tensor([6])
-    x3 = ndl.Tensor([0])
+    x2 = ndl.Tensor([6])  # type: ignore[no-untyped-call]
+    x3 = ndl.Tensor([0])  # type: ignore[no-untyped-call]
     y = x2 * x2 + x2 * x3
     y.backward()
     grad_x2 = x2.grad
@@ -844,9 +692,8 @@ def test_nn_epoch_ndl():
         ).numpy()[0]
     )(W2.numpy())
     W1, W2 = nn_epoch(X, y, W1, W2, lr=1.0, batch_size=50)
-    # TODO: rtol is a problem, otherwise matching with 1e-6
     np.testing.assert_allclose(
-        dW1.reshape(5, 10), W1_0 - W1.numpy(), rtol=0.5, atol=1e-4
+        dW1.reshape(5, 10), W1_0 - W1.numpy(), rtol=1e-4, atol=1e-4
     )
     np.testing.assert_allclose(
         dW2.reshape(10, 3), W2_0 - W2.numpy(), rtol=1e-4, atol=1e-4

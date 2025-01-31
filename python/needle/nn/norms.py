@@ -1,15 +1,17 @@
 """The module."""
 
-from needle import init, ops
-from needle.backend_ndarray.device import AbstractBackend
-from needle.backend_selection import default_device
-from needle.nn.nn_basic import Module, Parameter
-from needle.tensor import Tensor
+from __future__ import annotations
 
-__all__ = [
-    "BatchNorm1d",
-    "LayerNorm1d",
-]
+from typing import TYPE_CHECKING
+
+from needle import init, ops
+from needle.backend_selection import default_device
+from needle.nn.core import Module, Parameter
+
+if TYPE_CHECKING:
+    from needle.backend_ndarray.device import AbstractBackend
+    from needle.tensor import Tensor
+    from needle.typing import DType
 
 
 class BatchNorm1d(Module):
@@ -18,8 +20,8 @@ class BatchNorm1d(Module):
         dim: int,
         eps: float = 1e-5,
         momentum: float = 0.1,
-        device: AbstractBackend = default_device(),
-        dtype="float32",
+        device: AbstractBackend = default_device,
+        dtype: DType = "float32",
     ):
         super().__init__()
         self.dim = dim
@@ -65,9 +67,9 @@ class BatchNorm1d(Module):
 class LayerNorm1d(Module):
     def __init__(
         self,
-        dim: tuple,
+        dim: int,
         eps: float = 1e-5,
-        device: AbstractBackend = default_device(),
+        device: AbstractBackend = default_device,
         dtype="float32",
     ) -> None:
         super().__init__()
