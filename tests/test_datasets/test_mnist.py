@@ -38,9 +38,9 @@ def test_mnist_dataset_stats(
     train_X = mnist_train.X
     test_X = mnist_test.X
 
-    assert train_X.dtype == np.float32
+    assert train_X.dtype == "float32"
     assert mnist_train.y.dtype == np.uint8
-    assert test_X.dtype == np.float32
+    assert test_X.dtype == "float32"
     assert mnist_test.y.dtype == np.uint8
 
     # assert train_X.shape == (60000, 784)

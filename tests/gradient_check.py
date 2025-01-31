@@ -42,9 +42,10 @@ def handle_shape_op(op_name, torch_args, args, kwargs):
 
 def numerical_gradient(f, computed_grads, *args, tol: float = 1e-5, **kwargs):
     eps = 1e-4
+    rng = np.random.default_rng()
 
     out = f(*args, **kwargs)
-    c = np.random.randn(*out.shape)
+    c = rng.standard_normal(out.shape)
     numerical_grads = [np.zeros(a.shape) for a in args]
     for i in range(len(args)):
         for j in range(args[i].realize_cached_data().size):
