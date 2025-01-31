@@ -81,11 +81,11 @@ ninja = ">=1.12.1,<2"
 nanobind = ">=2.4.0,<3"
 clang = ">=19.1.7,<20"
 llvm-openmp = ">=19.1.7,<20"
-# clangxx = ">=19.1.7,<20"
+clangxx = ">=19.1.7,<20"
 libcxx = ">=19.1.7,<20"
 libcxx-devel = ">=19.1.7,<20"
-# libcxxabi = ">=19.1.7,<20"
-# clang-tools = ">=19.1.7,<20"
+libcxxabi = ">=19.1.7,<20"
+clang-tools = ">=19.1.7,<20"
 
 [feature.dev.tasks]
 make = { cmd = "cmake -G Ninja -S . -B .build"}
