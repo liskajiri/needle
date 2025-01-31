@@ -35,9 +35,9 @@ jobs:
   # TODO: CUDA build
   build:
     runs-on: ubuntu-latest
-    if: ${{ 
-            contains(github.event.head_commit.message, '.cpp') || 
-            contains(github.event.head_commit.message, 'CMakeLists.txt') 
+    if: ${{
+            contains(github.event.head_commit.message, '.cpp') ||
+            contains(github.event.head_commit.message, 'CMakeLists.txt')
          }}
     steps:
       - uses: actions/checkout@v4
@@ -65,11 +65,11 @@ jobs:
         backend: [nd, np]
       fail-fast: false
     runs-on: ubuntu-latest
-    if: ${{ 
-            contains(github.event.head_commit.message, '.py') || 
-            contains(github.event.head_commit.message, '.cpp') || 
-            contains(github.event.head_commit.message, '.cu') || 
-            contains(github.event.head_commit.message, 'CMakeLists.txt') 
+    if: ${{
+            contains(github.event.head_commit.message, '.py') ||
+            contains(github.event.head_commit.message, '.cpp') ||
+            contains(github.event.head_commit.message, '.cu') ||
+            contains(github.event.head_commit.message, 'CMakeLists.txt')
          }}
 
     steps:
