@@ -26,14 +26,15 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-        - uses: actions/checkout@v4
-        - name: Test
-          uses: prefix-dev/setup-pixi@v0.8.1
-          with:
-            pixi-version: v0.40.3
-            cache: true
-            cache-write: ${{ github.event_name == 'push' && github.ref_name == 'main' }}
-        - run: pixi run build
+      - uses: actions/checkout@v4
+      - name: Test
+        uses: prefix-dev/setup-pixi@v0.8.1
+        with:
+          pixi-version: v0.40.3
+          cache: true
+          cache-write:
+            ${{ github.event_name == 'push' && github.ref_name == 'main' }}
+      - run: pixi run build
 
   test:
     timeout-minutes: 10
@@ -52,24 +53,24 @@ jobs:
       pull-requests: write
 
     steps:
-        - uses: actions/checkout@v4
-        - name: Cache datasets
-          uses: actions/cache@v4
-          with:
-            path: data
-            key: ${{ runner.os }}-datasets-v1
-            restore-keys: |
-              ${{ runner.os }}-datasets-
+      - uses: actions/checkout@v4
+      - name: Cache datasets
+        uses: actions/cache@v4
+        with:
+          path: data
+          key: ${{ runner.os }}-datasets-v1
+          restore-keys: |
+            ${{ runner.os }}-datasets-
 
-        - name: Set backend
-          run: echo "NEEDLE_BACKEND=${{ matrix.backend }}" >> "$GITHUB_ENV"
-        - name: Test
-          uses: prefix-dev/setup-pixi@v0.8.1
-        - run: pixi run test_all
+      - name: Set backend
+        run: echo "NEEDLE_BACKEND=${{ matrix.backend }}" >> "$GITHUB_ENV"
+      - name: Test
+        uses: prefix-dev/setup-pixi@v0.8.1
+      - run: pixi run test_all
 
-        - name: Publish Test Results
-          uses: EnricoMi/publish-unit-test-result-action@v2
-          if: matrix.backend == 'nd' && always()
-          with:
-            files: |
-              reports/test_report/**/*.xml
+      - name: Publish Test Results
+        uses: EnricoMi/publish-unit-test-result-action@v2
+        if: matrix.backend == 'nd' && always()
+        with:
+          files: |
+            reports/test_report.xml

@@ -35,5 +35,10 @@ repos:
     rev: v1.29.0
     hooks:
       - id: yamllint
+
+  - repo: https://github.com/crate-ci/typos
+    rev: v1.29.5
+    hooks:
+      - id: typos
 ci:
   autoupdate_schedule: quarterly

@@ -660,18 +660,18 @@ def test_ewise_tanh(device):
 
 
 # examples from numpy documentation for np.array_split
-SPLITTED_SHAPES = [(np.arange(8.0), 3), (np.arange(9), 4)]
+SPLIT_SHAPES = [(np.arange(8.0), 3), (np.arange(9), 4)]
 
 
-@pytest.mark.parametrize(("x", "indices"), SPLITTED_SHAPES)
+@pytest.mark.parametrize(("x", "indices"), SPLIT_SHAPES)
 @pytest.mark.parametrize("device", _DEVICES, ids=["cpu", "cuda"])
 def test_array_split(x, indices, device):
     ndl_x = ndl.array(x, device=device)
-    splitted_numpy = np.array_split(x, indices)
-    splitted_ndl = ndl.array_split(ndl_x, indices)
+    split_numpy = np.array_split(x, indices)
+    split_ndl = ndl.array_split(ndl_x, indices)
     for i in range(3):
         np.testing.assert_allclose(
-            splitted_numpy[i], splitted_ndl[i].numpy(), atol=1e-5, rtol=1e-5
+            split_numpy[i], split_ndl[i].numpy(), atol=1e-5, rtol=1e-5
         )
 
 

@@ -55,7 +55,7 @@ struct CudaVec {
 CudaVec VecToCuda(const std::vector<uint32_t> &x) {
     CudaVec shape;
     if (x.size() > MAX_VEC_SIZE)
-        throw std::runtime_error("Exceeded CUDA supported max dimesions");
+        throw std::runtime_error("Exceeded CUDA supported max dimensions");
     shape.size = x.size();
     for (size_t i = 0; i < x.size(); i++) {
         shape.data[i] = x[i];
@@ -82,13 +82,13 @@ void Fill(CudaArray *out, scalar_t val) {
 // Compact and setitem cals
 ////////////////////////////////////////////////////////////////////////////////
 
-// Untility function to convert contiguous index i to memory location from
+// Utility function to convert contiguous index i to memory location from
 // strides
 
 __global__ void CompactKernel(const scalar_t *a, scalar_t *out, size_t size,
                               CudaVec shape, CudaVec strides, size_t offset) {
     /**
-     * The CUDA kernel for the compact opeation.  This should effectively map a
+     * The CUDA kernel for the compact operation.  This should effectively map a
      * single entry in the non-compact input a, to the corresponding item (at
      * location gid) in the compact array out.
      *
@@ -119,13 +119,13 @@ void Compact(const CudaArray &a, CudaArray *out, std::vector<uint32_t> shape,
     /**
      * Compact an array in memory.  Unlike the C++ version, in CUDA this will
      * primarily call the relevant CUDA kernel.  In this case, we illustrate how
-     * you should set this up (i.e., we give you the code for this fuction, and
+     * you should set this up (i.e., we give you the code for this function, and
      * also the prototype for the CompactKernel() function).  For the functions
      * after this, however, you'll need to define these kernels as you see fit
      * to execute the underlying function.
      *
      * Args:
-     *   a: non-compact represntation of the array, given as input
+     *   a: non-compact representation of the array, given as input
      *   out: compact version of the array to be written
      *   shape: shapes of each dimension for a and out
      *   strides: strides of the *a* array (not out, which has compact strides)
