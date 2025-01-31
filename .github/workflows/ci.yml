@@ -5,6 +5,11 @@ on:
     branches: [main]
   pull_request:
 
+# Cancel in-progress runs on new commits
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   style:
     runs-on: ubuntu-latest
@@ -30,9 +35,15 @@ jobs:
             cache-write: ${{ github.event_name == 'push' && github.ref_name == 'main' }}
         - run: pixi run build
 
-
   test:
+    timeout-minutes: 10
+
+    strategy:
+      matrix:
+        backend: [nd, np]
+      fail-fast: false
     runs-on: ubuntu-latest
+
     # test report needs write permissions
     permissions:
       contents: read
@@ -50,41 +61,15 @@ jobs:
             restore-keys: |
               ${{ runner.os }}-datasets-
 
-
+        - name: Set backend
+          run: echo "NEEDLE_BACKEND=${{ matrix.backend }}" >> "$GITHUB_ENV"
         - name: Test
           uses: prefix-dev/setup-pixi@v0.8.1
-        # also runs slow tests
         - run: pixi run test_all
+
         - name: Publish Test Results
           uses: EnricoMi/publish-unit-test-result-action@v2
-          if: always()
+          if: matrix.backend == 'nd' && always()
           with:
             files: |
               reports/test_report/**/*.xml
-
-  test_numpy_backend:
-    runs-on: ubuntu-latest
-
-    # caching datasets permissions
-    permissions:
-      contents: read
-      issues: read
-      checks: write
-      pull-requests: write
-
-    steps:
-        - uses: actions/checkout@v4
-        - name: Cache datasets
-          uses: actions/cache@v4
-          with:
-            path: data
-            key: ${{ runner.os }}-datasets-v1
-            restore-keys: |
-              ${{ runner.os }}-datasets-
-
-        - name: Set numpy backend
-          run: echo "NEEDLE_BACKEND=np" >> "$GITHUB_ENV"
-        - name: Test_numpy_backend
-          uses: prefix-dev/setup-pixi@v0.8.1
-        # also runs slow tests
-        - run: pixi run test_all
