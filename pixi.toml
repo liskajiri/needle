@@ -103,15 +103,15 @@ test = {cmd = "pytest -m 'not slow and not benchmark' -k 'not dataset' -n 4", de
 test_datasets = {cmd = "pytest tests/test_datasets -n 4", depends-on = ["build", "download_datasets"]}
 test_all = {cmd = """pytest
 --html=$TEST_REPORT_PATH.html
---junitxml=$TEST_REPORT_PATH.xml
---cov-report xml:$COVERAGE_REPORT_PATH --cov-fail-under=$COVERAGE_FAIL_UNDER
+--junitxml=$TEST_REPORT_PATH.xml -o junit_family=legacy
+--cov-report=xml:$COVERAGE_REPORT_PATH --cov-fail-under=$COVERAGE_FAIL_UNDER
 """, depends-on = ["build", "print_backend", "download_datasets"]}
 
 [feature.test.activation.env]
 # Save results of test to html
 TEST_REPORT_PATH = "reports/test_report"
 # Save code coverage report
-COVERAGE_REPORT_PATH = "reports/coverage"
+COVERAGE_REPORT_PATH = "reports/coverage.xml"
 # Fails tests if code coverage is below 80%
 COVERAGE_FAIL_UNDER = "80"
 
