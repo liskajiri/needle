@@ -6,9 +6,8 @@ addopts = [
     "-n", "auto",
     "--strict-markers",
     "--strict-config",
-    # "--hypothesis-show-statistics",
     "-m not benchmark",
-    # "--import-mode=importlib",
+    "--import-mode=importlib",
 ]
 markers = [
     "slow: marks tests as slow",
@@ -50,8 +49,9 @@ ban-relative-imports = "all"
 
 [tool.coverage.run]
 branch = true
-source = "python/needle"
-omit = "tests/*"
+source = ["python/needle"]
+omit = ["tests/*"]
+parallel = true
 
 [tool.coverage.report]
 show_missing = true
@@ -64,3 +64,7 @@ exclude_also = [
     'if TYPE_CHECKING:',
     '@(abc\.)?abstractmethod',
 ]
+
+[tool.coverage.xml]
+# Save code coverage report
+output = "reports/coverage.xml"
