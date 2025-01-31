@@ -15,6 +15,27 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  check-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      only_docs: ${{ steps.filter.outputs.only_docs }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Check for file changes
+        id: filter
+        run: |
+          if git diff --name-only ${{ github.event.before }} ${{ github.sha }} | grep -qE '\.md$' && 
+             ! git diff --name-only ${{ github.event.before }} ${{ github.sha }} | grep -qvE '\.md$'; then
+            echo "only_docs=true" >> $GITHUB_ENV
+            echo "::set-output name=only_docs::true"
+          else
+            echo "only_docs=false" >> $GITHUB_ENV
+            echo "::set-output name=only_docs::false"
+          fi  
+
+
   style:
     runs-on: ubuntu-latest
     steps:
@@ -37,6 +58,8 @@ jobs:
 
 
   build:
+    needs: check-changes
+    if: needs.check-changes.outputs.only_docs == 'false'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -50,6 +73,9 @@ jobs:
       - run: pixi run build
 
   test:
+    needs: check-changes
+    if: needs.check-changes.outputs.only_docs == 'false'
+
     timeout-minutes: 10
 
     strategy:
