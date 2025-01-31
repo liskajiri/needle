@@ -50,8 +50,8 @@ ban-relative-imports = "all"
 
 [tool.coverage.run]
 branch = true
-source = "python/needle"
-omit = "tests/*"
+source = ["python/needle"]
+omit = ["tests/*"]
 
 [tool.coverage.report]
 show_missing = true
@@ -64,3 +64,7 @@ exclude_also = [
     'if TYPE_CHECKING:',
     '@(abc\.)?abstractmethod',
 ]
+
+[tool.coverage.xml]
+# Save code coverage report
+output = "reports/coverage.xml"
