@@ -9,7 +9,7 @@ import numpy as np
 from numpy import ndarray as NDArray
 
 from needle.backend_ndarray.device import AbstractBackend
-from needle.typing.utils import DType, Scalar, Shape
+from needle.typing.types import DType, Scalar, Shape
 
 __device_name__ = "numpy"
 _datatype = np.float32
@@ -77,8 +77,7 @@ def cpu() -> AbstractBackend:
     return NumpyBackend("numpy", sys.modules[__name__])
 
 
-def default_device() -> AbstractBackend:
-    return cpu()
+default_device = cpu()
 
 
 def all_devices() -> list[AbstractBackend]:

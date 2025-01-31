@@ -1,28 +1,57 @@
-from abc import abstractmethod
+from __future__ import annotations
+
+from abc import ABC, abstractmethod
 from collections.abc import Sequence
-from typing import Any, TypeVar
+from typing import TYPE_CHECKING, Generic, TypeVar
 
 T = TypeVar("T")
 
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
-# TODO: ABC? If no runtime cost
-class Dataset(Sequence):
-    r"""
+
+class Dataset(Sequence, Generic[T], ABC):
+    """
     An abstract class representing a `Dataset`.
 
-    All subclasses should overwrite
-    :meth:`__getitem__`, supporting fetching a data sample for a given key.
-    Subclasses must also overwrite
-    :meth:`__len__`, which is expected to return the size of the dataset.
+    Attributes:
+        transforms: List of transform functions to apply to each item
+
+    Example:
+        >>> class NumberDataset(Dataset[float]):
+        ...     def __init__(self, start: int, end: int):
+        ...         super().__init__()
+        ...         self.start = start
+        ...         self.end = end
+        ...
+        ...     def __getitem__(self, idx: int) -> float:
+        ...         if idx >= len(self):
+        ...             raise IndexError("Index out of range")
+        ...         return float(self.start + idx)
+        ...
+        ...     def __len__(self) -> int:
+        ...         return self.end - self.start
+        >>> # Create dataset and test basic operations
+        >>> ds = NumberDataset(0, 5)
+        >>> len(ds)
+        5
+        >>> ds[0]  # Get first item
+        0.0
+        >>> ds[4]  # Get last item
+        4.0
+        >>> # Add transform to double values
+        >>> ds_doubled = NumberDataset(0, 5, transforms=[lambda x: x * 2])
+        >>> ds_doubled[0]  # Get transformed first item
+        0.0
+        >>> ds_doubled[4]  # Get transformed last item
+        8.0
     """
 
-    def __init__(self, transforms: list | None = None) -> None:
-        if transforms is None:
-            transforms = []
-        self.transforms: list = transforms
+    def __init__(self, transforms: Sequence[Callable] | None = None) -> None:
+        self._transforms = tuple(transforms) if transforms else ()
 
     @abstractmethod
-    def __getitem__(self, index: int) -> Any:
+    def __getitem__(self, index: int) -> T:
         raise NotImplementedError
 
     @abstractmethod
@@ -30,8 +59,6 @@ class Dataset(Sequence):
         raise NotImplementedError
 
     def apply_transforms(self, x: T) -> T:
-        if self.transforms is not None:
-            # apply the transforms
-            for transform in self.transforms:
-                x = transform(x)
+        for transform in self._transforms:
+            x = transform(x)
         return x

@@ -1,12 +1,18 @@
 """Operator implementations."""
 
-import logging
+from __future__ import annotations
 
-from needle.backend_selection import NDArray, array_api
+import logging
+from typing import TYPE_CHECKING
+
+from needle.backend_selection import array_api
 from needle.ops.op import TensorOp, TensorTupleOp
 from needle.ops.ops_tuple import make_tuple
-from needle.tensor import Tensor
-from needle.typing.utils import Shape
+
+if TYPE_CHECKING:
+    from needle.backend_selection import NDArray
+    from needle.tensor import Tensor
+    from needle.typing.types import Scalar, Shape
 
 logger = logging.getLogger(__name__)
 
@@ -15,8 +21,6 @@ logger = logging.getLogger(__name__)
 # - transformations
 # pure math
 # specialized
-
-type Scalar = int | float
 
 
 class EWiseAdd(TensorOp):
@@ -32,8 +36,6 @@ def add(a: Tensor, b: Tensor) -> Tensor:
 
 
 class AddScalar(TensorOp):
-    # TODO: Can this function only have compute(a + scalar)?
-    # That would simplify other things if all ops had always two params
     def __init__(self, scalar: Scalar) -> None:
         self.scalar = scalar
 
@@ -327,10 +329,10 @@ def broadcast_to_new_axis(x: Tensor, new_axis: tuple, new_shape: tuple) -> Tenso
 
 
 class SquareRoot(TensorOp):
-    def compute(self, a: NDArray):
-        return array_api.sqrt(a)
+    def compute(self, a: NDArray) -> NDArray:
+        return a**0.5
 
-    def gradient(self, out_grad, node):
+    def gradient(self, out_grad: Tensor, node: Tensor) -> Tensor:
         return out_grad / (2 * node.inputs[0])
 
 
@@ -395,6 +397,13 @@ class Split(TensorTupleOp):
 
 def split(a: Tensor, axis: int) -> Tensor:
     return Split(axis)(a)
+
+
+# TODO: not an op
+def array_split(
+    a: NDArray, indices_or_sections: int | list[int], axis: int = 0
+) -> list[NDArray]:
+    return array_api.array_split(a, indices_or_sections, axis)
 
 
 class Flip(TensorOp):

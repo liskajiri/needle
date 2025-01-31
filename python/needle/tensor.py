@@ -8,40 +8,27 @@ import numpy as np
 
 import needle as ndl
 from needle.autograd.value import Value
-from needle.backend_ndarray.device import AbstractBackend
-from needle.backend_selection import NDArray, array_api, default_device
+from needle.backend_selection import array_api, default_device
 
 if TYPE_CHECKING:
     from typing import Self
 
     from needle.backend_ndarray.device import AbstractBackend as Device
-    from needle.typing.utils import DType
-
-
-# needle version
-LAZY_MODE = False
-TENSOR_COUNTER = 0
-
-type Scalar = int | float
+    from needle.backend_selection import NDArray
+    from needle.typing.types import DType, Scalar, Shape
 
 
 class Tensor(Value):
-    grad: Self
+    grad: Tensor
 
     def __init__(
         self,
-        array: NDArray | Tensor,
-        *,
-        device: Device = default_device(),
+        array: np.ndarray | NDArray | Tensor,
+        device: Device = default_device,
         dtype: DType = "float32",
         requires_grad: bool = True,
-        **kwargs,
     ) -> None:
         if isinstance(array, Tensor):
-            if device is None:
-                device = array.device
-            if dtype is None:
-                dtype = array.dtype
             if device == array.device and dtype == array.dtype:
                 cached_data = array.realize_cached_data()
             else:
@@ -50,34 +37,28 @@ class Tensor(Value):
                     array.numpy(), device=device, dtype=dtype
                 )
         else:
-            device = device if device else default_device()
             cached_data = Tensor._array_from_numpy(array, device=device, dtype=dtype)
 
-        self._init(
-            None,
-            [],
-            cached_data=cached_data,
-            requires_grad=requires_grad,
-        )
-
-    @staticmethod
-    def _array_from_numpy(numpy_array: np.ndarray, device: Device, dtype: DType):
-        if array_api is np:
-            return np.array(numpy_array, dtype=dtype)
-        return array_api.array(numpy_array, device=device, dtype=dtype)
+        super()._init(cached_data=cached_data, requires_grad=requires_grad)
 
     @classmethod
-    def make_const(cls, data, *, requires_grad: bool = False) -> Self:
-        if isinstance(data, Tensor):
-            data = data.realize_cached_data()
+    def make_const(
+        cls: type[Self], data: NDArray, requires_grad: bool = False
+    ) -> Tensor:
         return super().make_const(data, requires_grad=requires_grad)
+
+    @staticmethod
+    def _array_from_numpy(
+        numpy_array: np.ndarray, device: Device, dtype: DType
+    ) -> NDArray:
+        return array_api.array(numpy_array, device=device, dtype=dtype)
 
     @property
     def data(self) -> Tensor:
         return self.detach()
 
     @data.setter
-    def data(self, value) -> None:
+    def data(self, value: Tensor) -> None:
         assert isinstance(value, Tensor)
         assert value.dtype == self.dtype, f"{value.dtype} {self.dtype}"
         self.cached_data = value.realize_cached_data()
@@ -87,15 +68,15 @@ class Tensor(Value):
         return Tensor.make_const(self.realize_cached_data())
 
     @property
-    def shape(self):
+    def shape(self) -> Shape:
         return self.realize_cached_data().shape
 
     @property
-    def dtype(self):
+    def dtype(self) -> DType:
         return self.realize_cached_data().dtype
 
     @property
-    def device(self) -> AbstractBackend:
+    def device(self) -> Device:
         data = self.realize_cached_data()
         # numpy array always sits on cpu
         return data.device
@@ -116,12 +97,10 @@ class Tensor(Value):
     def __str__(self) -> str:
         return self.realize_cached_data().__str__()
 
-    def numpy(self):
-        data = self.realize_cached_data()
-        # TODO: no need for this? numpy_api is patched
-        if array_api is np:
-            return data
-        return data.numpy()
+    def numpy(self) -> np.ndarray:
+        return self.realize_cached_data().numpy()
+
+    # Arithmetic operations
 
     def __add__(self, other: Tensor | Scalar) -> Tensor:
         if isinstance(other, Tensor):
@@ -133,38 +112,38 @@ class Tensor(Value):
             return ndl.ops.EWiseMul()(self, other)
         return ndl.ops.MulScalar(other)(self)
 
-    def __pow__(self, other):
+    def __pow__(self, other: Scalar) -> Tensor:
         return ndl.ops.PowerScalar(other)(self)
 
-    def __sub__(self, other):
+    def __sub__(self, other: Tensor | Scalar) -> Tensor:
         if isinstance(other, Tensor):
             return ndl.ops.EWiseAdd()(self, ndl.ops.Negate()(other))
         return ndl.ops.AddScalar(-other)(self)
 
-    def __truediv__(self, other):
+    def __truediv__(self, other: Tensor) -> Tensor:
         if isinstance(other, Tensor):
             return ndl.ops.EWiseDiv()(self, other)
         return ndl.ops.DivScalar(other)(self)
 
-    def __matmul__(self, other):
+    def __matmul__(self, other: Tensor) -> Tensor:
         return ndl.ops.MatMul()(self, other)
 
-    def matmul(self, other):
+    def matmul(self, other: Tensor) -> Tensor:
         return ndl.ops.MatMul()(self, other)
 
-    def sum(self, axes=None):
+    def sum(self, axes=None) -> Tensor:
         return ndl.ops.Summation(axes)(self)
 
-    def broadcast_to(self, shape):
+    def broadcast_to(self, shape: Shape) -> Tensor:
         return ndl.ops.BroadcastTo(shape)(self)
 
-    def reshape(self, shape):
+    def reshape(self, shape: Shape) -> Tensor:
         return ndl.ops.Reshape(shape)(self)
 
-    def __neg__(self):
+    def __neg__(self) -> Tensor:
         return ndl.ops.Negate()(self)
 
-    def transpose(self, axes=None):
+    def transpose(self, axes=None) -> Tensor:
         return ndl.ops.Transpose(axes)(self)
 
     @property
@@ -180,21 +159,21 @@ class Tensor(Value):
 
 
 class TensorTuple(Value):
-    """Represent a tuple of tensors.
+    """
+    Represent a tuple of tensors.
 
-    To keep things simple, we do not support nested tuples.
+    To keep things simple, do not support nested tuples.
     """
 
     def __len__(self) -> int:
         cdata = self.realize_cached_data()
         return len(cdata)
 
-    def __getitem__(self, index: int):
+    def __getitem__(self, index: int) -> Value:
         return ndl.ops.tuple_get_item(self, index)
 
-    def tuple(self) -> tuple[Self]:
+    def tuple(self) -> tuple[Value]:
         return tuple([x for x in self])
-        # return tuple(self)
 
     def __repr__(self) -> str:
         return "TensorTuple" + str(self.tuple())

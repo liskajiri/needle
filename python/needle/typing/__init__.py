@@ -1,4 +1,4 @@
-from needle.typing.utils import BatchType, DType, Scalar, Shape, Strides
+from needle.typing.types import BatchType, DType, Scalar, Shape, Strides
 
 __all__ = [
     "BatchType",

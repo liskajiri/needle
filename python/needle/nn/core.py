@@ -1,4 +1,8 @@
-"""The module."""
+"""Basic nn modules."""
+
+from __future__ import annotations
+
+from abc import ABC, abstractmethod
 
 from needle import ops
 from needle.tensor import Tensor
@@ -35,7 +39,7 @@ def _unpack_params(value: object) -> list[Tensor]:
     return []
 
 
-def _child_modules(value: object) -> list["Module"]:
+def _child_modules(value: object) -> list[Module]:
     if isinstance(value, Module):
         modules = [value]
         modules.extend(_child_modules(value.__dict__))
@@ -53,7 +57,7 @@ def _child_modules(value: object) -> list["Module"]:
     return []
 
 
-class Module:
+class Module(ABC):
     def __init__(self) -> None:
         self.training = True
 
@@ -61,7 +65,7 @@ class Module:
         """Return the list of parameters in the module."""
         return _unpack_params(self.__dict__)
 
-    def _children(self) -> list["Module"]:
+    def _children(self) -> list[Module]:
         return _child_modules(self.__dict__)
 
     def eval(self) -> None:
@@ -74,6 +78,7 @@ class Module:
         for m in self._children():
             m.training = True
 
+    @abstractmethod
     def forward(self, *args, **kwargs) -> Tensor:
         raise NotImplementedError
 

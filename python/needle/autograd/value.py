@@ -1,43 +1,47 @@
-from typing import TYPE_CHECKING, Self
+from __future__ import annotations
 
-from needle.backend_selection import NDArray
+from abc import ABC, abstractmethod
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from typing import Self
+
+    from needle.backend_selection import NDArray
     from needle.ops.op import Op
 
 
-# needle version
 LAZY_MODE = False
-TENSOR_COUNTER = 0
 
 
-class Value:
-    """A value in the computational graph."""
+class Value(ABC):
+    """
+    A value in the computational graph.
+    """
 
     # trace of computational graph
-    op: "Op | None"
+    op: Op | None
     inputs: list[Self]
-    # The following fields are cached fields for
-    # dynamic computation
+    # The following fields are cached fields for dynamic computation
     cached_data: NDArray
     requires_grad: bool
+    _counter: int = 0
 
-    # TODO: Use more functools - cached_property, lru_cache...
-    # @cached_property
-    # def realize_cached_data(self) -> NDArray:
-    #     """
-    #     Computes and caches tensor data lazily.
-    #     Returns cached result on subsequent calls.
-    #     """
-    #     # if self._cached_data is not None:
-    #     #     return self._cached_data
-
-    #     def input_data() -> Generator[NDArray, None, None]:
-    #         for x in self.inputs:
-    #             yield x.realize_cached_data
-
-    #     self.cached_data = self.op.compute(*input_data())
-    #     return self.cached_data
+    def _init(
+        self,
+        op: Op | None = None,
+        inputs: list[Self] = [],
+        cached_data: NDArray | None = None,
+        num_outputs: int = 1,
+        requires_grad: bool | None = None,
+    ) -> None:
+        if requires_grad is None:
+            requires_grad = any(x.requires_grad for x in inputs)
+        self.op = op
+        self.inputs = inputs
+        self.num_outputs = num_outputs
+        self.cached_data = cached_data
+        self.requires_grad = requires_grad
+        Value._counter += 1
 
     def realize_cached_data(self) -> NDArray:
         """Run compute to realize the cached data."""
@@ -50,49 +54,21 @@ class Value:
         )
         return self.cached_data
 
+    @property
     def is_leaf(self) -> bool:
         return self.op is None
 
     def __del__(self) -> None:
-        # TODO: Python weakref counter
-        global TENSOR_COUNTER
-        TENSOR_COUNTER -= 1
+        Value._counter -= 1
 
-    # TODO: __init__, add call to super in Tensor
-    def _init(
-        self,
-        op: "Op | None",
-        inputs: list[Self],
-        # TODO
-        *,
-        num_outputs: int = 1,
-        cached_data: NDArray | None = None,
-        requires_grad: bool | None = None,
-    ) -> None:
-        global TENSOR_COUNTER
-        TENSOR_COUNTER += 1
-        if requires_grad is None:
-            requires_grad = any(x.requires_grad for x in inputs)
-        self.op = op
-        self.inputs = inputs
-        self.num_outputs = num_outputs
-        self.cached_data = cached_data
-        self.requires_grad = requires_grad
-
-    # TODO: this class should be abstract
     @classmethod
-    def make_const(cls, data, *, requires_grad: bool = False):
+    def make_const(cls, data: NDArray, requires_grad: bool = False):
         value = cls.__new__(cls)
-        value._init(
-            None,
-            [],
-            cached_data=data,
-            requires_grad=requires_grad,
-        )
+        value._init(cached_data=data, requires_grad=requires_grad)
         return value
 
     @classmethod
-    def make_from_op(cls, op: "Op", inputs: list[Self]):
+    def make_from_op(cls, op: Op, inputs: list[Self]):
         value = cls.__new__(cls)
         value._init(op, inputs)
 
@@ -101,3 +77,8 @@ class Value:
                 return value.detach()
             value.realize_cached_data()
         return value
+
+    @abstractmethod
+    def detach(self) -> Self:
+        """Return new Value with same data but no gradient computation."""
+        raise NotImplementedError

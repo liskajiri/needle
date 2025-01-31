@@ -1,6 +1,13 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from needle import init
 from needle.ops.op import TensorOp, TensorTupleOp
-from needle.tensor import Tensor, TensorTuple, Value
+from needle.tensor import Tensor, TensorTuple
+
+if TYPE_CHECKING:
+    from needle.autograd.value import Value
 
 
 class MakeTensorTuple(TensorTupleOp):

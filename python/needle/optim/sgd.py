@@ -1,8 +1,14 @@
-from collections import defaultdict
-from collections.abc import Iterable
+from __future__ import annotations
 
-from needle.nn.nn_basic import Parameter
+from typing import TYPE_CHECKING
+
+import numpy as np
+
+from needle.nn.core import Parameter
 from needle.optim.base import Optimizer
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
 
 
 class SGD(Optimizer):
@@ -16,12 +22,18 @@ class SGD(Optimizer):
         super().__init__(params)
         self.lr = lr
         self.momentum = momentum
-        self.u = defaultdict(lambda: 0.0)
         self.weight_decay = weight_decay
+
+        self.state = {}
+        for p in self.params:
+            self.state[p] = Parameter(np.zeros(p.data.shape))
 
     def step(self) -> None:
         for p in self.params:
             grad = p.grad.data + self.weight_decay * p.data
-            self.u[p] = self.momentum * self.u[p] + (1 - self.momentum) * grad.data
-            # resolve issues with wrong types
-            p.data -= self.lr * self.u[p]
+            curr_state = self.state[p]
+
+            curr_state.data = (
+                self.momentum * curr_state.data + (1 - self.momentum) * grad.data
+            )
+            p.data -= self.lr * curr_state.data

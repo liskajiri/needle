@@ -1,11 +1,18 @@
-"""Important: some values need to be converted to float32,
+"""
+Important: some values need to be converted to float32,
 otherwise they will overflow the division, thus making it a float64 result,
 which will cause type errors downstream.
 """
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from needle import init
-from needle.nn.nn_basic import Module
-from needle.tensor import Tensor
+from needle.nn.core import Module
+
+if TYPE_CHECKING:
+    from needle.tensor import Tensor
 
 
 class Dropout(Module):

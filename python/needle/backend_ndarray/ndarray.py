@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import itertools
 import logging
 import math
 from collections.abc import Callable
+from functools import cached_property
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -10,11 +12,10 @@ import numpy as np
 from needle.backend_ndarray.device import AbstractBackend
 
 if TYPE_CHECKING:
-    from needle.typing.utils import DType, Scalar, Shape, Strides
+    from needle.typing.types import DType, Scalar, Shape, Strides
 
 logger = logging.getLogger(__name__)
 
-# TODO: get rid of .compact calls - copies memory
 # TODO: reference hw3.ipynb for future optimizations
 # TODO: investigate usage of __slots__, Python's array.array for NDArray class
 
@@ -96,8 +97,8 @@ def cuda() -> AbstractBackend:
 def cpu_numpy() -> AbstractBackend:
     """Return numpy device."""
     try:
+        from needle import backend_numpy
         from needle.backend_ndarray import BackendDevice as NumpyBackend
-        from needle.backend_ndarray import backend_numpy
 
         return NumpyBackend("cpu_numpy", backend_numpy)
     except ImportError:
@@ -114,8 +115,7 @@ def cpu() -> AbstractBackend:
         raise ImportError("CPU backend not available")
 
 
-def default_device() -> AbstractBackend:
-    return cpu()
+default_device = cpu()
 
 
 def all_devices() -> list[AbstractBackend]:
@@ -133,7 +133,7 @@ class NDArray:
     def __init__(
         self,
         other: NDArray | np.ndarray | list,
-        device: AbstractBackend = default_device(),
+        device: AbstractBackend = default_device,
     ) -> None:
         # TODO: allow creating by itself and from list[]
         """Create by copying another NDArray, or from numpy."""
@@ -146,8 +146,8 @@ class NDArray:
             self._init(other.to(device) + 0.0)  # this creates a copy
         elif isinstance(other, np.ndarray):
             # create copy from numpy array
-            # device = device if device is not None else default_device()
-            # device = default_device()
+            # device = device if device is not None else default_device
+            # device = default_device
             array = self.make(other.shape, device=device)
             array.device.from_numpy(np.ascontiguousarray(other), array._handle)
             self._init(array)
@@ -177,7 +177,7 @@ class NDArray:
     def make(
         shape: tuple,
         strides: tuple | None = None,
-        device: AbstractBackend = default_device(),
+        device: AbstractBackend = default_device,
         handle: NDArray | None = None,
         offset: int = 0,
     ) -> NDArray:
@@ -186,13 +186,24 @@ class NDArray:
         This will allocate the memory if handle=None,
         otherwise it will use the handle of an existing array.
         """
+
+        def prod(shape: tuple) -> int:
+            """Calculate product of shape tuple, handling nested tuples."""
+            result = 1
+            for dim in shape:
+                if isinstance(dim, tuple):
+                    result *= prod(dim)
+                else:
+                    result *= dim
+            return result
+
         array = NDArray.__new__(NDArray)
         array._shape = shape
         array._strides = NDArray.compact_strides(shape) if strides is None else strides
         array._offset = offset
         array._device = device
         if handle is None:
-            array._handle = array.device.Array(math.prod(shape))
+            array._handle = array.device.Array(prod(shape))
         else:
             array._handle = handle
         return array
@@ -220,16 +231,15 @@ class NDArray:
         """Return number of dimensions."""
         return len(self._shape)
 
-    # TODO: set at creation time
-    @property
+    @cached_property
     def size(self) -> int:
-        return math.prod(self._shape)
+        return int(math.prod(self._shape))
 
     def __repr__(self) -> str:
         return f"NDArray( shape: {self.shape} | device={self.device}"
 
     def __str__(self) -> str:
-        return f"NDArray( shape: {self.shape} | device={self.device}"
+        # return f"NDArray( shape: {self.shape} | device={self.device}"
         return self.numpy().__str__()
 
     def __len__(self) -> int:
@@ -266,10 +276,9 @@ class NDArray:
         array.device.from_numpy(np.ascontiguousarray(a), array._handle)
         return array
 
-    # TODO:
     def __array__(
         self,
-        dtype: str | None = None,
+        dtype: DType | None = None,
         copy: bool = False,
     ):
         """Allow implicit conversion to numpy array"""
@@ -319,7 +328,6 @@ class NDArray:
         )
 
     def astype(self, dtype: DType = "float32") -> NDArray:
-        # TODO: support other types
         """Return a copy of the array with a different type."""
         if dtype != "float32":
             logger.warning(f"Only support float32 for now, got {dtype}")
@@ -449,6 +457,8 @@ class NDArray:
             AssertionError if new_shape[i] != shape[i] for all i where
             shape[i] != 1
         """
+        if self.shape == new_shape:
+            return self
         new_size = math.prod(new_shape)
         if len(new_shape) < len(self._shape) or new_size % self.size != 0:
             raise ValueError(f"Cannot broadcast shape {self._shape} to {new_shape}")
@@ -518,7 +528,6 @@ class NDArray:
 
         """
         # handle singleton as tuple, everything as slices
-        # TODO: allow idxs: NDArray
         if isinstance(idxs, list | np.ndarray | NDArray):
             # Convert to NDArray if needed
             if not isinstance(idxs, NDArray):
@@ -581,13 +590,15 @@ class NDArray:
         )
 
     # TODO: standardize idxs type: int | iterable[int]
-    def __setitem__(self, idxs: tuple | int, other):
-        """Set the values of a view into an array, using the same semantics
-        as __getitem__().
+    def __setitem__(self, idxs: tuple | int, other) -> None:
+        """
+        Set the values of a view into an array,
+        using the same semantics as __getitem__().
         """
         view = self.__getitem__(idxs)
         if isinstance(other, NDArray):
-            assert math.prod(view.shape) == math.prod(other.shape)
+            if math.prod(view.shape) != math.prod(other.shape):
+                raise ValueError(f"Shape mismatch: {view.shape} != {other.shape}")
             self.device.ewise_setitem(
                 other.compact()._handle,
                 view._handle,
@@ -618,11 +629,11 @@ class NDArray:
         depending on whether "other" is an NDArray or scalar.
         """
         if isinstance(other, NDArray):
-            # if (1, ), treat it like a scalar
-            if other.shape == (1,):
-                other = other.broadcast_to(self.shape)
-            elif self.shape == (1,):
-                self = self.broadcast_to(other.shape)
+            if other.shape != self.shape:
+                # Broadcast to the larger shape
+                larger_shape = broadcast_shapes(self.shape, other.shape)
+                other = other.broadcast_to(larger_shape)
+                self = self.broadcast_to(larger_shape)
 
             out = NDArray.make(self.shape, device=self.device)
             other = other.broadcast_to(self.shape)
@@ -679,39 +690,27 @@ class NDArray:
     # Binary operators all return (0.0, 1.0) floating point values
     # TODO: could of course be optimized
 
-    def __eq__(self, other):
+    def __eq__(self, other) -> bool:
         """Support == comparison with numpy arrays and scalars"""
         if isinstance(other, np.ndarray):
             return np.array_equal(self.numpy(), other)
         return self.ewise_or_scalar(other, self.device.ewise_eq, self.device.scalar_eq)
 
-    def __ge__(self, other):
+    def __ge__(self, other: NDArray) -> bool:
         if isinstance(other, np.ndarray):
             np.greater_equal(self.numpy(), other)
-            # return self.numpy() >= (
-            #     other.numpy() if isinstance(other, NDArray) else other
-            # )
         return self.ewise_or_scalar(other, self.device.ewise_ge, self.device.scalar_ge)
 
-    # TODO: auto-derive comparisons - total_ordering
-    # def __lt__(self, other):
-    # if isinstance(other, np.ndarray):
-    #     return self.numpy() < (
-    #         other.numpy() if isinstance(other, NDArray) else other
-    #     )
-    # else:
-    # return 1 - (self >= other)
-
-    def __ne__(self, other):
+    def __ne__(self, other: NDArray) -> bool:
         return 1 - (self == other)
 
-    def __gt__(self, other):
+    def __gt__(self, other: NDArray) -> bool:
         return (self >= other) * (self != other)
 
-    def __lt__(self, other):
+    def __lt__(self, other: NDArray) -> bool:
         return 1 - (self >= other)
 
-    def __le__(self, other):
+    def __le__(self, other: NDArray) -> bool:
         return 1 - (self > other)
 
     ### Element-wise functions
@@ -835,7 +834,8 @@ class NDArray:
     def reduce_view_out(
         self, axis: tuple | None, keepdims: bool = False
     ) -> tuple[NDArray, NDArray]:
-        """Return a view to the array set up for reduction functions and output array.
+        """
+        Return a view to the array set up for reduction functions and output array.
 
         Args:
             axis: Axes to reduce over. Either None to reduce all axes, or tuple of axes.
@@ -896,7 +896,6 @@ class NDArray:
         """Flip this ndarray along the specified axes.
         Note: compact() before returning.
         """
-        # TODO:
         raise NotImplementedError
 
     def pad(self, axes):
@@ -906,7 +905,6 @@ class NDArray:
         axes = ( (0, 0), (1, 1), (0, 0))
         pads the middle axis with a 0 on the left and right side.
         """
-        # TODO:
         raise NotImplementedError
 
 
@@ -950,25 +948,29 @@ def from_numpy(a):
     return NDArray(a)
 
 
-def array(a, dtype="float32", device: AbstractBackend = default_device()) -> NDArray:
+def array(a, dtype="float32", device: AbstractBackend = default_device) -> NDArray:
     """Convenience methods to match numpy a bit more closely."""
     if dtype != "float32":
-        logger.warning(f"Only support float32 for now, got {dtype}")
+        # logger.warning(f"Only support float32 for now, got {dtype}")
         a = np.array(a, dtype="float32")
         dtype = a.dtype
-        logger.warning(f"Converting to numpy array with dtype {dtype}")
+        # logger.warning(f"Converting to numpy array with dtype {dtype}")
     assert dtype == "float32"
     return NDArray(a, device=device)
 
 
-def empty(shape, dtype="float32", device=None):
-    # TODO: get rid of this by default params
-    device = device if device is not None else default_device()
+def empty(
+    shape: Shape, dtype: DType = "float32", device: AbstractBackend = default_device
+) -> NDArray:
     return device.empty(shape, dtype)
 
 
-def full(shape, fill_value, dtype="float32", device=None):
-    device = device if device is not None else default_device()
+def full(
+    shape: Shape,
+    fill_value: float,
+    dtype: DType = "float32",
+    device: AbstractBackend = default_device,
+) -> NDArray:
     return device.full(shape, fill_value, dtype)
 
 
@@ -1000,7 +1002,6 @@ def tanh(a: NDArray) -> NDArray:
     return a.tanh()
 
 
-# TODO: sum over multiple axis
 def sum(a, axis=None, keepdims=False):
     return a.sum(axis=axis, keepdims=keepdims)
 
@@ -1050,7 +1051,7 @@ def stack(arrays: list[NDArray], axis: int = 0) -> NDArray:
     return out
 
 
-def split(array: NDArray, axis: int = 0) -> list[NDArray]:
+def split(arr: NDArray, axis: int = 0) -> list[NDArray]:
     """Split an array into multiple sub-arrays along the specified axis.
 
     Args:
@@ -1063,21 +1064,54 @@ def split(array: NDArray, axis: int = 0) -> list[NDArray]:
     Raises:
         ValueError: If axis is out of bounds
     """
-    out_shape = list(array.shape)
+    out_shape = list(arr.shape)
     out_shape.pop(axis)
     out_shape = tuple(out_shape)
     out = []
 
-    slice_spec: list = [slice(None)] * array.ndim
-    for i in range(array.shape[axis]):
+    slice_spec: list = [slice(None)] * arr.ndim
+    for i in range(arr.shape[axis]):
         slice_spec[axis] = i
-        sub_array = array[tuple(slice_spec)].compact().reshape(out_shape)
+        sub_array = arr[tuple(slice_spec)].compact().reshape(out_shape)
         out.append(sub_array)
 
     return out
 
 
-def transpose(a, axes: tuple | None = None):
+def array_split(
+    arr: NDArray, indices_or_sections: int | list[int], axis: int = 0
+) -> list[NDArray]:
+    """Split array into multiple sub-arrays, allowing uneven divisions."""
+    if axis < 0:
+        axis += arr.ndim
+    if not 0 <= axis < arr.ndim:
+        raise ValueError(f"Axis {axis} out of bounds")
+
+    if isinstance(indices_or_sections, int):
+        # Handle N sections case
+        section_size = arr.shape[axis] // indices_or_sections
+        remainder = arr.shape[axis] % indices_or_sections
+        indices = []
+        acc = 0
+        for i in range(indices_or_sections - 1):
+            acc += section_size + (1 if i < remainder else 0)
+            indices.append(acc)
+    else:
+        indices = indices_or_sections
+
+    # Create split points
+    split_points = [0, *list(indices), arr.shape[axis]]
+    out = []
+    slice_spec = [slice(None)] * arr.ndim
+
+    for start, end in itertools.pairwise(split_points):
+        slice_spec[axis] = slice(start, end)
+        out.append(arr[tuple(slice_spec)])
+
+    return out
+
+
+def transpose(a: NDArray, axes: tuple | None = None) -> NDArray:
     if axes is None:
         axes = tuple(range(a.ndim))[::-1]
     return a.permute(axes)

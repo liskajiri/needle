@@ -118,7 +118,7 @@ def test_matmul_from_tensor(a, b, expected):
 
 def test_summation_forward():
     np.testing.assert_allclose(
-        ndl.ops.ops_mathematic.summation(
+        ndl.ops.mathematic.summation(
             ndl.Tensor(
                 [
                     [2.2, 4.35, 1.4, 0.3, 2.65],
@@ -130,7 +130,7 @@ def test_summation_forward():
         np.array(30.5),
     )
     np.testing.assert_allclose(
-        ndl.ops.ops_mathematic.summation(
+        ndl.ops.mathematic.summation(
             ndl.Tensor(
                 [
                     [1.05, 2.55, 1.0],
@@ -145,7 +145,7 @@ def test_summation_forward():
         np.array([4.6, 9.25, 7.5, 7.9, 8.65]),
     )
     np.testing.assert_allclose(
-        ndl.ops.ops_mathematic.summation(
+        ndl.ops.mathematic.summation(
             ndl.Tensor([[1.5, 3.85, 3.45], [1.35, 1.3, 0.65], [2.6, 4.55, 0.25]]),
             axes=0,
         ).numpy(),
@@ -389,22 +389,22 @@ def test_broadcast_to_backward_my():
 
 def test_summation_backward():
     gradient_check(
-        ndl.ops.ops_mathematic.summation,
+        ndl.ops.mathematic.summation,
         ndl.Tensor(np.random.randn(5, 4)),
         axes=(1,),
     )
     gradient_check(
-        ndl.ops.ops_mathematic.summation,
+        ndl.ops.mathematic.summation,
         ndl.Tensor(np.random.randn(5, 4)),
         axes=(0,),
     )
     gradient_check(
-        ndl.ops.ops_mathematic.summation,
+        ndl.ops.mathematic.summation,
         ndl.Tensor(np.random.randn(5, 4)),
         axes=(0, 1),
     )
     gradient_check(
-        ndl.ops.ops_mathematic.summation,
+        ndl.ops.mathematic.summation,
         ndl.Tensor(np.random.randn(5, 4, 1)),
         axes=(0, 1),
     )
@@ -507,7 +507,7 @@ def test_compute_gradient_sum_matmul():
     B_ndl = ndl.Tensor(B_data)
     C_ndl = ndl.Tensor(C_data)
 
-    out_ndl = ndl.ops.ops_mathematic.summation(
+    out_ndl = ndl.ops.mathematic.summation(
         (A_ndl @ B_ndl + C_ndl) * (A_ndl @ B_ndl), axes=None
     )
     out_ndl.backward()
@@ -530,15 +530,13 @@ def test_compute_gradient_sum_matmul():
 TEST_CASES = [
     (
         "matmul_add_multiply",
-        lambda A, B, C: ndl.ops.ops_mathematic.summation(
-            (A @ B + C) * (A @ B), axes=None
-        ),
+        lambda A, B, C: ndl.ops.mathematic.summation((A @ B + C) * (A @ B), axes=None),
         [(10, 9), (9, 8), (10, 8)],
         lambda A, B, C: ((A @ B + C) * (A @ B)).sum(),
     ),
     (
         "broadcast_multiply",
-        lambda A, B: ndl.ops.ops_mathematic.summation(
+        lambda A, B: ndl.ops.mathematic.summation(
             ndl.broadcast_to(A, shape=(10, 9)) * B, axes=None
         ),
         [(10, 1), (10, 9)],
@@ -546,7 +544,7 @@ TEST_CASES = [
     ),
     (
         "reshape_matmul_divide",
-        lambda A, B, C: ndl.ops.ops_mathematic.summation(
+        lambda A, B, C: ndl.ops.mathematic.summation(
             ndl.reshape(A, shape=(10, 10)) @ B / 5 + C, axes=None
         ),
         [(100,), (10, 5), (10, 5)],

@@ -40,7 +40,6 @@ class CIFAR10Dataset(Dataset):
                 file.name == "test_batch" and not train
             ):
                 x, y = self._unpickle(file)
-                # TODO: Will work once reshape is fixed
                 x = array_api.array(x).reshape(new_shape)
                 X.append(x)
                 Y.extend(y)
@@ -48,7 +47,6 @@ class CIFAR10Dataset(Dataset):
         self.X = array_api.stack(X).reshape(new_shape)
         self.Y = array_api.array(Y)
 
-    # TODO: change shape to Iterable[int]
     def __getitem__(self, index: int | tuple | NDArray) -> tuple[NDArray, NDArray]:
         """
         Returns the image, label at given index
