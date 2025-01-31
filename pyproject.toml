@@ -3,7 +3,7 @@ pythonpath = "python/needle"
 testpaths = "tests/"
 addopts = [
     "-ra",
-    "-n", "8",
+    "-n", "auto",
     "--strict-markers",
     "--strict-config",
     # "--hypothesis-show-statistics",

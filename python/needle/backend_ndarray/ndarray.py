@@ -781,9 +781,9 @@ class NDArray:
             # Restore batch dimensions
             return out.reshape((*batch_shape, m, n))
 
-        assert (
-            self.ndim == 2
-        ), f"Matrix multiplication requires 2D arrays, got {self.ndim} in {self.shape}"
+        assert self.ndim == 2, (
+            f"Matrix multiplication requires 2D arrays, got {self.ndim} in {self.shape}"
+        )
         assert other.ndim == 2, f"""Matrix multiplication requires 2D arrays,
             got {other.ndim} in {other.shape}"""
         assert (

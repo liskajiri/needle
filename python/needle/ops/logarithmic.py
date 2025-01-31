@@ -20,9 +20,9 @@ class LogSoftmax(TensorOp):
     def compute(self, Z: NDArray) -> NDArray:
         # 2d input array
         # Subtract the maximum value along axis=1 for numerical stability
-        assert (
-            Z.ndim == 2
-        ), f"Input must be a 2D array, but got array with shape: {Z.shape}"
+        assert Z.ndim == 2, (
+            f"Input must be a 2D array, but got array with shape: {Z.shape}"
+        )
         max_Z = array_api.broadcast_to(array_api.max(Z, axis=1, keepdims=True), Z.shape)
         shifted_Z = Z - max_Z
         # Compute log-softmax

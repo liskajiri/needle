@@ -60,9 +60,9 @@ def numerical_gradient(f, computed_grads, *args, tol: float = 1e-5, **kwargs):
     max_error = sum(
         np.linalg.norm(computed_grads[i] - numerical_grads[i]) for i in range(len(args))
     )
-    assert (
-        max_error < numerical_tol
-    ), f"Gradient check failed. Max error: {max_error:.4e}"
+    assert max_error < numerical_tol, (
+        f"Gradient check failed. Max error: {max_error:.4e}"
+    )
 
 
 def handle_torch_op(
