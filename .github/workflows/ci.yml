@@ -83,9 +83,18 @@ jobs:
         with:
           files: |
             reports/test_report.xml
+
       - name: Upload results to Codecov
         uses: codecov/codecov-action@v5
         if: matrix.backend == 'nd' && always()
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           slug: liskajiri/needle
+          files: reports/coverage.xml
+
+      - name: Upload test results to Codecov
+        if: matrix.backend == 'nd' && always()
+        uses: codecov/test-results-action@v1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: reports/test_report.xml
