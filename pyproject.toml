@@ -6,9 +6,8 @@ addopts = [
     "-n", "auto",
     "--strict-markers",
     "--strict-config",
-    # "--hypothesis-show-statistics",
     "-m not benchmark",
-    # "--import-mode=importlib",
+    "--import-mode=importlib",
 ]
 markers = [
     "slow: marks tests as slow",
@@ -52,6 +51,7 @@ ban-relative-imports = "all"
 branch = true
 source = ["python/needle"]
 omit = ["tests/*"]
+parallel = true
 
 [tool.coverage.report]
 show_missing = true
