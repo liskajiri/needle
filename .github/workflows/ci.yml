@@ -3,7 +3,11 @@ name: CI
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - '**.md'  # Ignore all Markdown files
   pull_request:
+    paths-ignore:
+      - '**.md'  # Ignore all Markdown files
 
 # Cancel in-progress runs on new commits
 concurrency:
