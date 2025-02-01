@@ -13,6 +13,30 @@ _DEVICES = [
 
 rng = np.random.default_rng()
 
+pad_params = [
+    {"shape": (10, 32, 32, 8), "padding": ((0, 0), (2, 2), (2, 2), (0, 0))},
+    {"shape": (10, 32, 32, 8), "padding": ((0, 0), (0, 0), (0, 0), (0, 0))},
+    # non-square padding
+    {"shape": (10, 32, 32, 8), "padding": ((0, 1), (2, 0), (2, 1), (0, 0))},
+]
+
+
+@pytest.mark.parametrize("device", [ndl.cpu()], ids=["cpu"])
+@pytest.mark.parametrize(
+    "params",
+    pad_params,
+    ids=[f"{p['shape']}-{p['padding']}" for p in pad_params],
+)
+def test_pad_forward(params, device):
+    shape, padding = params["shape"], params["padding"]
+    _a = rng.standard_normal(shape)
+    a = ndl.NDArray(_a, device=device)
+
+    _b = np.pad(_a, padding)
+    b = a.pad(padding)
+
+    np.testing.assert_allclose(b.numpy(), _b, rtol=1e-6)
+
 
 flip_forward_params = [
     {"shape": (10, 5), "axes": (0,)},

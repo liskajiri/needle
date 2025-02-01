@@ -977,10 +977,46 @@ class NDArray:
         """
         Pad this ndarray by zeros by the specified amount in `axes`,
         which lists for _all_ axes the left and right padding amount, e.g.,
-        axes = ( (0, 0), (1, 1), (0, 0))
+        axes = ( (0, 0), (1, 1), (0, 0) )
         pads the middle axis with a 0 on the left and right side.
+        Note: This has to create a new array and copy the data over.
+
+        Args:
+            axes: Tuple of tuples specifying padding amount for each axis
+
+        Returns:
+            NDArray: New array with padding added
+
+        Raises:
+            ValueError: If padding axes do not match array dimensions
+
+        >>> a = NDArray(np.array([[1, 2], [3, 4]]))
+        >>> a.pad(((1, 1), (1, 1)))
+        array([[0., 0., 0., 0.],
+               [0., 1., 2., 0.],
+               [0., 3., 4., 0.],
+               [0., 0., 0., 0.]], dtype=float32)
         """
-        raise NotImplementedError
+        if len(axes) != self.ndim:
+            raise ValueError(
+                f"Padding axes {axes} must match array dimensions {self.ndim}"
+            )
+
+        # Calculate new shape after padding
+        new_shape = tuple(
+            dim + left + right for dim, (left, right) in zip(self.shape, axes)
+        )
+
+        # Create output array filled with zeros
+        out = self.device.zeros(new_shape, dtype=self.dtype)
+
+        # Create slices to insert original data
+        slices = tuple(
+            slice(left, left + dim) for dim, (left, _) in zip(self.shape, axes)
+        )
+        # Copy data into padded array
+        out[slices] = self
+        return out
 
 
 # TODO: really needed?
