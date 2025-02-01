@@ -32,6 +32,9 @@ jobs:
         run: pixi run style
 
   check-changed-files:
+    permissions:
+      pull-requests: read
+
     runs-on: ubuntu-latest
     outputs:
       python_changed: ${{ steps.filter.outputs.python }}
