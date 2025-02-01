@@ -342,72 +342,103 @@ class NDArray:
         return self.reshape((self.size,))
 
     def reshape(self, new_shape: Shape) -> NDArray:
-        """Reshape the matrix without copying memory.  This will return a matrix
-        that corresponds to a reshaped array but points to the same memory as
-        the original array.
+        """Reshape the matrix without copying memory.
 
-        Raises
-        ------
-            ValueError if math.product of current shape is not equal to the math.product
-            of the new shape, or if the matrix is not compact.
+        Returns a new array that points to the same memory but with a different shape.
+        The total number of elements must remain the same and the array must be compact.
 
         Args:
-            new_shape (tuple): new shape of the array
-        Returns:
-            NDArray : reshaped array; this will point to the same memory
-            as the original NDArray.
+            new_shape (Shape): Target shape for the array
 
+        Returns:
+            NDArray: Reshaped view of the array, sharing the same memory
+
+        Raises:
+            ValueError: If:
+                - Total size changes between shapes
+                - Array is not compact
+                - Multiple -1 dimensions specified
+                - Size is not divisible when using -1 dimension
         """
-        # TODO: simplify this
-        if (
+        if self.shape == new_shape:
+            return self
+
+        # Special case: Convert 1D array to column vector
+        if self._is_1d_to_column_vector(new_shape):
+            return self._make_column_vector(new_shape)
+
+        if not self.is_compact():
+            raise ValueError(
+                f"""Cannot reshape non-compact array of shape {self.shape}.
+                Call compact() first."""
+            )
+
+        # Handle automatic dimension calculation with -1
+        new_shape = self._resolve_negative_dimensions(new_shape)
+
+        # Verify total size remains constant
+        if self.size != math.prod(new_shape):
+            raise ValueError(
+                f"Cannot reshape array of size {self.size} into shape {new_shape}."
+                f"Total elements must remain constant."
+            )
+
+        # Create reshaped view with new strides
+        new_strides = self.compact_strides(new_shape)
+        return self.as_strided(new_shape, new_strides)
+
+    def _is_1d_to_column_vector(self, new_shape: Shape) -> bool:
+        """Check if reshaping from 1D array to column vector."""
+        return (
             len(self.shape) == 1
             and len(new_shape) == 2
             and self.shape[0] == new_shape[0]
             and new_shape[1] == 1
-        ):
-            return NDArray.make(
-                new_shape,
-                device=self.device,
-                handle=self._handle,
-                strides=(self.strides[0], 0),
+        )
+
+    def _make_column_vector(self, new_shape: Shape) -> NDArray:
+        """Convert 1D array to column vector with optimized strides."""
+        return NDArray.make(
+            new_shape,
+            device=self.device,
+            handle=self._handle,
+            strides=(self.strides[0], 0),
+        )
+
+    def _resolve_negative_dimensions(self, new_shape: Shape) -> Shape:
+        """Calculate actual shape when -1 dimension is used.
+
+        Args:
+            new_shape: Proposed shape with possible -1 dimension
+
+        Returns:
+            Shape: Resolved shape with -1 replaced by calculated dimension
+
+        Raises:
+            ValueError: If multiple -1 dimensions or size mismatch
+        """
+        if -1 not in new_shape:
+            return new_shape
+
+        # Verify only one -1 dimension
+        if new_shape.count(-1) > 1:
+            raise ValueError(
+                f"Cannot deduce shape with multiple -1 dimensions in {new_shape}"
             )
 
-        if self.shape == new_shape:
-            return self
-        if not self.is_compact():
-            raise ValueError("Cannot reshape array that is not compact")
+        # Calculate missing dimension
+        neg_idx = new_shape.index(-1)
+        other_dims_product = math.prod(new_shape[:neg_idx] + new_shape[neg_idx + 1 :])
 
-        # flatten the array
-        if -1 in new_shape:
-            if new_shape.count(-1) > 1:
-                raise ValueError(
-                    f"""Reshape can not deduce shape with multiple -1,
-                    but called with {new_shape}"""
-                )
-
-            neg_idx = new_shape.index(-1)
-            other_dims_product = math.prod(
-                new_shape[:neg_idx] + new_shape[neg_idx + 1 :]
+        if self.size % other_dims_product != 0:
+            raise ValueError(
+                f"Cannot reshape array of size {self.size} into shape {new_shape}. "
+                f"Size must be divisible by {other_dims_product}."
             )
 
-            # remainder has to be divisible
-            if self.size % other_dims_product != 0:
-                raise ValueError(
-                    f"Cannot reshape array of size {self.size} into shape {new_shape}"
-                )
-            missing_dim = self.size // other_dims_product
-            temp_shape = new_shape[:neg_idx] + (missing_dim,) + new_shape[neg_idx + 1 :]
-            logger.info(
-                f"""Reshaping with -1:
-                from {self.shape} to {new_shape} | got {temp_shape}"""
-            )
-            new_shape = temp_shape
-
-        if self.size != math.prod(new_shape):
-            raise ValueError(f"Cannot reshape from {self.shape} to {new_shape}")
-
-        new_strides = self.compact_strides(new_shape)
-        return self.as_strided(new_shape, new_strides)
+        missing_dim = self.size // other_dims_product
+        new_shape = new_shape[:neg_idx] + (missing_dim,) + new_shape[neg_idx + 1 :]
+        return new_shape
 
     def permute(self, new_axes: tuple) -> NDArray:
         """Permute order of the dimensions.  new_axes describes a permutation of the
