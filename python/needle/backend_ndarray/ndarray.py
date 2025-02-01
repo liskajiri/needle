@@ -923,13 +923,57 @@ class NDArray:
 
     ### Other functions
 
-    def flip(self, axes):
-        """Flip this ndarray along the specified axes.
-        Note: compact() before returning.
+    def flip(self, axes: tuple[int] | int) -> NDArray:
         """
-        raise NotImplementedError
+        Flip this ndarray along the specified axes.
+        Note: compacts the array before returning.
 
-    def pad(self, axes):
+        Args:
+            axes: Tuple or int specifying the axes to flip
+
+        Returns:
+            NDArray: New array with flipped axes
+        """
+        # Handle single axis case
+        if isinstance(axes, int):
+            axes = (axes,)
+
+        # Validate axes
+        for ax in axes:
+            if ax < -self.ndim or ax >= self.ndim:
+                raise ValueError(
+                    f"Axis {ax} is out of bounds for array of dimension {self.ndim}"
+                )
+
+        # Normalize negative axes
+        # TODO: this will be common in array ops, make it a function
+        axes = tuple(ax if ax >= 0 else self.ndim + ax for ax in axes)
+
+        # Create new view with modified strides and offset
+        new_strides = list(self._strides)
+        offset = self._offset
+
+        # For each axis to flip:
+        # 1. Make stride negative to traverse in reverse order
+        # 2. Adjust offset to start from end of axis
+        for ax in axes:
+            new_strides[ax] = -self._strides[ax]
+            offset += self._strides[ax] * (self._shape[ax] - 1)
+
+        out = NDArray.make(
+            self._shape,
+            strides=tuple(new_strides),
+            device=self.device,
+            handle=self._handle,
+            offset=offset,
+        )
+        # Return compacted array to ensure standard memory layout
+        # TODO: Copies memory, if negative strides are supported, this can be avoided
+        out = out.compact()
+
+        return out
+
+    def pad(self, axes: tuple[tuple[int, int]]) -> NDArray:
         """
         Pad this ndarray by zeros by the specified amount in `axes`,
         which lists for _all_ axes the left and right padding amount, e.g.,
@@ -1037,7 +1081,7 @@ def sum(a, axis=None, keepdims=False):
     return a.sum(axis=axis, keepdims=keepdims)
 
 
-def flip(a, axes):
+def flip(a: NDArray, axes: tuple[int] | int) -> NDArray:
     return a.flip(axes)
 
 

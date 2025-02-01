@@ -12,12 +12,13 @@ from needle.backend_selection import (
 # Provides array_api.functions
 from needle.init import *  # noqa: F403
 from needle.ops import *  # noqa: F403
-from needle.tensor import Tensor
+from needle.tensor import Tensor, TensorTuple
 
 __all__ = [
     "Device",
     "NDArray",
     "Tensor",
+    "TensorTuple",
     "all_devices",
     "array_api",
     "autograd",

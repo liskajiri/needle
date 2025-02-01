@@ -1,5 +1,6 @@
 import logging
 from collections.abc import Callable
+from typing import ClassVar
 
 import needle as ndl
 import numpy as np
@@ -9,43 +10,13 @@ from needle.tensor import Tensor
 logger = logging.getLogger(__name__)
 
 
-def to_torch_tensor(needle_tensor):
-    """Convert needle tensor to torch tensor safely"""
-    if hasattr(needle_tensor, "numpy"):
-        data = needle_tensor.numpy()
-    elif hasattr(needle_tensor, "realize_cached_data"):
-        data = needle_tensor.realize_cached_data()
-    else:
-        data = needle_tensor
-    return torch.tensor(data, requires_grad=True)
+rng = np.random.default_rng()
 
 
-def handle_shape_op(op_name, torch_args, args, kwargs):
-    """Handle shape manipulation operations"""
-    if op_name == "reshape":
-        shape = kwargs.get("shape") or args[1]
-        return torch_args[0].reshape(shape)
-    if op_name == "transpose":
-        axes = kwargs.get("axes") or args[1]
-        if isinstance(axes, list | tuple):
-            # Match dimensions count
-            n_dims = torch_args[0].dim()
-            if len(axes) != n_dims:
-                axes = list(range(n_dims))
-            return torch_args[0].permute(*axes)
-        return torch_args[0].transpose(axes)
-    if op_name == "broadcast_to":
-        shape = kwargs.get("shape") or args[1]
-        return torch_args[0].expand(shape)
-    return None
-
-
-def numerical_gradient(f, computed_grads, *args, tol: float = 1e-5, **kwargs):
+def numerical_gradient(f, out, computed_grads, *args, tol: float = 1e-4, **kwargs):
     eps = 1e-4
-    rng = np.random.default_rng()
-
-    out = f(*args, **kwargs)
     c = rng.standard_normal(out.shape)
+
     numerical_grads = [np.zeros(a.shape) for a in args]
     for i in range(len(args)):
         for j in range(args[i].realize_cached_data().size):
@@ -56,27 +27,17 @@ def numerical_gradient(f, computed_grads, *args, tol: float = 1e-5, **kwargs):
             args[i].realize_cached_data().flatten()[j] += eps
             numerical_grads[i].flatten()[j] = (f1 - f2) / (2 * eps)
 
-    numerical_tol = 1e-4
     max_error = sum(
         np.linalg.norm(computed_grads[i] - numerical_grads[i]) for i in range(len(args))
     )
-    assert max_error < numerical_tol, (
-        f"Gradient check failed. Max error: {max_error:.4e}"
-    )
+    assert max_error < tol, f"Gradient check failed. Max error: {max_error:.4e}"
 
 
-def handle_torch_op(
-    f: Callable, args: tuple[Tensor], kwargs: dict, tol: float
-) -> list[np.ndarray] | None:
-    """Handle PyTorch operation mapping comparison."""
-    torch_args = [to_torch_tensor(a) for a in args]
-    op_name = f.__name__ if hasattr(f, "__name__") else f.__class__.__name__
-
-    TORCH_OP_MAP = {
+class TorchOps:
+    OP_MAP: ClassVar = {
         "matmul": torch.matmul,
         "multiply": torch.multiply,
         "divide": torch.divide,
-        "divide_scalar": lambda x, scalar=None: x / (scalar or kwargs.get("scalar")),
         "add": torch.add,
         "sum": torch.sum,
         "summation": torch.sum,
@@ -86,31 +47,50 @@ def handle_torch_op(
         "softmax_loss": lambda x, y: torch.nn.functional.cross_entropy(x, y),
         "relu": torch.nn.functional.relu,
         "tanh": torch.nn.functional.tanh,
+        "divide_scalar": lambda x, scalar: x / scalar,
+    }
+    SHAPE_OPS: ClassVar = {
+        # Shape manipulation
+        "reshape": lambda t, shape: t.reshape(shape),
+        "transpose": lambda t, axes: t.transpose(*axes),
+        "broadcast_to": lambda t, shape: t.expand(shape),
+        "flip": lambda t, dims: torch.flip(t, dims),
     }
 
-    # Try shape operations first
-    torch_out = handle_shape_op(op_name, torch_args, args, kwargs)
-    if torch_out is None:
-        torch_f = TORCH_OP_MAP.get(op_name)
-        if not torch_f:
-            logger.error("Skipping PyTorch comparison for %s", op_name)
-            return None
-
-        # Handle special cases
-        if op_name == "divide_scalar":
-            torch_out = torch_f(torch_args[0], scalar=kwargs.get("scalar"))
+    @classmethod
+    def get_op(cls, op_name: str) -> Callable:
+        if op_name in cls.OP_MAP:
+            return cls.OP_MAP[op_name]
+        elif op_name in cls.SHAPE_OPS:
+            return cls.SHAPE_OPS[op_name]
         else:
-            torch_out = torch_f(*torch_args)
+            raise ValueError(f"PyTorch function not found for {op_name}")
+
+
+def handle_torch_op(
+    f: Callable, torch_args: list[Tensor], kwargs: dict
+) -> list[np.ndarray]:
+    """Handle PyTorch operation mapping comparison."""
+    op_name = f.__name__ if hasattr(f, "__name__") else f.__class__.__name__
+
+    op = TorchOps.get_op(op_name)
+    if op_name in TorchOps.SHAPE_OPS:
+        # Handle shape manipulation operations
+        shape_or_axes = (
+            torch_args[1]
+            if len(torch_args) > 1
+            else kwargs.get("shape") or kwargs.get("axes")
+        )
+        torch_out = op(torch_args[0], shape_or_axes)
+    else:
+        torch_out = op(*torch_args)
 
     torch_out.sum().backward()
-    return [t.grad.numpy() for t in torch_args]
+    return [t.grad.numpy() for t in torch_args]  # type: ignore
 
 
-def compute_ndl_gradients(
-    f: Callable, args: tuple[Tensor, ...], backward: bool, **kwargs
-) -> list[np.ndarray]:
-    """Compute gradients using NDL."""
-    out = f(*args, **kwargs)
+def compute_ndl_gradients(out, args: tuple[Tensor], backward: bool) -> list[np.ndarray]:
+    """Compute gradients using needle."""
     if not backward:
         return [
             x.numpy()
@@ -120,32 +100,54 @@ def compute_ndl_gradients(
     return [a.grad.numpy() for a in args]
 
 
-# TODO: Improve this check
-def backward_check(
-    f, *args, tol: float = 1e-5, backward: bool = False, **kwargs
+def _compute_torch_gradients(
+    f: Callable, tensors: tuple[Tensor], torch_fn, kwargs: dict
 ) -> list[np.ndarray]:
-    """Compare numerical and analytical gradients, with optional PyTorch comparison"""
-    torch_fn = kwargs.pop("torch_fn", None)
-    torch_args = kwargs.pop("torch_args", None)
+    torch_args = []
+    for t in tensors:
+        if isinstance(t, float):
+            torch_args.append(torch.tensor(t, requires_grad=True))
+        else:
+            torch_args.append(torch.tensor(t.numpy(), requires_grad=True))
 
-    computed_grads = compute_ndl_gradients(f, args, backward, **kwargs)
     if torch_fn:
-        torch_args = [torch.tensor(arg.numpy(), requires_grad=True) for arg in args]
-
         # Run PyTorch function
         torch_out = torch_fn(*torch_args)
         torch_out.sum().backward()
-        torch_grads = [t.grad.numpy() for t in torch_args]
+        torch_grads = [t.grad.numpy() for t in torch_args]  # type: ignore
     else:
-        torch_grads = handle_torch_op(f, args, kwargs, tol)
+        torch_grads = handle_torch_op(f, torch_args, kwargs)
+
+    return torch_grads
+
+
+# TODO: Improve this check
+def backward_check(
+    f,
+    *tensors,
+    tol: float = 1e-5,
+    backward: bool = False,
+    **kwargs,
+) -> list[np.ndarray]:
+    """Compare numerical and analytical gradients, with optional PyTorch comparison"""
+    torch_fn = kwargs.pop("torch_fn", None)
+
+    out = f(*tensors, **kwargs)
+    computed_grads = compute_ndl_gradients(out, tensors, backward)
+    torch_grads = _compute_torch_gradients(f, tensors, torch_fn, kwargs)
 
     if torch_grads:
         # Compare gradients
-        for i in range(len(args)):
-            np.testing.assert_allclose(
-                computed_grads[i], torch_grads[i], rtol=tol, atol=tol
-            )
+        error = sum(
+            np.linalg.norm(computed - torch_grad)
+            for computed, torch_grad in zip(computed_grads, torch_grads)
+        )
+        assert error < 1e-4, f"Gradient check failed. Error: {error:.4e}"
+        print(error)
 
-    # numerical_gradient(f, computed_grads, *args, tol=tol, **kwargs)
+        for computed, torch_grad in zip(computed_grads, torch_grads):
+            np.testing.assert_allclose(computed, torch_grad, rtol=tol, atol=tol)
+
+    # numerical_gradient(f, out, computed_grads, *args, tol=tol, **kwargs)
 
     return computed_grads

@@ -407,21 +407,17 @@ def array_split(
 
 
 class Flip(TensorOp):
-    def __init__(self, axes: tuple | None = None):
+    def __init__(self, axes: tuple[int] | int) -> None:
         self.axes = axes
 
-    def compute(self, a):
-        ### BEGIN YOUR SOLUTION
-        raise NotImplementedError()
-        ### END YOUR SOLUTION
+    def compute(self, a: NDArray) -> NDArray:
+        return array_api.flip(a, self.axes)
 
-    def gradient(self, out_grad, node):
-        ### BEGIN YOUR SOLUTION
-        raise NotImplementedError()
-        ### END YOUR SOLUTION
+    def gradient(self, out_grad: Tensor, node: Tensor) -> Tensor:
+        return flip(out_grad, self.axes)
 
 
-def flip(a, axes):
+def flip(a: Tensor, axes: tuple[int] | int) -> Tensor:
     return Flip(axes)(a)
 
 
