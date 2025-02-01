@@ -33,7 +33,7 @@ jobs:
 
   check-changed-files:
     permissions:
-      pull-requests: read
+      contents: read
 
     runs-on: ubuntu-latest
     outputs:
