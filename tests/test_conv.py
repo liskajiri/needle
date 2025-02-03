@@ -233,3 +233,112 @@ def test_dilate_backward(params, device):
         axes=axes,
         tol=0,
     )
+
+
+conv_forward_params = [
+    (4, 8, 16, 3, 1),
+    (32, 8, 16, 3, 2),
+    (32, 8, 8, 3, 2),
+    (32, 16, 8, 3, 1),
+    (32, 16, 8, 3, 2),
+]
+
+
+@pytest.mark.parametrize(
+    "s,in_channels,out_channels,k,stride", conv_forward_params, ids=str
+)
+@pytest.mark.parametrize("device", _DEVICES, ids=["cpu", "cuda"])
+def test_nn_conv_forward(s, in_channels, out_channels, k, stride, device):
+    import torch
+
+    np_x = rng.uniform(0, 1, (10, in_channels, s, s)).astype(np.float32)
+
+    f = ndl.nn.Conv(in_channels, out_channels, k, stride=stride, device=device)
+    x = ndl.Tensor(np_x, device=device)
+
+    g = torch.nn.Conv2d(in_channels, out_channels, k, stride=stride, padding=k // 2)
+    g.weight.data = torch.tensor(
+        f.weight.realize_cached_data().numpy().transpose(3, 2, 0, 1)
+    )
+    g.bias.data = torch.tensor(f.bias.realize_cached_data().numpy())
+    z = torch.tensor(np_x)
+
+    my_out = f(x).realize_cached_data().numpy()
+    torch_out = g(z).data.numpy()
+
+    np.testing.assert_allclose(
+        my_out,
+        torch_out,
+        rtol=1e-4,
+        atol=1e-4,
+    )
+    assert np.linalg.norm(my_out - torch_out) < 1e-3
+
+
+op_conv_shapes = [
+    ((3, 14, 14, 8), (3, 3, 8, 16), 1, 0),
+    ((3, 14, 14, 8), (3, 3, 8, 16), 1, 1),
+    ((3, 16, 16, 8), (3, 3, 8, 16), 1, 2),
+    ((3, 16, 16, 8), (3, 3, 8, 14), 1, 0),
+    ((3, 16, 16, 2), (3, 3, 2, 14), 1, 0),
+    ((3, 14, 14, 8), (3, 3, 8, 16), 2, 0),
+    ((3, 14, 14, 8), (3, 3, 8, 16), 2, 1),
+    ((3, 16, 16, 8), (3, 3, 8, 16), 2, 2),
+    ((3, 16, 16, 8), (3, 3, 8, 14), 2, 0),
+    ((3, 16, 16, 2), (3, 3, 2, 14), 2, 0),
+    ((3, 16, 16, 24), (3, 3, 24, 14), 1, 0),
+    ((3, 14, 14, 8), (5, 5, 8, 16), 1, 0),
+    ((3, 17, 17, 8), (5, 5, 8, 16), 1, 0),
+    ((3, 17, 17, 1), (5, 5, 1, 16), 1, 0),
+    ((3, 17, 17, 16), (5, 5, 16, 1), 1, 0),
+    ((3, 17, 17, 16), (1, 1, 16, 1), 1, 0),
+    ((1, 14, 14, 2), (3, 3, 2, 2), 1, 0),
+]
+
+
+@pytest.mark.parametrize(
+    "Z_shape, W_shape, stride, padding",
+    op_conv_shapes,
+    ids=str,
+)
+@pytest.mark.parametrize("device", _DEVICES, ids=["cpu", "cuda"])
+@pytest.mark.parametrize("backward", [True, False], ids=["backward", "forward"])
+def test_op_conv(Z_shape, W_shape, stride, padding, backward, device):
+    torch = pytest.importorskip("torch")
+
+    _Z = rng.standard_normal(Z_shape, dtype=np.float32)
+    _W = rng.standard_normal(W_shape, dtype=np.float32)
+
+    Z = ndl.Tensor(_Z, device=device)
+    W = ndl.Tensor(_W, device=device)
+
+    Z_torch = torch.tensor(_Z, dtype=torch.float32, requires_grad=True).permute(
+        0, 3, 1, 2
+    )
+    W_torch = torch.tensor(_W, dtype=torch.float32, requires_grad=True).permute(
+        3, 2, 0, 1
+    )
+
+    y = ndl.conv(Z, W, padding=padding, stride=stride)
+    y2 = y.sum()
+
+    out = torch.nn.functional.conv2d(Z_torch, W_torch, padding=padding, stride=stride)
+    out2 = out.sum()
+
+    np.testing.assert_allclose(
+        y.numpy(),
+        out.permute(0, 2, 3, 1).contiguous().detach().numpy(),
+        rtol=1e-4,
+        atol=1e-4,
+    )
+    np.testing.assert_allclose(y2.numpy(), out2.detach().numpy(), rtol=1e-4, atol=1e-4)
+
+    if backward:
+        y2.backward()
+        out2.backward()
+        np.testing.assert_allclose(
+            Z_torch.grad.numpy(), Z.grad.numpy(), rtol=1e-2, atol=1e-2
+        )
+        np.testing.assert_allclose(
+            W_torch.grad.numpy(), W.grad.numpy(), rtol=1e-2, atol=1e-2
+        )

@@ -1,4 +1,5 @@
 from needle.ops import logarithmic, mathematic, ops_tuple
+from needle.ops.conv import conv
 from needle.ops.logarithmic import LogSumExp, logsoftmax, logsumexp
 
 # TODO: don't expose Classes, they should be called through the corresponding functions
@@ -75,6 +76,7 @@ __all__ = [
     "array_split",
     "broadcast_to",
     "broadcast_to_new_axis",
+    "conv",
     "dilate",
     "divide",
     "divide_scalar",
