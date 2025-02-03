@@ -507,17 +507,19 @@ class NDArray:
 
     ### Get and set elements
 
-    def process_slice(self, sl, dim):
+    def process_slice(self, sl: slice, dim: int) -> slice:
         """Convert a slice to an explicit start/stop/step."""
         start, stop, step = sl.start, sl.stop, sl.step
         if start is None:
             start = 0
         if start < 0:
             start = self.shape[dim]
+
         if stop is None:
             stop = self.shape[dim]
         if stop < 0:
             stop = self.shape[dim] + stop
+
         if step is None:
             step = 1
 
@@ -526,110 +528,118 @@ class NDArray:
         assert step > 0, "No support for  negative increments"
         return slice(start, stop, step)
 
-    # TODO: errors out
-    def __getitem__(self, idxs: int | tuple[int] | NDArray) -> NDArray:
+    # TODO: standardize idxs type: int | iterable[int] | slice
+    def __getitem__(self, idxs: int | tuple[int] | tuple[slice] | NDArray) -> NDArray:
         """
-        The __getitem__ operator in Python allows us to access elements of our
+        The __getitem__ operator in Python allows access to elements of the
         array.
         When passed notation such as a[1:5,:-1:2,4,:] etc, Python will
         convert this to a tuple of slices and integers (for singletons like the
         '4' in this example).
-        Slices can be a bit odd to work with
-        (they have three elements .start .stop .step), which can be None
-        or have negative entries, so for simplicity we wrote the code
-        for you to convert these to always be a tuple of slices,
-        one of each dimension.
+        Slices have three elements: (.start .stop .step), which can be None
+        or have negative entries.
         For this tuple of slices, return an array that subsets the desired
-        elements.  As before, this can be done entirely through compute a new
-        shape, stride, and offset for the new "view" into the original array,
-        pointing to the same memory
+        elements.
         Raises:
             AssertionError if a slice has negative size or step, or if number
             of slices is not equal to the number of dimension (the stub code
             already raises all these errors.
 
         Args:
-            idxs tuple: (after stub code processes), a tuple of slice elements
+            idxs tuple[slice], a tuple of slice elements
             corresponding to the subset of the matrix to get
         Returns:
             NDArray: a new NDArray object corresponding to the selected
             subset of elements.  As before, this should not copy memory but just
             manipulate the shape/strides/offset of the new array, referencing
             the same array as the original one.
-
         """
-        # handle singleton as tuple, everything as slices
-        if isinstance(idxs, list | np.ndarray | NDArray):
-            # Convert to NDArray if needed
-            if not isinstance(idxs, NDArray):
-                idxs = NDArray(idxs, device=self.device)
 
-            # Create output array
+        def _convert_tuple_to_slice(idxs: int | tuple[int]) -> tuple[slice, ...]:
+            """
+            Convert input idxs from tuple to tuple of slices in each dimension
+            """
+            if isinstance(idxs, int):
+                idxs = (idxs,)
+            new_idxs = idxs + (slice(None),) * (self.ndim - len(idxs))
+
+            idx = tuple(
+                self.process_slice(s, i) if isinstance(s, slice) else slice(s, s + 1, 1)
+                for i, s in enumerate(new_idxs)
+            )
+            return idx
+
+        def _handle_array_indexing(idxs: NDArray) -> NDArray:
+            """
+            Handle indexing with a list or NDArray
+            """
             out_shape = idxs.shape + self.shape[1:]
             out = NDArray.make(out_shape, device=self.device)
 
             # Copy selected elements
             for i, idx in enumerate(idxs.numpy().flatten()):
-                # Get source slice
                 src_idx = (int(idx),) + (slice(None),) * (self.ndim - 1)
-                # Get dest slice
                 dst_idx = (i,) + (slice(None),) * (self.ndim - 1)
                 out[dst_idx] = self[src_idx]
-            out.compact()
+            return out.compact()
 
-            return out
+        def _compute_view_shape() -> tuple[Shape, Strides, int]:
+            """
+            Compute the shape and strides of the view resulting from slicing.
+            """
+            new_shape = []
+            new_strides = list(self._strides)
+            new_offset = self._offset
+            for i, ax in enumerate(slices):
+                # stop - start guaranteed to be positive
+                # slice(0, 3, 2) = [0, 2], but when using (3 - 0) // 2 = 1
+                new_shape.append((ax.stop - ax.start - 1) // ax.step + 1)
+                new_strides[i] *= ax.step
+                # distance to the first element
+                new_offset += self._strides[i] * ax.start
+            return tuple(new_shape), tuple(new_strides), new_offset
 
-        if not isinstance(idxs, tuple):
-            idxs = (idxs,)
-        idxs = idxs + (slice(None),) * (self.ndim - len(idxs))
+        # Indexing with a list or NDArray
+        if isinstance(idxs, list | np.ndarray | NDArray):
+            # Convert to NDArray if needed
+            if not isinstance(idxs, NDArray):
+                idxs = NDArray(idxs, device=self.device)
+            return _handle_array_indexing(idxs)
 
-        idxs = tuple(
-            [
-                self.process_slice(s, i) if isinstance(s, slice) else slice(s, s + 1, 1)
-                for i, s in enumerate(idxs)
-            ]
-        )  # type: ignore
-        assert (
-            len(idxs) == self.ndim
-        ), f"""Need indexes equal to number of dimensions, trying to
-            select {idxs} from {self.ndim} dimensions"""
+        slices = _convert_tuple_to_slice(idxs)
+        if len(slices) != self.ndim:
+            raise AssertionError(
+                f"""Need indexes equal to number of dimensions,
+                trying to select {idxs} from {self.ndim} dimensions"""
+            )
 
-        # idxs correspond to slices in each dimension
-        idxs: tuple[slice]
-
-        new_shape = []
-        new_strides = list(self._strides)
-        new_offset = self._offset
-        for i, ax in enumerate(idxs):
-            # stop - start guaranteed to be positive
-            # slice(0, 3, 2) = [0, 2], but when using (3 - 0) // 2 = 1
-            new_shape.append((ax.stop - ax.start - 1) // ax.step + 1)
-            new_strides[i] *= ax.step
-            # distance to the first element
-            new_offset += self._strides[i] * ax.start
+        new_shape, new_strides, new_offset = _compute_view_shape()
 
         # TODO: This array is smaller and so its size is smaller
         # That is not however changed, so the check is_compact fails, because
         # the sub array still thinks it is the larger array
         # This leads to needed unnecessary calls to compact
         return NDArray.make(
-            tuple(new_shape),
-            strides=tuple(new_strides),
+            new_shape,
+            strides=new_strides,
             device=self._device,
             handle=self._handle,
             offset=new_offset,
         )
 
-    # TODO: standardize idxs type: int | iterable[int]
-    def __setitem__(self, idxs: tuple | int, other) -> None:
+    def __setitem__(
+        self,
+        idxs: int | tuple[int] | tuple[slice] | NDArray,
+        other: NDArray | Scalar,
+    ) -> None:
         """
         Set the values of a view into an array,
         using the same semantics as __getitem__().
         """
         view = self.__getitem__(idxs)
         if isinstance(other, NDArray):
-            if math.prod(view.shape) != math.prod(other.shape):
-                raise ValueError(f"Shape mismatch: {view.shape} != {other.shape}")
+            if view.size != other.size:
+                raise ValueError(f"Size mismatch: {view.size} != {other.size}")
             self.device.ewise_setitem(
                 other.compact()._handle,
                 view._handle,
@@ -639,12 +649,7 @@ class NDArray:
             )
         else:
             self.device.scalar_setitem(
-                math.prod(view.shape),
-                other,
-                view._handle,
-                view.shape,
-                view.strides,
-                view._offset,
+                view.size, other, view._handle, view.shape, view.strides, view._offset
             )
 
     ### Collection of element-wise and scalar function: add, multiply, boolean, etc
@@ -1074,6 +1079,18 @@ def empty(
     shape: Shape, dtype: DType = "float32", device: AbstractBackend = default_device
 ) -> NDArray:
     return device.empty(shape, dtype)
+
+
+def zeros(
+    shape: Shape, dtype: DType = "float32", device: AbstractBackend = default_device
+) -> NDArray:
+    return device.zeros(shape, dtype)
+
+
+def ones(
+    shape: Shape, dtype: DType = "float32", device: AbstractBackend = default_device
+) -> NDArray:
+    return device.ones(shape, dtype)
 
 
 def full(

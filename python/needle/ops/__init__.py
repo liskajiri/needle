@@ -1,5 +1,7 @@
 from needle.ops import logarithmic, mathematic, ops_tuple
 from needle.ops.logarithmic import LogSumExp, logsoftmax, logsumexp
+
+# TODO: don't expose Classes, they should be called through the corresponding functions
 from needle.ops.mathematic import (
     AddScalar,
     BroadcastTo,
@@ -21,13 +23,11 @@ from needle.ops.mathematic import (
     Transpose,
     add,
     add_scalar,
-    array_split,
     broadcast_to,
     broadcast_to_new_axis,
     divide,
     divide_scalar,
     exp,
-    flip,
     log,
     matmul,
     mean,
@@ -38,15 +38,14 @@ from needle.ops.mathematic import (
     power_scalar,
     relu,
     reshape,
-    split,
     sqrt,
-    stack,
     summation,
     tanh,
     transpose,
 )
 from needle.ops.op import Op, TensorOp, TensorTupleOp
 from needle.ops.ops_tuple import fused_add_scalars, make_tuple, tuple_get_item
+from needle.ops.view import array_split, dilate, flip, split, stack, undilate
 
 __all__ = [
     "AddScalar",
@@ -76,6 +75,7 @@ __all__ = [
     "array_split",
     "broadcast_to",
     "broadcast_to_new_axis",
+    "dilate",
     "divide",
     "divide_scalar",
     "exp",
@@ -104,4 +104,5 @@ __all__ = [
     "tanh",
     "transpose",
     "tuple_get_item",
+    "undilate",
 ]

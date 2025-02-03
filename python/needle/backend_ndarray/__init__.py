@@ -18,12 +18,14 @@ from needle.backend_ndarray.ndarray import (
     log,
     max,
     maximum,
+    ones,
     reshape,
     split,
     stack,
     sum,
     tanh,
     transpose,
+    zeros,
 )
 
 __all__ = [
@@ -46,10 +48,12 @@ __all__ = [
     "max",
     "maximum",
     "ndarray",
+    "ones",
     "reshape",
     "split",
     "stack",
     "sum",
     "tanh",
     "transpose",
+    "zeros",
 ]

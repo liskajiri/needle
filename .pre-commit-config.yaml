@@ -16,7 +16,7 @@ repos:
     rev: v0.9.4
     hooks:
       - id: ruff
-        args: [--fix]
+        args: [--fix, --show-fixes]
         types_or: [python, pyi, jupyter]
       - id: ruff-format
         types_or: [python, pyi, jupyter]

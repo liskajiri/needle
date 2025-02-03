@@ -9,7 +9,6 @@ from needle.tensor import Tensor
 
 logger = logging.getLogger(__name__)
 
-
 rng = np.random.default_rng()
 
 
@@ -55,6 +54,16 @@ class TorchOps:
         "transpose": lambda t, axes: t.transpose(*axes),
         "broadcast_to": lambda t, shape: t.expand(shape),
         "flip": lambda t, dims: torch.flip(t, dims),
+        "dilate": lambda t, axes: torch.nn.functional.pad(
+            t,
+            tuple(
+                1 if i in axes else 0  # Add padding of dilation zeros between elements
+                for dim in range(t.dim())
+                for i in (dim, dim)
+            ),
+            mode="constant",
+            value=0,
+        ),
     }
 
     @classmethod
@@ -64,7 +73,7 @@ class TorchOps:
         elif op_name in cls.SHAPE_OPS:
             return cls.SHAPE_OPS[op_name]
         else:
-            raise ValueError(f"PyTorch function not found for {op_name}")
+            raise ValueError(f"PyTorch function not found for: {op_name}")
 
 
 def handle_torch_op(
@@ -143,7 +152,7 @@ def backward_check(
             for computed, torch_grad in zip(computed_grads, torch_grads)
         )
         assert error < 1e-4, f"Gradient check failed. Error: {error:.4e}"
-        print(error)
+        logger.info(f"Gradient check passed. Error: {error:.4e}")
 
         for computed, torch_grad in zip(computed_grads, torch_grads):
             np.testing.assert_allclose(computed, torch_grad, rtol=tol, atol=tol)
