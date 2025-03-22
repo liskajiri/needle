@@ -62,7 +62,7 @@ def array_split(
 
 
 class Flip(TensorOp):
-    def __init__(self, axes: tuple[int] | int) -> None:
+    def __init__(self, axes: tuple[int, ...] | int) -> None:
         self.axes = axes
 
     def compute(self, arr: NDArray) -> NDArray:
@@ -72,7 +72,7 @@ class Flip(TensorOp):
         return flip(out_grad, self.axes)
 
 
-def flip(arr: Tensor, axes: tuple[int] | int) -> Tensor:
+def flip(arr: Tensor, axes: tuple[int, ...] | int) -> Tensor:
     return Flip(axes)(arr)
 
 
@@ -94,7 +94,7 @@ class Dilate(TensorOp):
         \\end{bmatrix}
     """
 
-    def __init__(self, axes: tuple[int], dilation: int) -> None:
+    def __init__(self, axes: tuple[int, ...], dilation: int = 0) -> None:
         self.axes = axes
         self.dilation = dilation
 
@@ -118,8 +118,23 @@ class Dilate(TensorOp):
         return undilate(out_grad, self.axes, self.dilation)
 
 
-def dilate(arr: Tensor, axes: tuple[int], dilation: int) -> Tensor:
-    dilate.__doc__ = Dilate.__doc__
+def dilate(arr: Tensor, axes: tuple[int, ...], dilation: int = 0) -> Tensor:
+    """
+    Dilates a tensor along the given axes by inserting zeros between each element.
+
+    math::
+        \\begin{bmatrix}
+        1 & 2 \\
+        3 & 4
+        \\end{bmatrix}
+        \\Longrightarrow
+        \\begin{bmatrix}
+        1 & 0 & 2 & 0 \\
+        0 & 0 & 0 & 0 \\
+        3 & 0 & 4 & 0 \\
+        0 & 0 & 0 & 0
+        \\end{bmatrix}
+    """
     return Dilate(axes, dilation)(arr)
 
 

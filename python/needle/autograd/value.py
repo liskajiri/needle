@@ -68,7 +68,7 @@ class Value(ABC):
         return value
 
     @classmethod
-    def make_from_op(cls, op: Op, inputs: list[Self]):
+    def make_from_op(cls, op: Op, inputs: list[Self]) -> Self:
         value = cls.__new__(cls)
         value._init(op, inputs)
 

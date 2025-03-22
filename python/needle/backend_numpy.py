@@ -8,7 +8,7 @@ import sys
 import numpy as np
 from numpy import ndarray as NDArray
 
-from needle.backend_ndarray.device import AbstractBackend
+from needle.typing.device import AbstractBackend
 from needle.typing.types import DType, Scalar, Shape
 
 __device_name__ = "numpy"

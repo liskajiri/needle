@@ -8,8 +8,8 @@ from needle.nn.core import Module, Parameter
 from needle.ops.mathematic import broadcast_to
 
 if TYPE_CHECKING:
-    from needle.backend_ndarray.device import AbstractBackend
     from needle.tensor import Tensor
+    from needle.typing.device import AbstractBackend
     from needle.typing.types import DType
 
 

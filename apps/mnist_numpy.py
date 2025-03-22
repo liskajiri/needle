@@ -46,7 +46,10 @@ def parse_mnist(
 
         image_data = img_file.read()
         images = np.frombuffer(image_data, dtype=np.uint8).reshape(
-            (num_images, rows * cols)
+            (
+                num_images,
+                rows * cols,
+            )
         )
         X = images.astype(np.float32) / 255.0
 

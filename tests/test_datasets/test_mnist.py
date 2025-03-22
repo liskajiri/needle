@@ -124,7 +124,16 @@ def test_mnist_test_sample_norms_and_labels(mnist_test):
         [np.linalg.norm(mnist_test[idx][0]) for idx in sample_indices]
     )
     compare_against = np.array(
-        [9.857545, 8.980832, 8.57207, 6.891522, 8.192135, 9.400087, 8.645003, 7.405202]
+        [
+            9.857545,
+            8.980832,
+            8.57207,
+            6.891522,
+            8.192135,
+            9.400087,
+            8.645003,
+            7.405202,
+        ]
     )
     sample_labels = np.array([mnist_test[idx][1] for idx in sample_indices])
     compare_labels = np.array([2, 4, 9, 6, 6, 9, 3, 1])
@@ -242,7 +251,11 @@ def test_dataloader_ndarray():
         for i, batch in enumerate(train_dataloader):
             batch_x = batch[0].numpy()
             truth_x = train_dataset[i * batch_size : (i + 1) * batch_size][0].reshape(
-                (batch_size, 10, 10)
+                (
+                    batch_size,
+                    10,
+                    10,
+                )
             )
             np.testing.assert_allclose(truth_x, batch_x)
 
