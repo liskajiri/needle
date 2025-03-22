@@ -13,8 +13,8 @@ from needle.backend_selection import array_api, default_device
 if TYPE_CHECKING:
     from typing import Self
 
-    from needle.backend_ndarray.device import AbstractBackend as Device
     from needle.backend_selection import NDArray
+    from needle.typing.device import AbstractBackend as Device
     from needle.typing.types import DType, Scalar, Shape
 
 
@@ -102,6 +102,7 @@ class Tensor(Value):
 
     # Arithmetic operations
 
+    # TODO: remove class instances, call functions directly
     def __add__(self, other: Tensor | Scalar) -> Tensor:
         if isinstance(other, Tensor):
             return ndl.ops.EWiseAdd()(self, other)
@@ -143,8 +144,11 @@ class Tensor(Value):
     def __neg__(self) -> Tensor:
         return ndl.ops.Negate()(self)
 
-    def transpose(self, axes=None) -> Tensor:
+    def transpose(self, axes: tuple[int, ...] = ()) -> Tensor:
         return ndl.ops.Transpose(axes)(self)
+
+    def flip(self, axes: tuple[int, ...]) -> Tensor:
+        return ndl.ops.flip(self, axes)
 
     @property
     def T(self) -> Tensor:

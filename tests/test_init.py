@@ -1,5 +1,15 @@
 import needle as ndl
 import numpy as np
+import pytest
+
+_DEVICES = [
+    ndl.cpu(),
+    pytest.param(
+        ndl.cuda(), marks=pytest.mark.skipif(not ndl.cuda().enabled(), reason="No GPU")
+    ),
+]
+
+rng = np.random.default_rng()
 
 
 def test_init_kaiming_uniform():
@@ -17,6 +27,15 @@ def test_init_kaiming_uniform():
         rtol=1e-4,
         atol=1e-4,
     )
+
+
+@pytest.mark.parametrize("device", _DEVICES, ids=["cpu", "cuda"])
+def test_init_kaiming_uniform_2(device):
+    a = rng.standard_normal((3, 3, 16, 8))
+    A = ndl.Tensor(a, device=device)
+    np.random.seed(0)
+    A = ndl.init.kaiming_uniform(16 * 9, 8 * 9, shape=A.shape)
+    assert abs(A.sum().numpy() - -2.5719218) < 1e-4
 
 
 def test_init_kaiming_normal():

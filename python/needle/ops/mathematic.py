@@ -6,8 +6,7 @@ import logging
 from typing import TYPE_CHECKING
 
 from needle.backend_selection import array_api
-from needle.ops.op import TensorOp, TensorTupleOp
-from needle.ops.ops_tuple import make_tuple
+from needle.ops.op import TensorOp
 
 if TYPE_CHECKING:
     from needle.backend_selection import NDArray
@@ -156,25 +155,40 @@ def divide_scalar(a: Tensor, scalar: float) -> Tensor:
 
 
 class Transpose(TensorOp):
-    def __init__(self, axes: tuple | None = None):
-        if not axes:
-            axes = (-1, -2)
-        self.axes = axes
+    def __init__(self, axes: tuple = (-1, -2)) -> None:
+        self.axes = axes if axes else (-1, -2)
 
-    def compute(self, a: NDArray):
-        permutation = [i for i in range(len(a.shape))]
-        lhs, rhs = self.axes
-        permutation[lhs], permutation[rhs] = (
-            rhs,
-            lhs,
-        )
-        return array_api.transpose(a, permutation)
+    def compute(self, a: NDArray) -> NDArray:
+        axes = tuple(ax if ax >= 0 else a.ndim + ax for ax in self.axes)
+        if not all(0 <= ax < a.ndim for ax in axes):
+            raise ValueError(f"Axes out of range for array of dimension {a.ndim}")
+        if len(self.axes) == a.ndim:
+            return array_api.transpose(a, self.axes)
+        if len(self.axes) == 2:
+            # swap two axes
+            permutation = [i for i in range(len(a.shape))]
+            lhs, rhs = self.axes
+            permutation[lhs], permutation[rhs] = (
+                rhs,
+                lhs,
+            )
+            return array_api.transpose(a, tuple(permutation))
+        else:
+            raise ValueError(f"Invalid axes: {self.axes}")
 
-    def gradient(self, out_grad, node):
-        return transpose(out_grad, self.axes)
+    def gradient(self, out_grad: Tensor, _node) -> Tensor:
+        """
+        Apply the inverse transpose to the gradient.
+        """
+        if len(self.axes) == 2 or not self.axes:
+            return transpose(out_grad, self.axes)
+
+        # Compute the inverse permutation
+        inverse_axes = tuple(self.axes.index(i) for i in range(len(self.axes)))
+        return transpose(out_grad, inverse_axes)
 
 
-def transpose(a, axes=None):
+def transpose(a, axes: tuple = ()) -> Tensor:
     return Transpose(axes)(a)
 
 
@@ -202,19 +216,22 @@ class BroadcastTo(TensorOp):
 
     def gradient(self, out_grad: Tensor, node: Tensor) -> Tensor:
         # [7, 7, 7] -> [1, 7]
-        in_shape = node.inputs[0].shape
+        input_shape = node.inputs[0].shape
+        output_shape = out_grad.shape
 
-        if len(in_shape) != out_grad.ndim:
+        if len(input_shape) != out_grad.ndim:
             # expand curr out_grad
             # [1, 7] -> [1, 1, 7]
-            new_axes = tuple([1] * (out_grad.ndim - len(in_shape)) + list(in_shape))
+            new_axes = (1,) * (out_grad.ndim - len(input_shape)) + input_shape
         else:
-            new_axes = in_shape
+            new_axes = input_shape
 
-        different_axes = tuple(i for i, ax in enumerate(new_axes) if ax == 1)
-        out_grad = summation(out_grad, axes=different_axes, keepdims=True).reshape(
-            in_shape
-        )
+        axes_to_reduce = tuple(i for i, ax in enumerate(new_axes) if ax == 1)
+        if axes_to_reduce:
+            out_grad = summation(out_grad, axes=axes_to_reduce, keepdims=True)
+
+        if output_shape != input_shape:
+            return reshape(out_grad, input_shape)
         return out_grad
 
 
@@ -355,131 +372,3 @@ class Tanh(TensorOp):
 
 def tanh(a: Tensor) -> Tensor:
     return Tanh()(a)
-
-
-class Stack(TensorOp):
-    def __init__(self, axis: int) -> None:
-        """
-        Concatenates a sequence of arrays along a new dimension.
-        Parameters:
-        axis - dimension to concatenate along
-        All arrays need to be of the same size.
-        """
-        self.axis = axis
-
-    def compute(self, args: tuple[NDArray]) -> NDArray:
-        return array_api.stack(args, self.axis)
-
-    def gradient(self, out_grad: Tensor, node: Tensor) -> Tensor:
-        return Split(self.axis)(out_grad)
-
-
-def stack(args: list[Tensor], axis: int) -> Tensor:
-    return Stack(axis)(make_tuple(*args))
-
-
-class Split(TensorTupleOp):
-    def __init__(self, axis: int) -> None:
-        """
-        Splits a tensor along an axis into a tuple of tensors.
-        (The "inverse" of Stack)
-        Parameters:
-        axis - dimension to split
-        """
-        self.axis = axis
-
-    def compute(self, A: NDArray) -> tuple[NDArray]:
-        return tuple(array_api.split(A, self.axis))
-
-    def gradient(self, out_grad, node: Tensor) -> Tensor:
-        return Stack(self.axis)(out_grad)
-
-
-def split(a: Tensor, axis: int) -> Tensor:
-    return Split(axis)(a)
-
-
-# TODO: not an op
-def array_split(
-    a: NDArray, indices_or_sections: int | list[int], axis: int = 0
-) -> list[NDArray]:
-    return array_api.array_split(a, indices_or_sections, axis)
-
-
-class Flip(TensorOp):
-    def __init__(self, axes: tuple | None = None):
-        self.axes = axes
-
-    def compute(self, a):
-        ### BEGIN YOUR SOLUTION
-        raise NotImplementedError()
-        ### END YOUR SOLUTION
-
-    def gradient(self, out_grad, node):
-        ### BEGIN YOUR SOLUTION
-        raise NotImplementedError()
-        ### END YOUR SOLUTION
-
-
-def flip(a, axes):
-    return Flip(axes)(a)
-
-
-class Dilate(TensorOp):
-    def __init__(self, axes: tuple, dilation: int):
-        self.axes = axes
-        self.dilation = dilation
-
-    def compute(self, a):
-        ### BEGIN YOUR SOLUTION
-        raise NotImplementedError()
-        ### END YOUR SOLUTION
-
-    def gradient(self, out_grad, node):
-        ### BEGIN YOUR SOLUTION
-        raise NotImplementedError()
-        ### END YOUR SOLUTION
-
-
-def dilate(a, axes, dilation):
-    return Dilate(axes, dilation)(a)
-
-
-class UnDilate(TensorOp):
-    def __init__(self, axes: tuple, dilation: int):
-        self.axes = axes
-        self.dilation = dilation
-
-    def compute(self, a):
-        ### BEGIN YOUR SOLUTION
-        raise NotImplementedError()
-        ### END YOUR SOLUTION
-
-    def gradient(self, out_grad, node):
-        ### BEGIN YOUR SOLUTION
-        raise NotImplementedError()
-        ### END YOUR SOLUTION
-
-
-def undilate(a, axes, dilation):
-    return UnDilate(axes, dilation)(a)
-
-
-class Conv(TensorOp):
-    def __init__(self, stride: int | None = 1, padding: int | None = 0):
-        self.stride = stride
-        self.padding = padding
-
-    def compute(self, A, B):
-        ### BEGIN YOUR SOLUTION
-        raise NotImplementedError()
-        ### END YOUR SOLUTION
-
-    def gradient(self, out_grad, node):
-        ### BEGIN YOUR SOLUTION
-        raise NotImplementedError()
-        ### END YOUR SOLUTION
-
-
-def conv(a, b, stride=1, padding=1):
-    return Conv(stride, padding)(a, b)

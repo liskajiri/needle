@@ -3,7 +3,7 @@ import numpy as np
 from hypothesis import given
 from hypothesis import strategies as st
 from hypothesis.extra.numpy import array_shapes, arrays
-from needle.backend_ndarray.ndarray import NDArray
+from needle.backend_selection import NDArray
 
 
 @given(arrays(dtype=np.float32, shape=(5, 5, 5), elements=st.floats(0, 1)))

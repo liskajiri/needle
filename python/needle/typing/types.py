@@ -6,7 +6,7 @@ if TYPE_CHECKING:
 
 type DType = str
 type Scalar = float | int
-type Shape = tuple[int]
+type Shape = tuple[int, ...]
 type Strides = Shape
 
 float32: DType = "float32"

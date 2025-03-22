@@ -6,13 +6,13 @@ from needle.backend_selection import default_device
 from needle.tensor import Tensor
 
 if TYPE_CHECKING:
-    from needle.backend_ndarray.device import AbstractBackend as Device
-    from needle.backend_ndarray.ndarray import NDArray
+    from needle.backend_selection import NDArray
+    from needle.typing.device import AbstractBackend as Device
     from needle.typing.types import DType, Scalar, Shape
 
 
 def rand(
-    *shape: Shape,
+    *shape: *Shape,
     low: float = 0.0,
     high: float = 1.0,
     device: Device = default_device,

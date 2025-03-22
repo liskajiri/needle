@@ -15,11 +15,12 @@ if TYPE_CHECKING:
 class Op(ABC):
     """Operator definition."""
 
+    @abstractmethod
     def __call__(self, *args) -> Any:
         raise NotImplementedError()
 
     @abstractmethod
-    def compute(self, *args: list[NDArray]) -> NDArray:
+    def compute(self, *arr: tuple[NDArray, ...]) -> NDArray:
         """Calculate forward pass of operator.
 
         Parameters
@@ -68,12 +69,12 @@ class Op(ABC):
 class TensorOp(Op):
     """Op class specialized to output tensors."""
 
-    def __call__(self, *args):
+    def __call__(self, *args) -> Tensor:
         return Tensor.make_from_op(self, args)
 
 
 class TensorTupleOp(Op):
     """Op class specialized to output TensorTuple."""
 
-    def __call__(self, *args):
+    def __call__(self, *args) -> TensorTuple:
         return TensorTuple.make_from_op(self, args)

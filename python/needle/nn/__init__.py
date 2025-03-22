@@ -1,5 +1,6 @@
 from needle.nn import activations, core, dropout, linear, norms, softmax
 from needle.nn.activations import ReLU
+from needle.nn.conv import Conv
 from needle.nn.core import (
     Flatten,
     Identity,
@@ -15,6 +16,7 @@ from needle.nn.softmax import SoftmaxLoss
 
 __all__ = [
     "BatchNorm1d",
+    "Conv",
     "Dropout",
     "Flatten",
     "Identity",

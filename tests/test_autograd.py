@@ -9,7 +9,7 @@ from mnist_needle import loss_err, nn_epoch, softmax_loss
 from mnist_numpy import parse_mnist
 from needle.data.datasets.mnist import MNISTPaths
 
-from tests.gradient_check import backward_check as gradient_check
+from tests.gradient_check import backward_check
 
 
 ##############################################################################
@@ -110,8 +110,10 @@ TENSOR_MATMUL_CASES = [
     ids=lambda case: f"{len(case[0])}@{len(case[1])}",
 )
 def test_matmul_from_tensor(a, b, expected):
-    a = ndl.Tensor(a)
-    b = ndl.Tensor(b)
+    _a = np.array(a)
+    _b = np.array(b)
+    a = ndl.Tensor(_a)
+    b = ndl.Tensor(_b)
     result = ndl.matmul(a, b)
     np.testing.assert_allclose(result.numpy(), np.array(expected), rtol=1e-6, atol=1e-6)
 
@@ -299,7 +301,7 @@ def test_transpose_forward():
 
 
 def test_divide_backward():
-    gradient_check(
+    backward_check(
         ndl.ops.divide,
         ndl.Tensor(np.random.randn(5, 4)),
         ndl.Tensor(5 + np.random.randn(5, 4)),
@@ -307,40 +309,39 @@ def test_divide_backward():
 
 
 def test_divide_scalar_backward():
-    gradient_check(
+    backward_check(
         ndl.ops.divide_scalar,
         ndl.Tensor(np.random.randn(5, 4)),
-        scalar=random.random(),
+        random.random(),
     )
 
 
 def test_matmul_simple_backward():
-    gradient_check(
+    backward_check(
         ndl.matmul,
         ndl.Tensor(np.random.randn(5, 4)),
         ndl.Tensor(np.random.randn(4, 5)),
     )
 
 
-# TODO: forward pass
 @pytest.mark.slow
 def test_matmul_batched_backward():
-    gradient_check(
+    backward_check(
         ndl.matmul,
         ndl.Tensor(np.random.randn(6, 6, 5, 4)),
         ndl.Tensor(np.random.randn(6, 6, 4, 3)),
     )
-    gradient_check(
+    backward_check(
         ndl.matmul,
         ndl.Tensor(np.random.randn(1, 2, 1, 2)),
         ndl.Tensor(np.random.randn(2, 1)),
     )
-    gradient_check(
+    backward_check(
         ndl.matmul,
         ndl.Tensor(np.random.randn(6, 6, 5, 4)),
         ndl.Tensor(np.random.randn(4, 3)),
     )
-    gradient_check(
+    backward_check(
         ndl.matmul,
         ndl.Tensor(np.random.randn(5, 4)),
         ndl.Tensor(np.random.randn(6, 6, 4, 3)),
@@ -348,22 +349,22 @@ def test_matmul_batched_backward():
 
 
 def test_reshape_backward():
-    gradient_check(ndl.reshape, ndl.Tensor(np.random.randn(5, 4)), shape=(4, 5))
+    backward_check(ndl.reshape, ndl.Tensor(np.random.randn(5, 4)), shape=(4, 5))
 
 
 def test_negate_backward():
-    gradient_check(ndl.negate, ndl.Tensor(np.random.randn(5, 4)))
+    backward_check(ndl.negate, ndl.Tensor(np.random.randn(5, 4)))
 
 
 def test_transpose_backward():
-    gradient_check(ndl.transpose, ndl.Tensor(np.random.randn(3, 5, 4)), axes=(1, 2))
-    gradient_check(ndl.transpose, ndl.Tensor(np.random.randn(3, 5, 4)), axes=(0, 1))
+    backward_check(ndl.transpose, ndl.Tensor(np.random.randn(3, 5, 4)), axes=(1, 2))
+    backward_check(ndl.transpose, ndl.Tensor(np.random.randn(3, 5, 4)), axes=(0, 1))
 
 
 def test_broadcast_to_backward():
-    gradient_check(ndl.broadcast_to, ndl.Tensor(np.random.randn(3, 1)), shape=(3, 3))
-    gradient_check(ndl.broadcast_to, ndl.Tensor(np.random.randn(1, 3)), shape=(3, 3))
-    gradient_check(
+    backward_check(ndl.broadcast_to, ndl.Tensor(np.random.randn(3, 1)), shape=(3, 3))
+    backward_check(ndl.broadcast_to, ndl.Tensor(np.random.randn(1, 3)), shape=(3, 3))
+    backward_check(
         ndl.broadcast_to,
         ndl.Tensor(
             np.random.randn(
@@ -372,15 +373,15 @@ def test_broadcast_to_backward():
         ),
         shape=(3, 3, 3),
     )
-    gradient_check(ndl.broadcast_to, ndl.Tensor(np.random.randn()), shape=(3, 3, 3))
-    gradient_check(
+    backward_check(ndl.broadcast_to, ndl.Tensor(np.random.randn()), shape=(3, 3, 3))
+    backward_check(
         ndl.broadcast_to, ndl.Tensor(np.random.randn(5, 4, 1)), shape=(5, 4, 3)
     )
-    gradient_check(ndl.broadcast_to, ndl.Tensor(np.random.randn(5)), shape=(1, 5))
+    backward_check(ndl.broadcast_to, ndl.Tensor(np.random.randn(5)), shape=(1, 5))
 
 
 def test_broadcast_to_backward_my():
-    gradient_check(
+    backward_check(
         ndl.broadcast_to,
         ndl.Tensor(np.random.randn(2, 3, 1, 5)),
         shape=(2, 3, 4, 5),
@@ -388,22 +389,22 @@ def test_broadcast_to_backward_my():
 
 
 def test_summation_backward():
-    gradient_check(
+    backward_check(
         ndl.ops.mathematic.summation,
         ndl.Tensor(np.random.randn(5, 4)),
         axes=(1,),
     )
-    gradient_check(
+    backward_check(
         ndl.ops.mathematic.summation,
         ndl.Tensor(np.random.randn(5, 4)),
         axes=(0,),
     )
-    gradient_check(
+    backward_check(
         ndl.ops.mathematic.summation,
         ndl.Tensor(np.random.randn(5, 4)),
         axes=(0, 1),
     )
-    gradient_check(
+    backward_check(
         ndl.ops.mathematic.summation,
         ndl.Tensor(np.random.randn(5, 4, 1)),
         axes=(0, 1),
@@ -556,11 +557,8 @@ TEST_CASES = [
 @pytest.mark.parametrize(("test_id", "ndl_fn", "shapes", "torch_fn"), TEST_CASES)
 def test_compute_gradients(test_id, ndl_fn, shapes, torch_fn):
     ndl_inputs = [ndl.Tensor(np.random.randn(*shape)) for shape in shapes]
-    torch_inputs = [torch.tensor(x.numpy(), requires_grad=True) for x in ndl_inputs]
 
-    gradient_check(
-        ndl_fn, *ndl_inputs, torch_fn=torch_fn, torch_args=torch_inputs, backward=True
-    )
+    backward_check(ndl_fn, *ndl_inputs, torch_fn=torch_fn, backward=True)
 
 
 def test_compute_gradient_of_gradient():
@@ -590,7 +588,7 @@ def test_compute_gradient_of_gradient():
 
 def test_softmax_loss_ndl():
     # test backward pass for log
-    gradient_check(ndl.log, ndl.Tensor(1 + np.random.rand(5, 4)))
+    backward_check(ndl.log, ndl.Tensor(1 + np.random.rand(5, 4)))
 
     X, y = parse_mnist(
         MNISTPaths.TRAIN_IMAGES,
@@ -659,7 +657,7 @@ def test_relu():
         ).numpy(),
         np.array([[0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0]]),
     )
-    gradient_check(ndl.relu, ndl.Tensor(np.random.randn(5, 4)))
+    backward_check(ndl.relu, ndl.Tensor(np.random.randn(5, 4)))
 
 
 @pytest.mark.slow

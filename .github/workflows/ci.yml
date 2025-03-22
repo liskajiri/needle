@@ -25,20 +25,41 @@ jobs:
 
       - name: Lint
         uses: prefix-dev/setup-pixi@v0.8.1
-        with:
-          environments: lint
-          cache: true
       - name: style
         run: pixi run style
 
+  check-changed-files:
+
+    permissions:
+      contents: read
+      pull-requests: read
+
+    runs-on: ubuntu-latest
+    outputs:
+      python_changed: ${{ steps.filter.outputs.python }}
+      cpp_changed: ${{ steps.filter.outputs.cpp }}
+      cuda_changed: ${{ steps.filter.outputs.cuda }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Check for Python file changes
+        id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            python:
+              - '**/*.py'
+            cpp:
+              - '**/*.cpp'
+            cuda:
+              - '**/*.cu'
 
   # TODO: CUDA build
   build:
+    needs: check-changed-files
+    if: needs.check-changed-files.outputs.cpp_changed == 'true'
     runs-on: ubuntu-latest
-    if: ${{
-            contains(github.event.head_commit.message, '.cpp') ||
-            contains(github.event.head_commit.message, 'CMakeLists.txt')
-         }}
     steps:
       - uses: actions/checkout@v4
       - name: Test
@@ -60,25 +81,24 @@ jobs:
       checks: write
       pull-requests: write
 
-    if: ${{
-            contains(github.event.head_commit.message, '.py') ||
-            contains(github.event.head_commit.message, '.cpp') ||
-            contains(github.event.head_commit.message, '.cu') ||
-            contains(github.event.head_commit.message, 'CMakeLists.txt')
-         }}
+    needs: check-changed-files
+    if: >
+        needs.check-changed-files.outputs.python_changed == 'true' ||
+        needs.check-changed-files.outputs.cpp_changed == 'true' ||
+        needs.check-changed-files.outputs.cuda_changed == 'true'
     strategy:
       matrix:
         backend: [nd, np]
       fail-fast: false
-    runs-on: ubuntu-latest
 
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - name: Cache datasets
         uses: actions/cache@v4
         with:
           path: data
-          key: ${{ runner.os }}-datasets-v1
+          key: ${{ runner.os }}-datasets-${{ hashFiles('data/**') }}-v1
           restore-keys: |
             ${{ runner.os }}-datasets-
 
