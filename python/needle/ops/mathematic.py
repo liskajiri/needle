@@ -155,25 +155,40 @@ def divide_scalar(a: Tensor, scalar: float) -> Tensor:
 
 
 class Transpose(TensorOp):
-    def __init__(self, axes: tuple | None = None):
-        if not axes:
-            axes = (-1, -2)
-        self.axes = axes
+    def __init__(self, axes: tuple = (-1, -2)) -> None:
+        self.axes = axes if axes else (-1, -2)
 
-    def compute(self, a: NDArray):
-        permutation = [i for i in range(len(a.shape))]
-        lhs, rhs = self.axes
-        permutation[lhs], permutation[rhs] = (
-            rhs,
-            lhs,
-        )
-        return array_api.transpose(a, permutation)
+    def compute(self, a: NDArray) -> NDArray:
+        axes = tuple(ax if ax >= 0 else a.ndim + ax for ax in self.axes)
+        if not all(0 <= ax < a.ndim for ax in axes):
+            raise ValueError(f"Axes out of range for array of dimension {a.ndim}")
+        if len(self.axes) == a.ndim:
+            return array_api.transpose(a, self.axes)
+        if len(self.axes) == 2:
+            # swap two axes
+            permutation = [i for i in range(len(a.shape))]
+            lhs, rhs = self.axes
+            permutation[lhs], permutation[rhs] = (
+                rhs,
+                lhs,
+            )
+            return array_api.transpose(a, tuple(permutation))
+        else:
+            raise ValueError(f"Invalid axes: {self.axes}")
 
-    def gradient(self, out_grad, node):
-        return transpose(out_grad, self.axes)
+    def gradient(self, out_grad: Tensor, _node) -> Tensor:
+        """
+        Apply the inverse transpose to the gradient.
+        """
+        if len(self.axes) == 2 or not self.axes:
+            return transpose(out_grad, self.axes)
+
+        # Compute the inverse permutation
+        inverse_axes = tuple(self.axes.index(i) for i in range(len(self.axes)))
+        return transpose(out_grad, inverse_axes)
 
 
-def transpose(a, axes=None):
+def transpose(a, axes: tuple = ()) -> Tensor:
     return Transpose(axes)(a)
 
 
@@ -201,19 +216,22 @@ class BroadcastTo(TensorOp):
 
     def gradient(self, out_grad: Tensor, node: Tensor) -> Tensor:
         # [7, 7, 7] -> [1, 7]
-        in_shape = node.inputs[0].shape
+        input_shape = node.inputs[0].shape
+        output_shape = out_grad.shape
 
-        if len(in_shape) != out_grad.ndim:
+        if len(input_shape) != out_grad.ndim:
             # expand curr out_grad
             # [1, 7] -> [1, 1, 7]
-            new_axes = tuple([1] * (out_grad.ndim - len(in_shape)) + list(in_shape))
+            new_axes = (1,) * (out_grad.ndim - len(input_shape)) + input_shape
         else:
-            new_axes = in_shape
+            new_axes = input_shape
 
-        different_axes = tuple(i for i, ax in enumerate(new_axes) if ax == 1)
-        out_grad = summation(out_grad, axes=different_axes, keepdims=True).reshape(
-            in_shape
-        )
+        axes_to_reduce = tuple(i for i, ax in enumerate(new_axes) if ax == 1)
+        if axes_to_reduce:
+            out_grad = summation(out_grad, axes=axes_to_reduce, keepdims=True)
+
+        if output_shape != input_shape:
+            return reshape(out_grad, input_shape)
         return out_grad
 
 

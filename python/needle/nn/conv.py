@@ -7,10 +7,10 @@ from __future__ import annotations
 import math
 from typing import TYPE_CHECKING
 
+import needle as ndl
 from needle import init
 from needle.backend_selection import default_device
-from needle.nn.core import Module
-from needle.ops.conv import conv as conv_op
+from needle.nn.core import Module, Parameter
 
 if TYPE_CHECKING:
     from needle.tensor import Tensor
@@ -26,6 +26,14 @@ class Conv(Module):
     - No grouped convolution or dilation
     - Only supports square kernels
     - Pads the input tensor to ensure output has the same shape as the input.
+
+    Args:
+        in_channels (int): Number of input channels
+        out_channels (int): Number of output channels
+        kernel_size (int): Size of the convolutional kernel
+        stride (int): Stride of the convolution
+        padding (int): Padding of the input
+        bias (bool): Whether to use a bias term
     """
 
     # TODO: supporting non-square kernels shouldn't be hard
@@ -49,25 +57,30 @@ class Conv(Module):
         self.device = device
         self.dtype = dtype
         # ensure output has the same shape as the input
-        self.padding = kernel_size // 2
+        self.padding = (kernel_size - 1) // 2
 
-        self.weight = init.kaiming_uniform(
-            shape=(kernel_size, kernel_size, in_channels, out_channels),
-            device=device,
-            dtype=dtype,
-        )
-        bias_range = 1 / math.sqrt(in_channels * kernel_size**2)
-        self.bias = (
-            init.rand(
-                out_channels,
-                low=-bias_range,
-                high=bias_range,
+        self.weight = Parameter(
+            init.kaiming_uniform(
+                shape=(kernel_size, kernel_size, in_channels, out_channels),
                 device=device,
                 dtype=dtype,
+                requires_grad=True,
             )
-            if bias
-            else None
         )
+        if bias:
+            bias_range = 1 / math.sqrt(in_channels * kernel_size**2)
+            self.bias = Parameter(
+                init.rand(
+                    out_channels,
+                    low=-bias_range,
+                    high=bias_range,
+                    device=device,
+                    dtype=dtype,
+                    requires_grad=True,
+                )
+            )
+        else:
+            self.bias = None
 
     def forward(self, x: Tensor) -> Tensor:
         """
@@ -83,11 +96,15 @@ class Conv(Module):
         Tensor
             Output tensor with shape NCHW
         """
-        # Conv accepts NHWC, so we need to transpose
-        x = x.transpose((0, 2, 3, 1))
-        conv_x = conv_op(x, self.weight, self.stride, self.padding)
-        # transpose back to NCHW
-        conv_x = conv_x.transpose((0, 3, 1, 2))
+        # Convert from NCHW to NHWC for the conv op
+        x_nhwc = x.transpose((0, 2, 3, 1))
+
+        conv_x = ndl.ops.conv(
+            x_nhwc, self.weight, stride=self.stride, padding=self.padding
+        )
+        # NHWC -> NCHW
         if self.bias:
-            conv_x += self.bias.reshape((1, self.out_channels, 1, 1))
+            bias_broadcasted = self.bias.broadcast_to(conv_x.shape)
+            conv_x = conv_x + bias_broadcasted
+        conv_x = conv_x.transpose((0, 3, 1, 2))
         return conv_x

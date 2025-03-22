@@ -1,6 +1,7 @@
 import needle as ndl
 import numpy as np
 import pytest
+import torch
 
 from tests.gradient_check import backward_check
 
@@ -12,6 +13,54 @@ _DEVICES = [
 ]
 
 rng = np.random.default_rng()
+
+stack_back_params = [
+    ((3, 4), 3, 0),
+    ((3, 4), 3, 1),
+    ((3, 4), 3, 2),
+    ((3, 4), 5, 2),
+    ((3, 4), 1, 2),
+]
+
+
+@pytest.mark.parametrize("device", _DEVICES, ids=["cpu", "cuda"])
+@pytest.mark.parametrize("shape, n, axis", stack_back_params)
+def test_stack_backward(shape, n, axis, device):
+    def get_tensor(shape):
+        return ndl.Tensor(rng.standard_normal(shape) * 5, device=device)
+
+    backward_check(
+        ndl.stack,
+        [get_tensor(shape) for _ in range(n)],
+        axis=axis,
+    )
+
+
+stack_params = [
+    {"shape": (10, 3), "n": 4, "axis": 0},
+    {"shape": (4, 5, 6), "n": 5, "axis": 0},
+    {"shape": (4, 5, 6), "n": 3, "axis": 1},
+    {"shape": (4, 5, 6), "n": 2, "axis": 2},
+]
+
+
+@pytest.mark.parametrize("device", _DEVICES, ids=["cpu", "cuda"])
+@pytest.mark.parametrize("params", stack_params)
+def test_stack_forward(params, device):
+    np.random.seed(0)
+    shape, n, axis = params["shape"], params["n"], params["axis"]
+    to_stack_ndl = []
+    to_stack_npy = []
+    for i in range(n):
+        _A = np.random.randn(*shape)
+        to_stack_ndl += [ndl.Tensor(_A, device=device)]
+        to_stack_npy += [_A]
+
+    lhs = np.stack(to_stack_npy, axis=axis)
+    rhs = ndl.stack(to_stack_ndl, axis=axis)
+
+    np.testing.assert_allclose(rhs.numpy(), lhs, rtol=1e-6)
+
 
 pad_params = [
     {"shape": (10, 32, 32, 8), "padding": ((0, 0), (2, 2), (2, 2), (0, 0))},
@@ -108,83 +157,71 @@ DILATE_PARAMS = [
         np.array([[7.0, 9.0, 9.0, 2.0, 7.0], [8.0, 8.0, 9.0, 2.0, 6.0]]),
         1,
         (0,),
-        np.array(
-            [
-                [7.0, 9.0, 9.0, 2.0, 7.0],
-                [0.0, 0.0, 0.0, 0.0, 0.0],
-                [8.0, 8.0, 9.0, 2.0, 6.0],
-                [0.0, 0.0, 0.0, 0.0, 0.0],
-            ]
-        ),
+        np.array([
+            [7.0, 9.0, 9.0, 2.0, 7.0],
+            [0.0, 0.0, 0.0, 0.0, 0.0],
+            [8.0, 8.0, 9.0, 2.0, 6.0],
+            [0.0, 0.0, 0.0, 0.0, 0.0],
+        ]),
         id="2d_dilation1_axis0",
     ),
     pytest.param(
         np.array([[9.0, 5.0, 4.0, 1.0, 4.0], [6.0, 1.0, 3.0, 4.0, 9.0]]),
         1,
         (1,),
-        np.array(
-            [
-                [9.0, 0.0, 5.0, 0.0, 4.0, 0.0, 1.0, 0.0, 4.0, 0.0],
-                [6.0, 0.0, 1.0, 0.0, 3.0, 0.0, 4.0, 0.0, 9.0, 0.0],
-            ]
-        ),
+        np.array([
+            [9.0, 0.0, 5.0, 0.0, 4.0, 0.0, 1.0, 0.0, 4.0, 0.0],
+            [6.0, 0.0, 1.0, 0.0, 3.0, 0.0, 4.0, 0.0, 9.0, 0.0],
+        ]),
         id="2d_dilation1_axis1",
     ),
     pytest.param(
         np.array([[2.0, 4.0, 4.0, 4.0, 8.0], [1.0, 2.0, 1.0, 5.0, 8.0]]),
         1,
         (0, 1),
-        np.array(
-            [
-                [2.0, 0.0, 4.0, 0.0, 4.0, 0.0, 4.0, 0.0, 8.0, 0.0],
-                [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                [1.0, 0.0, 2.0, 0.0, 1.0, 0.0, 5.0, 0.0, 8.0, 0.0],
-                [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-            ]
-        ),
+        np.array([
+            [2.0, 0.0, 4.0, 0.0, 4.0, 0.0, 4.0, 0.0, 8.0, 0.0],
+            [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+            [1.0, 0.0, 2.0, 0.0, 1.0, 0.0, 5.0, 0.0, 8.0, 0.0],
+            [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        ]),
         id="2d_dilation1_axis01",
     ),
     pytest.param(
         np.array([[4.0, 3.0], [8.0, 3.0]]),
         2,
         (0, 1),
-        np.array(
-            [
-                [4.0, 0.0, 0.0, 3.0, 0.0, 0.0],
-                [0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                [0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                [8.0, 0.0, 0.0, 3.0, 0.0, 0.0],
-                [0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                [0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-            ]
-        ),
+        np.array([
+            [4.0, 0.0, 0.0, 3.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+            [8.0, 0.0, 0.0, 3.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        ]),
         id="2d_dilation2_axis01",
     ),
     pytest.param(
-        np.array(
-            [
-                [[[1.0, 1.0], [5.0, 6.0]], [[6.0, 7.0], [9.0, 5.0]]],
-                [[[2.0, 5.0], [9.0, 2.0]], [[2.0, 8.0], [4.0, 7.0]]],
-            ]
-        ),
+        np.array([
+            [[[1.0, 1.0], [5.0, 6.0]], [[6.0, 7.0], [9.0, 5.0]]],
+            [[[2.0, 5.0], [9.0, 2.0]], [[2.0, 8.0], [4.0, 7.0]]],
+        ]),
         1,
         (1, 2),
-        np.array(
+        np.array([
             [
-                [
-                    [[1.0, 1.0], [0.0, 0.0], [5.0, 6.0], [0.0, 0.0]],
-                    [[0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0]],
-                    [[6.0, 7.0], [0.0, 0.0], [9.0, 5.0], [0.0, 0.0]],
-                    [[0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0]],
-                ],
-                [
-                    [[2.0, 5.0], [0.0, 0.0], [9.0, 2.0], [0.0, 0.0]],
-                    [[0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0]],
-                    [[2.0, 8.0], [0.0, 0.0], [4.0, 7.0], [0.0, 0.0]],
-                    [[0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0]],
-                ],
-            ]
-        ),
+                [[1.0, 1.0], [0.0, 0.0], [5.0, 6.0], [0.0, 0.0]],
+                [[0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0]],
+                [[6.0, 7.0], [0.0, 0.0], [9.0, 5.0], [0.0, 0.0]],
+                [[0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0]],
+            ],
+            [
+                [[2.0, 5.0], [0.0, 0.0], [9.0, 2.0], [0.0, 0.0]],
+                [[0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0]],
+                [[2.0, 8.0], [0.0, 0.0], [4.0, 7.0], [0.0, 0.0]],
+                [[0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0]],
+            ],
+        ]),
         id="4d_dilation1_axis12",
     ),
 ]
@@ -235,6 +272,53 @@ def test_dilate_backward(params, device):
     )
 
 
+def test_stack_vs_pytorch():
+    np.random.seed(0)
+    import torch
+
+    A = np.random.randn(5, 5)
+    B = np.random.randn(5, 5)
+    C = np.random.randn(5, 5)
+    D = np.random.randn(15, 5)
+
+    Andl = ndl.Tensor(A, requires_grad=True)
+    Bndl = ndl.Tensor(B, requires_grad=True)
+    Cndl = ndl.Tensor(C, requires_grad=True)
+    Dndl = ndl.Tensor(D, requires_grad=True)
+
+    Atch = torch.tensor(A, requires_grad=True)
+    Btch = torch.tensor(B, requires_grad=True)
+    Ctch = torch.tensor(C, requires_grad=True)
+    Dtch = torch.tensor(D, requires_grad=True)
+
+    Xndl = ndl.stack([Andl, Cndl @ Bndl, Cndl], axis=1)
+    Xtch = torch.stack([Atch, Ctch @ Btch, Ctch], dim=1)
+
+    assert Xndl.shape == Xtch.shape
+    assert np.linalg.norm(Xndl.numpy() - Xtch.detach().numpy()) < 1e-3
+
+    Yndl = (Dndl @ Xndl.reshape((5, 15)) @ Dndl).sum()
+    Ytch = (Dtch @ Xtch.reshape(5, 15) @ Dtch).sum()
+
+    assert np.linalg.norm(Yndl.numpy() - Ytch.detach().numpy()) < 1e-3
+
+    Yndl.backward()
+    Ytch.backward()
+
+    assert (
+        np.linalg.norm(Andl.grad.cached_data.numpy() - Atch.grad.detach().numpy())
+        < 1e-3
+    )
+    assert (
+        np.linalg.norm(Bndl.grad.cached_data.numpy() - Btch.grad.detach().numpy())
+        < 1e-3
+    )
+    assert (
+        np.linalg.norm(Cndl.grad.cached_data.numpy() - Ctch.grad.detach().numpy())
+        < 1e-3
+    )
+
+
 conv_forward_params = [
     (4, 8, 16, 3, 1),
     (32, 8, 16, 3, 2),
@@ -249,19 +333,15 @@ conv_forward_params = [
 )
 @pytest.mark.parametrize("device", _DEVICES, ids=["cpu", "cuda"])
 def test_nn_conv_forward(s, in_channels, out_channels, k, stride, device):
-    import torch
-
-    np_x = rng.uniform(0, 1, (10, in_channels, s, s)).astype(np.float32)
-
     f = ndl.nn.Conv(in_channels, out_channels, k, stride=stride, device=device)
-    x = ndl.Tensor(np_x, device=device)
+    x = ndl.init.rand(10, in_channels, s, s, device=device)
 
     g = torch.nn.Conv2d(in_channels, out_channels, k, stride=stride, padding=k // 2)
     g.weight.data = torch.tensor(
         f.weight.realize_cached_data().numpy().transpose(3, 2, 0, 1)
     )
     g.bias.data = torch.tensor(f.bias.realize_cached_data().numpy())
-    z = torch.tensor(np_x)
+    z = torch.tensor(x.cached_data.numpy())
 
     my_out = f(x).realize_cached_data().numpy()
     torch_out = g(z).data.numpy()
@@ -273,6 +353,52 @@ def test_nn_conv_forward(s, in_channels, out_channels, k, stride, device):
         atol=1e-4,
     )
     assert np.linalg.norm(my_out - torch_out) < 1e-3
+
+
+conv_back_params = [
+    (4, 1, 1, 3, 1),
+    (14, 8, 16, 3, 1),
+    (14, 8, 16, 3, 2),
+    (14, 8, 8, 3, 1),
+    (14, 8, 8, 3, 2),
+    (14, 16, 8, 3, 1),
+    (14, 16, 8, 3, 2),
+]
+
+
+@pytest.mark.parametrize("s,in_channels,out_channels,k,stride", conv_back_params)
+@pytest.mark.parametrize("device", _DEVICES, ids=["cpu", "cuda"])
+def test_nn_conv_backward(s, in_channels, out_channels, k, stride, device):
+    f = ndl.nn.Conv(in_channels, out_channels, k, stride=stride, device=device)
+    x = ndl.init.rand(1, in_channels, s, s, device=device, requires_grad=True)
+
+    g = torch.nn.Conv2d(in_channels, out_channels, k, stride=stride, padding=k // 2)
+    g.weight.data = torch.tensor(f.weight.cached_data.numpy().transpose(3, 2, 0, 1))
+    g.bias.data = torch.tensor(f.bias.cached_data.numpy())
+    z = torch.tensor(x.cached_data.numpy(), requires_grad=True)
+    z.requires_grad = True
+
+    needle_out = f(x)
+    torch_out = g(z)
+
+    needle_y = needle_out.sum()
+    torch_y = torch_out.sum()
+
+    torch_y.backward()
+    needle_y.backward()
+
+    np.testing.assert_allclose(
+        g.weight.grad.data.numpy(),
+        f.weight.grad.cached_data.numpy().transpose(3, 2, 0, 1),
+        rtol=1e-4,
+        atol=1e-4,
+    )
+    np.testing.assert_allclose(
+        g.bias.grad.data.numpy(), f.bias.grad.cached_data.numpy(), rtol=1e-4, atol=1e-4
+    )
+    np.testing.assert_allclose(
+        z.grad.data.numpy(), x.grad.cached_data.numpy(), rtol=1e-4, atol=1e-4
+    )
 
 
 op_conv_shapes = [
@@ -304,25 +430,24 @@ op_conv_shapes = [
 @pytest.mark.parametrize("device", _DEVICES, ids=["cpu", "cuda"])
 @pytest.mark.parametrize("backward", [True, False], ids=["backward", "forward"])
 def test_op_conv(Z_shape, W_shape, stride, padding, backward, device):
-    torch = pytest.importorskip("torch")
-
     _Z = rng.standard_normal(Z_shape, dtype=np.float32)
     _W = rng.standard_normal(W_shape, dtype=np.float32)
 
     Z = ndl.Tensor(_Z, device=device)
     W = ndl.Tensor(_W, device=device)
 
-    Z_torch = torch.tensor(_Z, dtype=torch.float32, requires_grad=True).permute(
-        0, 3, 1, 2
-    )
-    W_torch = torch.tensor(_W, dtype=torch.float32, requires_grad=True).permute(
-        3, 2, 0, 1
-    )
+    Z_torch = torch.tensor(_Z, dtype=torch.float32, requires_grad=True)
+    W_torch = torch.tensor(_W, dtype=torch.float32, requires_grad=True)
 
     y = ndl.conv(Z, W, padding=padding, stride=stride)
     y2 = y.sum()
 
-    out = torch.nn.functional.conv2d(Z_torch, W_torch, padding=padding, stride=stride)
+    out = torch.nn.functional.conv2d(
+        Z_torch.permute(0, 3, 1, 2),
+        W_torch.permute(3, 2, 0, 1),
+        padding=padding,
+        stride=stride,
+    )
     out2 = out.sum()
 
     np.testing.assert_allclose(
@@ -334,11 +459,25 @@ def test_op_conv(Z_shape, W_shape, stride, padding, backward, device):
     np.testing.assert_allclose(y2.numpy(), out2.detach().numpy(), rtol=1e-4, atol=1e-4)
 
     if backward:
-        y2.backward()
         out2.backward()
+        y2.backward()
         np.testing.assert_allclose(
-            Z_torch.grad.numpy(), Z.grad.numpy(), rtol=1e-2, atol=1e-2
+            Z.grad.numpy(),
+            Z_torch.grad.numpy(),
+            rtol=1e-4,
+            atol=1e-4,
         )
         np.testing.assert_allclose(
-            W_torch.grad.numpy(), W.grad.numpy(), rtol=1e-2, atol=1e-2
+            W.grad.numpy(),
+            W_torch.grad.numpy(),
+            rtol=1e-2,
+            atol=1e-2,
         )
+
+
+# TODO: as_strided does not match Numpy's
+def test_as_strided():
+    # create an array, make it different using np.stride tricks and do the same
+    # to the needle array
+    # then compare the two arrays
+    pass

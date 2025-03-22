@@ -17,65 +17,37 @@ class Conv(TensorOp):
         self.stride = stride
         self.padding = padding
 
-    def compute(self, *arr: tuple[NDArray, ...]) -> NDArray:
+    def compute(self, img: NDArray, kernel: NDArray) -> NDArray:
         # Input format: NHWC (batch-height-width-channel)
         # Kernel format: HWIO (height-width-in_channel-out_channel)
-        img, kernel = arr
-        n, height, width, in_channels = img.shape
+        n, height, width, _in_channels = img.shape
         kernel_height, kernel_width, _W, out_channels = kernel.shape
 
         if self.padding > 0:
-            img = img.pad(
-                (
-                    (0, 0),
-                    (self.padding, self.padding),
-                    (self.padding, self.padding),
-                    (0, 0),
-                )
-            )
+            img = img.pad((
+                (0, 0),
+                (self.padding, self.padding),
+                (self.padding, self.padding),
+                (0, 0),
+            ))
             height += 2 * self.padding
             width += 2 * self.padding
 
         # kernel reduces size
         final_H = (height - kernel_height) // self.stride + 1
         final_W = (width - kernel_width) // self.stride + 1
-        out_shape = (n, final_H, final_W, out_channels)
 
-        # # Strided convolution (im2col) - reshape to 6d tensor
-        # # to perform only single matmul with the kernel
-        # Ns, Hs, Ws, Cs = img.strides
-        # out = (
-        #     img.as_strided(
-        #     shape=(n, final_H, final_W, kernel_height, kernel_height, in_channels),
-        #         strides=(Ns, Hs * self.stride, Ws * self.stride, Hs, Ws, Cs),
-        #     )
-        #     .compact()
-        #     .reshape((-1, kernel_height * kernel_width * in_channels))
-        # )
-        # out._strides = tuple((Ns, Hs * self.stride, Ws * self.stride, Hs, Ws, Cs))
-
-        # A = np.lib.stride_tricks.as_strided(
-        #     img,
-        #     shape=(n, final_H, final_W, kernel_height, kernel_height, in_channels),
-        #     strides=(Ns, Hs, Ws, Hs, Ws, Cs),
-        # ).reshape(-1, kernel_height * kernel_width * in_channels)
-
-        # np.testing.assert_allclose(out.numpy(), A, rtol=1e-5, atol=1e-5)
-        # out = out @ kernel.reshape((-1, out_channels))
-        # return out.reshape(out_shape)
-
-        out = array_api.zeros(out_shape)
+        out = array_api.zeros((n, final_H, final_W, out_channels))
         for i in range(kernel_height):
             for j in range(kernel_width):
-                out += (
-                    img[
-                        :,
-                        i : i + final_H * self.stride : self.stride,
-                        j : j + final_W * self.stride : self.stride,
-                        :,
-                    ]
-                    @ kernel[i, j]
-                )
+                curr_img = img[
+                    :,
+                    i : i + final_H * self.stride : self.stride,
+                    j : j + final_W * self.stride : self.stride,
+                    :,
+                ]
+                out += curr_img @ kernel[i, j]
+
         return out
 
     def gradient(self, out_grad: Tensor, node: Tensor) -> tuple[Tensor, Tensor]:
@@ -95,22 +67,33 @@ class Conv(TensorOp):
         K_H, K_W, C_in, C_out = W.shape
         _, out_H, out_W, _ = out_grad.shape
 
-        W_flipped = W.flip(axes=(0, 1))  # Rotate kernel spatially
-        W_flipped = W_flipped.transpose((0, 1, 3, 2))  # Swap C_in and C_out
+        # Flip kernel spatially and swap input/output channels for transpose convolution
+        W_flipped = W.flip(axes=(0, 1))
+        W_flipped = W_flipped.transpose((3, 2))
 
         out_grad_orig = out_grad.realize_cached_data().compact()
 
         if self.stride > 1:
             out_grad = dilate(out_grad, axes=(1, 2), dilation=self.stride - 1)
 
-        X_grad = conv(out_grad, W_flipped, stride=1, padding=K_H - 1 - self.padding)
+        X_grad = conv(out_grad, W_flipped, padding=K_H - 1 - self.padding)
 
-        W_grad = array_api.zeros((K_H, K_W, C_in, C_out))
-        X_padded = X.realize_cached_data().pad(
-            ((0, 0), (self.padding, self.padding), (self.padding, self.padding), (0, 0))
-        )
+        if X_grad.shape != X.shape:
+            # In some cases with odd dimensions and strides, we might need to crop
+            slices = tuple(slice(0, X.shape[i]) for i in range(4))
+            X_grad = X_grad.realize_cached_data()[slices]
+
+        X_padded = X.realize_cached_data()
+        if self.padding > 0:
+            X_padded = X_padded.pad((
+                (0, 0),
+                (self.padding, self.padding),
+                (self.padding, self.padding),
+                (0, 0),
+            ))
 
         # TODO: Convert this to a convolution operation
+        W_grad = array_api.zeros((K_H, K_W, C_in, C_out))
         for i in range(K_H):
             for j in range(K_W):
                 # Extract windows from X with proper stride
@@ -131,10 +114,10 @@ class Conv(TensorOp):
 
                 W_grad[i, j] = X_windows @ out_grad_
 
-        return X_grad, W_grad
+        return X_grad, Tensor(W_grad)
 
 
-def conv(img: Tensor, kernel: Tensor, stride: int = 1, padding: int = 0) -> Tensor:
+def conv(img: Tensor, kernel: Tensor, stride: int = 1, padding: int = 1) -> Tensor:
     """
     Apply 2D convolution to input tensor.
 
@@ -154,15 +137,18 @@ def conv(img: Tensor, kernel: Tensor, stride: int = 1, padding: int = 0) -> Tens
 
     assert img.ndim == 4, f"Expected 4D input tensor, got shape {img.shape}"
     assert kernel.ndim == 4, f"Expected 4D kernel tensor, got shape {kernel.shape}"
-    n, height, width, in_channels = img.shape
-    kernel_height, kernel_width, _W, out_channels = kernel.shape
-    if in_channels != _W:
+
+    _n, height, width, in_channels = img.shape
+    kernel_height, kernel_width, kernel_in_channels, _out_channels = kernel.shape
+    if in_channels != kernel_in_channels:
         raise ValueError(
-            f"Input channels ({in_channels}) must match kernel channels ({_W})\n"
+            f"C_in={in_channels} does not match kernel C_in={kernel_in_channels}\n"
             f"In shape {img.shape} and {kernel.shape}"
         )
+
     if kernel_height > height or kernel_width > width:
         raise ValueError(
-            f"Kernel dimensions ({kernel.shape}) must be less than input dimensions ({img.shape})"
+            f"Kernel size {kernel_height}x{kernel_width}\n"
+            f"must be smaller than input size {height}x{width}"
         )
     return Conv(stride, padding)(img, kernel)

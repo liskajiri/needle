@@ -8,6 +8,7 @@ from needle.nn.activations import ReLU
 
 if TYPE_CHECKING:
     from needle.tensor import Tensor
+    from needle.typing import Shape
 
 
 def xavier_uniform(
@@ -63,8 +64,9 @@ def xavier_normal(
 
 
 def kaiming_uniform(
-    fan_in: int,
-    fan_out: int,
+    fan_in: int = 1,
+    fan_out: int = 1,
+    shape: Shape | None = None,
     gain: float = 2**0.5,
     nonlinearity: ReLU | None = None,
     **kwargs,
@@ -91,6 +93,8 @@ def kaiming_uniform(
         nonlinearity = ReLU()
 
     bound = gain * math.sqrt(3 / fan_in)
+    if shape:
+        return rand(*shape, low=-bound, high=bound, **kwargs)
     return rand(fan_in, fan_out, low=-bound, high=bound, **kwargs)
 
 
