@@ -9,9 +9,9 @@ from needle.backend_selection import default_device
 from needle.nn.core import Module, Parameter
 
 if TYPE_CHECKING:
-    from needle.backend_ndarray.device import AbstractBackend
     from needle.tensor import Tensor
     from needle.typing import DType
+    from needle.typing.device import AbstractBackend
 
 
 class BatchNorm1d(Module):
@@ -62,6 +62,18 @@ class BatchNorm1d(Module):
 
         var_plus_eps = ops.sqrt(var_x + self.eps).broadcast_to(x.shape)
         return weights * (x_less_mean / var_plus_eps) + biases
+
+
+class BatchNorm2d(BatchNorm1d):
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+
+    def forward(self, x: Tensor) -> Tensor:
+        # format: NCHW -> NHCW -> NHWC
+        s = x.shape
+        _x = x.transpose((1, 2)).transpose((2, 3)).reshape((s[0] * s[2] * s[3], s[1]))
+        y = super().forward(_x).reshape((s[0], s[2], s[3], s[1]))
+        return y.transpose((2, 3)).transpose((1, 2))
 
 
 class LayerNorm1d(Module):

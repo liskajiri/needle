@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
-from needle.backend_ndarray.device import AbstractBackend
+from needle.typing.device import AbstractBackend
 
 if TYPE_CHECKING:
     from needle.typing.types import DType, Scalar, Shape, Strides
@@ -203,7 +203,12 @@ class NDArray:
         array._offset = offset
         array._device = device
         if handle is None:
-            array._handle = array.device.Array(prod(shape))
+            array_size = prod(shape)
+            if array_size <= 0:
+                raise ValueError(
+                    f"Array size cannot be negative, Invalid shape: {shape}"
+                )
+            array._handle = array.device.Array(array_size)
         else:
             array._handle = handle
         return array
@@ -384,8 +389,7 @@ class NDArray:
             )
 
         # Create reshaped view with new strides
-        new_strides = self.compact_strides(new_shape)
-        return self.as_strided(new_shape, new_strides)
+        return self.as_strided(new_shape, self.compact_strides(new_shape))
 
     def _is_1d_to_column_vector(self, new_shape: Shape) -> bool:
         """Check if reshaping from 1D array to column vector."""
@@ -490,6 +494,7 @@ class NDArray:
         """
         if self.shape == new_shape:
             return self
+
         new_size = math.prod(new_shape)
         if len(new_shape) < len(self._shape) or new_size % self.size != 0:
             raise ValueError(f"Cannot broadcast shape {self._shape} to {new_shape}")
@@ -505,7 +510,7 @@ class NDArray:
 
         return self.as_strided(new_shape, tuple(new_strides))
 
-    ### Get and set elements
+    # === Get and set elements
 
     def process_slice(self, sl: slice, dim: int) -> slice:
         """Convert a slice to an explicit start/stop/step."""
@@ -529,7 +534,10 @@ class NDArray:
         return slice(start, stop, step)
 
     # TODO: standardize idxs type: int | iterable[int] | slice
-    def __getitem__(self, idxs: int | tuple[int] | tuple[slice] | NDArray) -> NDArray:
+    # TODO: getitem is not really working like numpy's
+    def __getitem__(
+        self, idxs: int | tuple[int | slice, ...] | list[int] | NDArray
+    ) -> NDArray:
         """
         The __getitem__ operator in Python allows access to elements of the
         array.
@@ -555,19 +563,38 @@ class NDArray:
             the same array as the original one.
         """
 
-        def _convert_tuple_to_slice(idxs: int | tuple[int]) -> tuple[slice, ...]:
+        def _prepare_indices(
+            idxs: int | tuple[int | slice, ...],
+        ) -> tuple[tuple[slice, ...], set[int]]:
             """
-            Convert input idxs from tuple to tuple of slices in each dimension
+            Convert input indices to tuple of slices and track squeeze dimensions.
             """
-            if isinstance(idxs, int):
-                idxs = (idxs,)
-            new_idxs = idxs + (slice(None),) * (self.ndim - len(idxs))
+            # Convert single integer index to tuple
+            orig_idxs = (idxs,) if isinstance(idxs, int) else idxs
+            if not isinstance(orig_idxs, tuple):
+                raise TypeError(f"Invalid index type: {type(orig_idxs)}")
 
-            idx = tuple(
-                self.process_slice(s, i) if isinstance(s, slice) else slice(s, s + 1, 1)
-                for i, s in enumerate(new_idxs)
+            # Track dimensions to squeeze (from integer indexing)
+            squeeze_dims = {
+                i for i, idx in enumerate(orig_idxs) if isinstance(idx, int)
+            }
+
+            # Convert each index to slice
+            processed_idxs = []
+            for i, idx in enumerate(orig_idxs):
+                if isinstance(idx, slice):
+                    processed_idxs.append(self.process_slice(idx, i))
+                elif isinstance(idx, int):
+                    processed_idxs.append(slice(idx, idx + 1, 1))
+                else:
+                    processed_idxs.append(idx)
+
+            # Pad with full slices
+            final_idxs = tuple(
+                processed_idxs + [slice(None)] * (self.ndim - len(processed_idxs))
             )
-            return idx
+
+            return final_idxs, squeeze_dims
 
         def _handle_array_indexing(idxs: NDArray) -> NDArray:
             """
@@ -583,21 +610,33 @@ class NDArray:
                 out[dst_idx] = self[src_idx]
             return out.compact()
 
-        def _compute_view_shape() -> tuple[Shape, Strides, int]:
+        def _compute_view_shape(
+            slices: tuple[slice, ...], squeeze_dims: set[int]
+        ) -> tuple[Shape, Strides, int]:
             """
             Compute the shape and strides of the view resulting from slicing.
+            Removes dimensions that should be squeezed due to integer indexing.
             """
             new_shape = []
             new_strides = list(self._strides)
             new_offset = self._offset
+
             for i, ax in enumerate(slices):
-                # stop - start guaranteed to be positive
-                # slice(0, 3, 2) = [0, 2], but when using (3 - 0) // 2 = 1
-                new_shape.append((ax.stop - ax.start - 1) // ax.step + 1)
-                new_strides[i] *= ax.step
-                # distance to the first element
-                new_offset += self._strides[i] * ax.start
-            return tuple(new_shape), tuple(new_strides), new_offset
+                start = ax.start if ax.start is not None else 0
+                stop = ax.stop if ax.stop is not None else self.shape[i]
+                step = ax.step if ax.step is not None else 1
+                if i not in squeeze_dims:
+                    n_shape = (stop - start - 1) // step + 1
+                    new_shape.append(n_shape)
+                new_strides[i] *= step
+                new_offset += self._strides[i] * start
+
+            # Remove strides for squeezed dimensions
+            final_strides = tuple(
+                stride for i, stride in enumerate(new_strides) if i not in squeeze_dims
+            )
+
+            return tuple(new_shape), final_strides, new_offset
 
         # Indexing with a list or NDArray
         if isinstance(idxs, list | np.ndarray | NDArray):
@@ -606,14 +645,15 @@ class NDArray:
                 idxs = NDArray(idxs, device=self.device)
             return _handle_array_indexing(idxs)
 
-        slices = _convert_tuple_to_slice(idxs)
+        # Process indices and track which dimensions need squeezing
+        slices, squeeze_dims = _prepare_indices(idxs)
         if len(slices) != self.ndim:
             raise AssertionError(
                 f"""Need indexes equal to number of dimensions,
                 trying to select {idxs} from {self.ndim} dimensions"""
             )
 
-        new_shape, new_strides, new_offset = _compute_view_shape()
+        new_shape, new_strides, new_offset = _compute_view_shape(slices, squeeze_dims)
 
         # TODO: This array is smaller and so its size is smaller
         # That is not however changed, so the check is_compact fails, because
@@ -629,7 +669,7 @@ class NDArray:
 
     def __setitem__(
         self,
-        idxs: int | tuple[int] | tuple[slice] | NDArray,
+        idxs: int | tuple[int | slice, ...] | list[int] | NDArray,
         other: NDArray | Scalar,
     ) -> None:
         """
@@ -784,61 +824,52 @@ class NDArray:
         The GPU (and numpy) versions don't have any tiled version (or rather,
         the GPU version will just work natively by tiling any input size).
         """
-        # TODO: tests for batched matmul
-        # TODO: efficiency : probably crazy inefficient
-        if self.ndim > 2 or other.ndim > 2:
-            # Broadcast batch dimensions
-            batch_shape = tuple(broadcast_shapes(self.shape[:-2], other.shape[:-2]))
-            m, n = self.shape[-2], other.shape[-1]
-            assert self.shape[-1] == other.shape[-2], f"""
-            Inner batch-matmul dimensions must match,
-            got {self.shape[-1]} != {other.shape[-2]}
-            """
-            k = self.shape[-1]
 
-            # Reshape to 3D
-            a_new_shape = (*batch_shape, m, k)
-            b_new_shape = (*batch_shape, k, n)
-            a = self.broadcast_to(a_new_shape).compact()
-            b = other.broadcast_to(b_new_shape).compact()
+        def _check_matrix_shapes() -> None:
+            if self.ndim < 2:
+                raise ValueError(
+                    f"Matrix multiplication needs at least 2D arrays, got {self.shape}"
+                )
+            if other.ndim < 2:
+                raise ValueError(
+                    f"Matrix multiplication needs at least 2D arrays, got {other.shape}"
+                )
+            if self.shape[-1] != other.shape[-2]:
+                raise ValueError(f"""
+                    Matrix multiplication requires inner dimensions to match,
+                    but A.cols != B.rows: {self.shape[-1]} != {other.shape[-2]}
+                    for shapes {self.shape} and {other.shape}
+                    """)
 
-            # Flatten batch dims
+        def _batched_matmul(self, other: NDArray) -> NDArray:
+            m, k1 = self.shape[-2:]
+            k2, n = other.shape[-2:]
+
+            a_batch_shape = self.shape[:-2] if self.ndim > 2 else (1,)
+            b_batch_shape = other.shape[:-2] if other.ndim > 2 else (1,)
+
+            batch_shape = broadcast_shapes(a_batch_shape, b_batch_shape)
             batch_size = math.prod(batch_shape)
-            a = a.reshape((batch_size, m, k))
-            b = b.reshape((batch_size, k, n))
+
+            # broadcast shapes of axis
+            a = self.broadcast_to((*batch_shape, m, k1)).compact()
+            b = other.broadcast_to((*batch_shape, k2, n)).compact()
+
+            a = a.reshape((-1, m, k1))
+            b = b.reshape((-1, k2, n))
+            if a.shape[0] != b.shape[0]:
+                raise AssertionError(f"Batched matmul: {a.shape[0]} != {b.shape[0]}")
 
             # Create output
             out = NDArray.make((batch_size, m, n), device=self.device)
             for i in range(batch_size):
-                a_i = a[i].compact().reshape((m, k))
-                b_i = b[i].compact().reshape((k, n))
-                out[i] = a_i @ b_i
+                out[i] = a[i] @ b[i]
 
             # Restore batch dimensions
             return out.reshape((*batch_shape, m, n))
 
-        assert self.ndim == 2, (
-            f"Matrix multiplication requires 2D arrays, got {self.ndim} in {self.shape}"
-        )
-        assert other.ndim == 2, f"""Matrix multiplication requires 2D arrays,
-            got {other.ndim} in {other.shape}"""
-        assert (
-            self.shape[1] == other.shape[0]
-        ), f"""Matrix multiplication requires inner dimensions to match,
-        but A.cols != B.rows: {self.shape[1]} != {other.shape[0]}"""
-
-        m, n, p = self.shape[0], self.shape[1], other.shape[1]
-
-        # For smaller matrices, the overhead of tiling and reshaping is too large
-        matrix_is_large = m * n * p > 64**3
-
-        if (
-            matrix_is_large
-            and hasattr(self.device, "matmul_tiled")
-            and all(d % self.device.__tile_size__ == 0 for d in (m, n, p))
-        ):
-
-            def tile(a: NDArray, tile: int) -> NDArray:
+        def _tiled_matmul(self, other: NDArray) -> NDArray:
+            def _tile(a: NDArray, tile: int) -> NDArray:
                 """
                 Transforms a matrix [k, n] into a
                 matrix [k // tile, n // tile, tile, tile].
@@ -846,24 +877,44 @@ class NDArray:
                 return a.as_strided(
                     (a.shape[0] // tile, a.shape[1] // tile, tile, tile),
                     (a.shape[1] * tile, tile, a.shape[1], 1),
-                )
+                ).compact()
 
             t = self.device.__tile_size__
-            a = tile(self.compact(), t).compact()
-            b = tile(other.compact(), t).compact()
+            a = _tile(self.compact(), t)
+            b = _tile(other.compact(), t)
             out = NDArray.make((a.shape[0], b.shape[1], t, t), device=self.device)
             self.device.matmul_tiled(a._handle, b._handle, out._handle, m, n, p)
 
-            out = (
+            return (
                 out.permute((0, 2, 1, 3))
                 .compact()
                 .reshape((self.shape[0], other.shape[1]))
             )
-        else:
-            out = NDArray.make((m, p), device=self.device)
-            self.device.matmul(
-                self.compact()._handle, other.compact()._handle, out._handle, m, n, p
-            )
+
+        # Main matmul function
+
+        _check_matrix_shapes()
+
+        if self.ndim > 2 or other.ndim > 2:
+            return _batched_matmul(self, other)
+
+        m, n, p = self.shape[0], self.shape[1], other.shape[1]
+
+        # For smaller matrices, the overhead of tiling and reshaping is too large
+        # TODO: More scientific study of this
+        matrix_is_large = m * n * p > 64**3
+
+        if (
+            matrix_is_large
+            and hasattr(self.device, "matmul_tiled")
+            and all(d % self.device.__tile_size__ == 0 for d in (m, n, p))
+        ):
+            return _tiled_matmul(self, other)
+
+        out = NDArray.make((m, p), device=self.device)
+        self.device.matmul(
+            self.compact()._handle, other.compact()._handle, out._handle, m, n, p
+        )
         return out
 
     ### Reductions, i.e., sum/max over all element or over given axis
@@ -928,7 +979,7 @@ class NDArray:
 
     ### Other functions
 
-    def flip(self, axes: tuple[int] | int) -> NDArray:
+    def flip(self, axes: tuple[int, ...] | int) -> NDArray:
         """
         Flip this ndarray along the specified axes.
         Note: compacts the array before returning.
@@ -952,6 +1003,7 @@ class NDArray:
 
         # Normalize negative axes
         # TODO: this will be common in array ops, make it a function
+        # (convert neg to pos  idx)
         axes = tuple(ax if ax >= 0 else self.ndim + ax for ax in axes)
 
         # Create new view with modified strides and offset
@@ -978,12 +1030,14 @@ class NDArray:
 
         return out
 
-    def pad(self, axes: tuple[tuple[int, int]]) -> NDArray:
+    def pad(self, axes: tuple[tuple[int, int], ...]) -> NDArray:
         """
         Pad this ndarray by zeros by the specified amount in `axes`,
         which lists for _all_ axes the left and right padding amount, e.g.,
+
         axes = ( (0, 0), (1, 1), (0, 0) )
         pads the middle axis with a 0 on the left and right side.
+
         Note: This has to create a new array and copy the data over.
 
         Args:
@@ -1024,15 +1078,18 @@ class NDArray:
         return out
 
 
-# TODO: really needed?
 def broadcast_shapes(*shapes: tuple) -> tuple:
     """
     Return broadcasted shape for multiple input shapes.
 
+    Broadcasting rules:
+        1. Two dimensions are compatible when they are equal.
+        2. One of the dimensions is 1.
+
     Args:
         *shapes: one or more shapes as tuples
     Returns:
-        tuple: broadcast compatible shape
+        tuple: broadcast-compatible shape
     Raises:
         ValueError: If shapes cannot be broadcast together
     """
@@ -1042,21 +1099,18 @@ def broadcast_shapes(*shapes: tuple) -> tuple:
 
     from builtins import max as pymax
 
-    # Convert all shapes to lists and left-pad shorter ones with 1s
     max_dims = pymax([len(shape) for shape in shapes])
-    padded = [[1] * (max_dims - len(shape)) + list(shape) for shape in shapes]
+    # pad the shapes with 1s to make them the same length
+    aligned = [(1,) * (max_dims - len(s)) + s for s in shapes]
 
-    # Compute output shape according to broadcasting rules
     result = []
-    for dims in zip(*padded):
-        non_ones = set(d for d in dims if d != 1)
-        if len(non_ones) > 1:
-            if len(set(non_ones)) > 1:
+    for dims in zip(*aligned):
+        max_dim = pymax(dims)
+        for d in dims:
+            # See broadcast rules
+            if d != 1 and d != max_dim:
                 raise ValueError(f"Incompatible shapes for broadcasting: {shapes}")
-            result.append(non_ones.pop())
-        else:
-            result.append(pymax(dims))
-
+        result.append(max_dim)
     return tuple(result)
 
 
@@ -1067,10 +1121,10 @@ def from_numpy(a):
 def array(a, dtype="float32", device: AbstractBackend = default_device) -> NDArray:
     """Convenience methods to match numpy a bit more closely."""
     if dtype != "float32":
-        # logger.warning(f"Only support float32 for now, got {dtype}")
+        logger.warning(f"Only support float32 for now, got {dtype}")
         a = np.array(a, dtype="float32")
         dtype = a.dtype
-        # logger.warning(f"Converting to numpy array with dtype {dtype}")
+        logger.warning(f"Converting to numpy array with dtype {dtype}")
     assert dtype == "float32"
     return NDArray(a, device=device)
 
@@ -1134,7 +1188,7 @@ def sum(a, axis=None, keepdims=False):
     return a.sum(axis=axis, keepdims=keepdims)
 
 
-def flip(a: NDArray, axes: tuple[int] | int) -> NDArray:
+def flip(a: NDArray, axes: tuple[int, ...] | int) -> NDArray:
     return a.flip(axes)
 
 
@@ -1239,7 +1293,7 @@ def array_split(
     return out
 
 
-def transpose(a: NDArray, axes: tuple | None = None) -> NDArray:
-    if axes is None:
+def transpose(a: NDArray, axes: tuple = ()) -> NDArray:
+    if not axes:
         axes = tuple(range(a.ndim))[::-1]
     return a.permute(axes)

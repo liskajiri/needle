@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Self
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from typing import Any
@@ -11,14 +11,18 @@ if TYPE_CHECKING:
 
 
 class AbstractBackend(ABC):
-    """A backend device, wraps the implementation module."""
+    """
+    A backend device, wraps the implementation module.
+    """
 
-    def __init__(self, name: str, module: object = None) -> None:
+    def __init__(self, name: str, module: Any = None) -> None:
         self.name = name
         # A module that implements the backend.
         self.module = module
 
-    def __eq__(self, other: Self) -> bool:
+    def __eq__(self, other: Any) -> bool:
+        if not isinstance(other, AbstractBackend):
+            return False
         return self.name == other.name
 
     def __repr__(self) -> str:
