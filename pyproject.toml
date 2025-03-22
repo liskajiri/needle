@@ -16,10 +16,12 @@ markers = [
     "datasets: marks tests as requiring datasets",
     "benchmark: marks tests as benchmark tests",
 ]
+# log_cli = true
 
 [tool.ruff]
 target-version = "py312"
-# fix = true
+# preview = true
+fix = true
 
 [tool.ruff.lint]
 extend-select = ["UP", "E", "W", "F", "I", "SIM", "TID", "PTH", "PERF", "RUF"]
@@ -27,7 +29,6 @@ extend-select = ["UP", "E", "W", "F", "I", "SIM", "TID", "PTH", "PERF", "RUF"]
 ignore = ["D", "ANN", "FIX", "TD", "COM", "ARG", "PLR", "NPY002", "N", "ERA001",
     "FBT001", # boolean args in functions
     "S311", # non-crypto random number generation
-    "PGH003", # generic type hints ignore
     "RUF100" # unused no-qa: Remove after fixing
 ]
 fixable = ["ALL"]
@@ -68,3 +69,7 @@ exclude_also = [
 [tool.coverage.xml]
 # Save code coverage report
 output = "reports/coverage.xml"
+
+[tool.coverage.html]
+directory = "reports/coverage-html"
+show_contexts = true
