@@ -64,6 +64,7 @@ class TorchOps:
             mode="constant",
             value=0,
         ),
+        "stack": lambda t, _: torch.stack(t),
     }
 
     @classmethod
@@ -90,7 +91,10 @@ def handle_torch_op(
             if len(torch_args) > 1
             else kwargs.get("shape") or kwargs.get("axes")
         )
-        torch_out = op(torch_args[0], shape_or_axes)
+        if op_name == "stack":
+            torch_out = op(torch_args, shape_or_axes)
+        else:
+            torch_out = op(torch_args[0], shape_or_axes)
     else:
         torch_out = op(*torch_args)
 
@@ -101,10 +105,10 @@ def handle_torch_op(
 def compute_ndl_gradients(out, args: tuple[Tensor], backward: bool) -> list[np.ndarray]:
     """Compute gradients using needle."""
     if not backward:
-        return [
-            x.numpy()
-            for x in out.op.gradient_as_tuple(ndl.Tensor(np.ones(out.shape)), out)
-        ]
+        backward_grad = out.op.gradient_as_tuple(ndl.Tensor(np.ones(out.shape)), out)
+        if isinstance(backward_grad[0], ndl.TensorTuple):  # TODO keep this?
+            backward_grad = backward_grad[0].tuple()
+        return [g.numpy() for g in backward_grad]
     out.sum().backward()
     return [a.grad.numpy() for a in args]
 
@@ -113,6 +117,8 @@ def _compute_torch_gradients(
     f: Callable, tensors: tuple[Tensor], torch_fn, kwargs: dict
 ) -> list[np.ndarray]:
     torch_args = []
+    if isinstance(tensors[0], list):
+        tensors = tensors[0]
     for t in tensors:
         if isinstance(t, float):
             torch_args.append(torch.tensor(t, requires_grad=True))

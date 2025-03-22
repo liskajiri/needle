@@ -4,6 +4,8 @@ import numpy as np
 import pytest
 from needle import backend_ndarray as ndl
 
+rng = np.random.default_rng()
+
 _DEVICES = [
     ndl.cpu(),
     pytest.param(
@@ -520,6 +522,37 @@ def test_getitem(device, params):
     check_same_memory(a, rhs)
 
 
+list_index_params = [
+    {"fn": lambda X: X[1]},
+    {"fn": lambda X: X[4, 2]},
+    {"fn": lambda X: X[0, 2, 3]},
+    {"fn": lambda X: X[0, 3, 4, 1]},
+]
+
+
+@pytest.mark.parametrize("params", list_index_params)
+@pytest.mark.parametrize("device", _DEVICES, ids=["cpu", "cuda"])
+def test_getitem_list(device, params):
+    fn = params["fn"]
+    _a = rng.standard_normal((5, 5, 5, 5))
+    a = ndl.array(_a, device=device)
+    lhs = fn(_a)
+    rhs = fn(a)
+    np.testing.assert_allclose(rhs.numpy(), lhs, atol=1e-5, rtol=1e-5)
+    compare_strides(lhs, rhs)
+
+
+@pytest.mark.parametrize("device", _DEVICES, ids=["cpu", "cuda"])
+def test_getitem_more_indexes_than_axis(device):
+    def over_indexing(X):
+        return X[1, 2, 3, 4, 5]
+
+    _a = rng.standard_normal((5, 5, 5, 5))
+    a = ndl.array(_a, device=device)
+    with pytest.raises((ValueError, AssertionError)):
+        over_indexing(a)
+
+
 # TODO: Investigate using 2d indices
 multi_index_getitem_params = [
     {"fn": lambda X: X[[1, 2]]},
@@ -532,14 +565,12 @@ multi_index_getitem_params = [
 @pytest.mark.parametrize("device", _DEVICES, ids=["cpu", "cuda"])
 def test_getitem_multi_index(device, params):
     fn = params["fn"]
-    _a = np.random.randn(5, 5)
+    _a = rng.standard_normal((5, 5))
     a = ndl.array(_a, device=device)
     lhs = fn(_a)
     rhs = fn(a)
     np.testing.assert_allclose(lhs, rhs.numpy(), atol=1e-5, rtol=1e-5)
     compare_strides(lhs, rhs)
-    # Cannot have the same memory
-    # check_same_memory(a, rhs)
 
 
 broadcast_params = [
@@ -590,6 +621,28 @@ def test_scalar_mul(device):
     a = np.random.randn(5, 5)
     b = ndl.array(a, device=device)
     np.testing.assert_allclose(a * 5.0, (b * 5.0).numpy(), atol=1e-5, rtol=1e-5)
+
+
+BATCHED_MATMUL_DIMS = [
+    ((1, 2, 3), (1, 3, 4)),
+    ((2, 3, 4), (2, 4, 5)),
+    ((2, 3, 5, 6), (2, 3, 6, 7)),
+    # Batched with normal matrices
+    ((2, 3, 4), (4, 3)),
+    ((2, 3, 3, 4), (4, 5)),
+    ((2, 3, 3, 4), (3, 4, 5)),
+]
+
+
+@pytest.mark.parametrize(("shape1", "shape2"), BATCHED_MATMUL_DIMS, ids=str)
+@pytest.mark.parametrize("device", _DEVICES, ids=["cpu", "cuda"])
+def test_matmul_batched(shape1, shape2, device):
+    _a = rng.standard_normal(shape1)
+    _b = rng.standard_normal(shape2)
+    a = ndl.array(_a, device=device)
+    b = ndl.array(_b, device=device)
+    c = a @ b
+    np.testing.assert_allclose(_a @ _b, c.numpy(), atol=1e-5, rtol=1e-5)
 
 
 @pytest.mark.parametrize("device", _DEVICES, ids=["cpu", "cuda"])
