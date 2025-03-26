@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, TypedDict
 
 from needle import init, ops
 from needle.backend_selection import default_device
@@ -14,6 +14,12 @@ if TYPE_CHECKING:
     from needle.typing.device import AbstractBackend
 
 
+class Config(TypedDict):
+    device: AbstractBackend
+    dtype: DType
+    requires_grad: bool
+
+
 class BatchNorm1d(Module):
     def __init__(
         self,
@@ -22,21 +28,29 @@ class BatchNorm1d(Module):
         momentum: float = 0.1,
         device: AbstractBackend = default_device,
         dtype: DType = "float32",
-    ):
+    ) -> None:
+        """
+        Initialize BatchNorm1d module.
+
+        Args:
+            dim: Number of features/channels to normalize
+            eps: Small constant for numerical stability
+            momentum: Factor for running statistics update
+            device: Device to place tensors on
+            dtype: Data type for parameters
+        """
         super().__init__()
         self.dim = dim
         self.eps = eps
         self.momentum = momentum
 
-        config = {
-            "device": device,
-            "dtype": dtype,
-        }
+        trainable_config = Config(device=device, dtype=dtype, requires_grad=True)
+        self.weight = Parameter(init.ones(self.dim, **trainable_config))
+        self.bias = Parameter(init.zeros(self.dim, **trainable_config))
 
-        self.weight = Parameter(init.ones(self.dim, requires_grad=True, **config))
-        self.bias = Parameter(init.zeros(self.dim, requires_grad=True, **config))
-        self.running_mean = init.zeros(self.dim, **config)
-        self.running_var = init.ones(self.dim, **config)
+        non_trainable_config = Config(device=device, dtype=dtype, requires_grad=False)
+        self.running_mean = init.zeros(self.dim, **non_trainable_config)
+        self.running_var = init.ones(self.dim, **non_trainable_config)
 
     def forward(self, x: Tensor) -> Tensor:
         def _update_running_variables(var: Tensor, running_var: Tensor) -> Tensor:
@@ -52,16 +66,15 @@ class BatchNorm1d(Module):
         if self.training:
             self.running_mean = _update_running_variables(self.running_mean, mean_x)
             self.running_var = _update_running_variables(self.running_var, var_x)
+
+            std = ops.sqrt(var_x + self.eps).broadcast_to(x.shape)
+            normalized = x_less_mean / std
         else:
             # we don't update the running vars at inference time
-            return (
-                weights
-                * ((x - self.running_mean) / ops.sqrt(self.running_var + self.eps))
-                + biases
-            )
-
-        var_plus_eps = ops.sqrt(var_x + self.eps).broadcast_to(x.shape)
-        return weights * (x_less_mean / var_plus_eps) + biases
+            running_mean = self.running_mean.broadcast_to(x.shape)
+            running_std = ops.sqrt(self.running_var + self.eps).broadcast_to(x.shape)
+            normalized = (x - running_mean) / running_std
+        return weights * normalized + biases
 
 
 class BatchNorm2d(BatchNorm1d):
@@ -70,10 +83,15 @@ class BatchNorm2d(BatchNorm1d):
 
     def forward(self, x: Tensor) -> Tensor:
         # format: NCHW -> NHCW -> NHWC
-        s = x.shape
-        _x = x.transpose((1, 2)).transpose((2, 3)).reshape((s[0] * s[2] * s[3], s[1]))
-        y = super().forward(_x).reshape((s[0], s[2], s[3], s[1]))
-        return y.transpose((2, 3)).transpose((1, 2))
+        batch_size, channels, height, width = x.shape
+        x = ops.transpose(x, (0, 2, 3, 1)).reshape(
+            (
+                batch_size * height * width,
+                channels,
+            )
+        )
+        y = super().forward(x).reshape((batch_size, height, width, channels))
+        return y.transpose((0, 3, 1, 2))
 
 
 class LayerNorm1d(Module):
@@ -88,11 +106,7 @@ class LayerNorm1d(Module):
         self.dim = dim
         self.eps = eps
 
-        config = {
-            "device": device,
-            "dtype": dtype,
-            "requires_grad": True,
-        }
+        config = Config(device=device, dtype=dtype, requires_grad=True)
 
         self.weight = Parameter(init.ones(self.dim, **config))
         self.bias = Parameter(init.zeros(self.dim, **config))

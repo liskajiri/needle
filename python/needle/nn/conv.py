@@ -37,7 +37,6 @@ class Conv(Module):
     """
 
     # TODO: supporting non-square kernels shouldn't be hard
-    # TODO: supporting padding should be easy
 
     def __init__(
         self,
@@ -45,6 +44,7 @@ class Conv(Module):
         out_channels: int,
         kernel_size: int,
         stride: int = 1,
+        padding: int = 1,
         bias: bool = True,
         device: AbstractBackend = default_device,
         dtype: DType = "float32",
@@ -57,7 +57,7 @@ class Conv(Module):
         self.device = device
         self.dtype = dtype
         # ensure output has the same shape as the input
-        self.padding = (kernel_size - 1) // 2
+        self.padding = padding if padding else (kernel_size - 1) // 2
 
         self.weight = Parameter(
             init.kaiming_uniform(
