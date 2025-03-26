@@ -11,6 +11,9 @@ if TYPE_CHECKING:
     from needle.typing.types import DType, Scalar, Shape
 
 
+# TODO: Unify *Shape and Shape
+
+
 def rand(
     *shape: *Shape,
     low: float = 0.0,

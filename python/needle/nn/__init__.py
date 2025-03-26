@@ -11,11 +11,12 @@ from needle.nn.core import (
 )
 from needle.nn.dropout import Dropout
 from needle.nn.linear import Linear
-from needle.nn.norms import BatchNorm1d, LayerNorm1d
+from needle.nn.norms import BatchNorm1d, BatchNorm2d, LayerNorm1d
 from needle.nn.softmax import SoftmaxLoss
 
 __all__ = [
     "BatchNorm1d",
+    "BatchNorm2d",
     "Conv",
     "Dropout",
     "Flatten",

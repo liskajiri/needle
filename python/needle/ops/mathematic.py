@@ -197,7 +197,7 @@ class Reshape(TensorOp):
         self.shape = shape
 
     def compute(self, a: NDArray) -> NDArray:
-        return array_api.reshape(a, self.shape)
+        return array_api.reshape(a.compact(), self.shape)
 
     def gradient(self, out_grad: Tensor, node: Tensor) -> Tensor:
         return reshape(out_grad, node.inputs[0].shape)
