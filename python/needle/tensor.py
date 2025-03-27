@@ -100,6 +100,17 @@ class Tensor(Value):
     def numpy(self) -> np.ndarray:
         return self.realize_cached_data().numpy()
 
+    def __getitem__(self, index: int | slice | tuple[int, ...]) -> Tensor:
+        sliced_data = self.realize_cached_data()[index]
+
+        # Create a new tensor with the sliced data, detached from the AD graph
+        return Tensor(
+            sliced_data,
+            device=self.device,
+            dtype=self.dtype,
+            requires_grad=self.requires_grad,
+        )
+
     # Arithmetic operations
 
     # TODO: remove class instances, call functions directly
