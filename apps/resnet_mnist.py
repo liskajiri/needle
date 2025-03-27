@@ -4,53 +4,7 @@ import needle as ndl
 import numpy as np
 from needle import nn
 from needle.data.datasets.mnist import MNISTPaths
-
-np.random.seed(0)
-
-
-def ResidualBlock(
-    dim: int,
-    hidden_dim: int,
-    norm: nn.Module = nn.norms.BatchNorm1d,
-    drop_prob: float = 0.1,
-) -> nn.Module:
-    return nn.Sequential(
-        nn.Residual(
-            nn.Sequential(
-                nn.Linear(dim, hidden_dim),
-                norm(hidden_dim),
-                nn.ReLU(),
-                nn.Dropout(drop_prob),
-                nn.Linear(hidden_dim, dim),
-                norm(dim),
-            )
-        ),
-        nn.ReLU(),
-    )
-
-
-def MLPResNet(
-    dim: int,
-    hidden_dim: int = 100,
-    num_blocks: int = 3,
-    num_classes: int = 10,
-    norm: nn.Module = nn.norms.BatchNorm1d,
-    drop_prob: float = 0.1,
-) -> nn.Module:
-    # important to use tuples and unpacking - won't work with lists
-    residual_blocks = (
-        ResidualBlock(hidden_dim, hidden_dim // 2, norm, drop_prob)
-        for _ in range(num_blocks)
-    )
-    return nn.Sequential(
-        *(
-            nn.Linear(dim, hidden_dim),
-            nn.ReLU(),
-            *residual_blocks,
-            nn.Linear(hidden_dim, num_classes),
-        )
-    )
-
+from resnet9 import MLPResNet
 
 ErrorRate = NewType("ErrorRate", float)
 Loss = NewType("Loss", float)

@@ -86,7 +86,7 @@ class Tensor(Value):
             out_grad
             if out_grad
             else ndl.init.init_basic.ones(
-                *self.shape, dtype=self.dtype, device=self.device
+                self.shape, dtype=self.dtype, device=self.device
             )
         )
         ndl.autograd.compute_gradient_of_variables(self, out_grad)

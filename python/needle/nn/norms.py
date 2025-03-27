@@ -45,12 +45,13 @@ class BatchNorm1d(Module):
         self.momentum = momentum
 
         trainable_config = Config(device=device, dtype=dtype, requires_grad=True)
-        self.weight = Parameter(init.ones(self.dim, **trainable_config))
-        self.bias = Parameter(init.zeros(self.dim, **trainable_config))
+        shape = (self.dim,)
+        self.weight = Parameter(init.ones(shape, **trainable_config))
+        self.bias = Parameter(init.zeros(shape, **trainable_config))
 
         non_trainable_config = Config(device=device, dtype=dtype, requires_grad=False)
-        self.running_mean = init.zeros(self.dim, **non_trainable_config)
-        self.running_var = init.ones(self.dim, **non_trainable_config)
+        self.running_mean = init.zeros(shape, **non_trainable_config)
+        self.running_var = init.ones(shape, **non_trainable_config)
 
     def forward(self, x: Tensor) -> Tensor:
         def _update_running_variables(var: Tensor, running_var: Tensor) -> Tensor:
@@ -84,12 +85,10 @@ class BatchNorm2d(BatchNorm1d):
     def forward(self, x: Tensor) -> Tensor:
         # format: NCHW -> NHCW -> NHWC
         batch_size, channels, height, width = x.shape
-        x = ops.transpose(x, (0, 2, 3, 1)).reshape(
-            (
-                batch_size * height * width,
-                channels,
-            )
-        )
+        x = ops.transpose(x, (0, 2, 3, 1)).reshape((
+            batch_size * height * width,
+            channels,
+        ))
         y = super().forward(x).reshape((batch_size, height, width, channels))
         return y.transpose((0, 3, 1, 2))
 
@@ -108,8 +107,8 @@ class LayerNorm1d(Module):
 
         config = Config(device=device, dtype=dtype, requires_grad=True)
 
-        self.weight = Parameter(init.ones(self.dim, **config))
-        self.bias = Parameter(init.zeros(self.dim, **config))
+        self.weight = Parameter(init.ones((self.dim,), **config))
+        self.bias = Parameter(init.zeros((self.dim,), **config))
 
     def forward(self, x: Tensor) -> Tensor:
         # We can assume 2D tensor: (batch, features)
