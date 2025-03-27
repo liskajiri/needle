@@ -193,7 +193,7 @@ environments:
       - conda: https://prefix.dev/conda-forge/noarch/nodeenv-1.9.1-pyhd8ed1ab_1.conda
       - conda: https://prefix.dev/conda-forge/linux-64/openssl-3.4.1-h7b32b05_0.conda
       - conda: https://prefix.dev/conda-forge/noarch/platformdirs-4.3.6-pyhd8ed1ab_1.conda
-      - conda: https://prefix.dev/conda-forge/noarch/pre-commit-4.1.0-pyha770c72_0.conda
+      - conda: https://prefix.dev/conda-forge/noarch/pre-commit-4.2.0-pyha770c72_0.conda
       - conda: https://prefix.dev/conda-forge/noarch/pre-commit-hooks-5.0.0-pyhd8ed1ab_2.conda
       - conda: https://prefix.dev/conda-forge/noarch/pycparser-2.22-pyh29332c3_1.conda
       - conda: https://prefix.dev/conda-forge/linux-64/python-3.13.2-hf636f53_101_cp313.conda
@@ -2622,9 +2622,9 @@ packages:
   license_family: MIT
   size: 23595
   timestamp: 1733222855563
-- conda: https://prefix.dev/conda-forge/noarch/pre-commit-4.1.0-pyha770c72_0.conda
-  sha256: b260b4b47956b654232f698be1b757935268830a808040aff2006d08953e9e32
-  md5: 5353f5eb201a9415b12385e35ed1148d
+- conda: https://prefix.dev/conda-forge/noarch/pre-commit-4.2.0-pyha770c72_0.conda
+  sha256: d0bd8cce5f31ae940934feedec107480c00f67e881bf7db9d50c6fc0216a2ee0
+  md5: 17e487cc8b5507cd3abc09398cf27949
   depends:
   - cfgv >=2.0.0
   - identify >=1.0.0
@@ -2634,8 +2634,8 @@ packages:
   - virtualenv >=20.10.0
   license: MIT
   license_family: MIT
-  size: 195101
-  timestamp: 1737408051494
+  size: 195854
+  timestamp: 1742475656293
 - conda: https://prefix.dev/conda-forge/noarch/pre-commit-hooks-5.0.0-pyhd8ed1ab_2.conda
   sha256: b3c0e650280e660268c5c3a609c1d008fab598c41eb310f5c6993590889625e7
   md5: f41a1e00c55bc911fcc9cab2a88b4a66

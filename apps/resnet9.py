@@ -1,10 +1,7 @@
 from typing import TypedDict
 
-import needle as ndl
-import needle.init as init
 from needle import nn
 from needle.backend_selection import default_device
-from needle.nn.core import Parameter
 from needle.tensor import Tensor
 from needle.typing.device import AbstractBackend
 from needle.typing.types import DType
@@ -44,12 +41,14 @@ def MLPResNet(
         ResidualBlock(hidden_dim, hidden_dim // 2, norm, drop_prob)
         for _ in range(num_blocks)
     )
-    return nn.Sequential(*(
-        nn.Linear(dim, hidden_dim),
-        nn.ReLU(),
-        *residual_blocks,
-        nn.Linear(hidden_dim, num_classes),
-    ))
+    return nn.Sequential(
+        *(
+            nn.Linear(dim, hidden_dim),
+            nn.ReLU(),
+            *residual_blocks,
+            nn.Linear(hidden_dim, num_classes),
+        )
+    )
 
 
 class Config(TypedDict):
