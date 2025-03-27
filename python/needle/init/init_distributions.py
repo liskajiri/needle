@@ -34,7 +34,7 @@ def xavier_uniform(
         raise ValueError("fan_in and fan_out must be positive integers")
 
     a = gain * math.sqrt(6.0 / (fan_in + fan_out))
-    return rand(fan_in, fan_out, low=-a, high=a, **kwargs)
+    return rand((fan_in, fan_out), low=-a, high=a, **kwargs)
 
 
 def xavier_normal(
@@ -60,7 +60,7 @@ def xavier_normal(
         raise ValueError("fan_in and fan_out must be positive integers")
 
     std = gain * math.sqrt(2.0 / float(fan_in + fan_out))
-    return randn(fan_in, fan_out, std=std, **kwargs)
+    return randn((fan_in, fan_out), std=std, **kwargs)
 
 
 def kaiming_uniform(
@@ -94,8 +94,8 @@ def kaiming_uniform(
 
     bound = gain * math.sqrt(3 / fan_in)
     if shape:
-        return rand(*shape, low=-bound, high=bound, **kwargs)
-    return rand(fan_in, fan_out, low=-bound, high=bound, **kwargs)
+        return rand(shape, low=-bound, high=bound, **kwargs)
+    return rand((fan_in, fan_out), low=-bound, high=bound, **kwargs)
 
 
 def kaiming_normal(
@@ -127,4 +127,4 @@ def kaiming_normal(
         nonlinearity = ReLU()
 
     std = gain / (fan_in**0.5)
-    return randn(fan_in, fan_out, std=std, **kwargs)
+    return randn((fan_in, fan_out), std=std, **kwargs)

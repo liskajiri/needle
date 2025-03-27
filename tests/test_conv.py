@@ -346,7 +346,7 @@ conv_forward_params = [
 @pytest.mark.parametrize("device", _DEVICES, ids=["cpu", "cuda"])
 def test_nn_conv_forward(s, in_channels, out_channels, k, stride, device):
     f = ndl.nn.Conv(in_channels, out_channels, k, stride=stride, device=device)
-    x = ndl.init.rand(10, in_channels, s, s, device=device)
+    x = ndl.init.rand((10, in_channels, s, s), device=device)
 
     g = torch.nn.Conv2d(in_channels, out_channels, k, stride=stride, padding=k // 2)
     g.weight.data = torch.tensor(
@@ -382,7 +382,7 @@ conv_back_params = [
 @pytest.mark.parametrize("device", _DEVICES, ids=["cpu", "cuda"])
 def test_nn_conv_backward(s, in_channels, out_channels, k, stride, device):
     f = ndl.nn.Conv(in_channels, out_channels, k, stride=stride, device=device)
-    x = ndl.init.rand(1, in_channels, s, s, device=device, requires_grad=True)
+    x = ndl.init.rand((1, in_channels, s, s), device=device, requires_grad=True)
 
     g = torch.nn.Conv2d(in_channels, out_channels, k, stride=stride, padding=k // 2)
     g.weight.data = torch.tensor(f.weight.cached_data.numpy().transpose(3, 2, 0, 1))

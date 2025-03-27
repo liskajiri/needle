@@ -25,7 +25,7 @@ class BackendDevice(AbstractBackend):
     # .astype("float32") does work if we're generating a singleton
 
     # TODO: move to c++ backend
-    def randn(self, *shape: Shape, dtype: DType = "float32") -> NDArray:
+    def randn(self, shape: Shape, dtype: DType = "float32") -> NDArray:
         # random_values = [random.gauss(0, 1) for _ in range(math.prod(shape))]
 
         # arr = NDArray.make(shape, device=self)
@@ -33,10 +33,11 @@ class BackendDevice(AbstractBackend):
         #     arr[i] = value
 
         # return arr
-
+        if isinstance(shape, int):
+            shape = (shape,)
         return NDArray(np.random.randn(*shape).astype(dtype), device=self)
 
-    def rand(self, *shape: Shape, dtype: DType = "float32") -> NDArray:
+    def rand(self, shape: Shape, dtype: DType = "float32") -> NDArray:
         # random_values = [random.uniform(0, 1) for _ in range(math.prod(shape))]
 
         # arr = NDArray.make(shape, device=self)
@@ -44,6 +45,8 @@ class BackendDevice(AbstractBackend):
         #     arr._handle[i] = value
 
         # return arr
+        if isinstance(shape, int):
+            shape = (shape,)
         return NDArray(np.random.rand(*shape).astype(dtype), device=self)
 
     def one_hot(self, n: int, i: int, dtype: DType) -> NDArray:
@@ -146,8 +149,6 @@ class NDArray:
             self._init(other.to(device) + 0.0)  # this creates a copy
         elif isinstance(other, np.ndarray):
             # create copy from numpy array
-            # device = device if device is not None else default_device
-            # device = default_device
             array = self.make(other.shape, device=device)
             array.device.from_numpy(np.ascontiguousarray(other), array._handle)
             self._init(array)

@@ -11,11 +11,8 @@ if TYPE_CHECKING:
     from needle.typing.types import DType, Scalar, Shape
 
 
-# TODO: Unify *Shape and Shape
-
-
 def rand(
-    *shape: *Shape,
+    shape: Shape,
     low: float = 0.0,
     high: float = 1.0,
     device: Device = default_device,
@@ -25,7 +22,7 @@ def rand(
     """Generate random numbers uniform between low and high.
 
     Args:
-        *shape: The shape of the output tensor
+        shape: The shape of the output tensor
         low: Lower bound of uniform distribution
         high: Upper bound of uniform distribution
         device: "Device" to store the tensor
@@ -35,12 +32,12 @@ def rand(
     Returns:
         Tensor with random uniform values
     """
-    array = device.rand(*shape) * (high - low) + low
+    array = device.rand(shape) * (high - low) + low
     return Tensor(array, device=device, dtype=dtype, requires_grad=requires_grad)
 
 
 def randn(
-    *shape: Shape,
+    shape: Shape,
     mean: float = 0.0,
     std: float = 1.0,
     device: Device = default_device,
@@ -50,7 +47,7 @@ def randn(
     """Generate random normal with specified mean and std deviation.
 
     Args:
-        *shape: The shape of the output tensor
+        shape: The shape of the output tensor
         mean: Mean of normal distribution
         std: Standard deviation of normal distribution
         device: "Device" to store the tensor
@@ -60,12 +57,12 @@ def randn(
     Returns:
         Tensor with random normal values
     """
-    array = device.randn(*shape, dtype=dtype) * std + mean
+    array = device.randn(shape, dtype=dtype) * std + mean
     return Tensor(array, device=device, dtype=dtype, requires_grad=requires_grad)
 
 
 def constant(
-    *shape: Shape,
+    shape: Shape,
     c: Scalar = 1.0,
     device: Device = default_device,
     dtype: DType = "float32",
@@ -74,7 +71,7 @@ def constant(
     """Generate constant Tensor.
 
     Args:
-        *shape: The shape of the output tensor
+        shape: The shape of the output tensor
         c: Constant value to fill tensor with
         device: "Device" to store the tensor
         dtype: Data type of the tensor
@@ -88,7 +85,7 @@ def constant(
 
 
 def ones(
-    *shape: Shape,
+    shape: Shape,
     device: Device = default_device,
     dtype: DType = "float32",
     requires_grad: bool = False,
@@ -96,7 +93,7 @@ def ones(
     """Generate all-ones Tensor.
 
     Args:
-        *shape: The shape of the output tensor
+        shape: The shape of the output tensor
         device: "Device" to store the tensor
         dtype: Data type of the tensor
         requires_grad: Whether to track gradients
@@ -105,12 +102,12 @@ def ones(
         Tensor filled with ones
     """
     return constant(
-        *shape, c=1.0, device=device, dtype=dtype, requires_grad=requires_grad
+        shape, c=1.0, device=device, dtype=dtype, requires_grad=requires_grad
     )
 
 
 def zeros(
-    *shape: Shape,
+    shape: Shape,
     device: Device = default_device,
     dtype: DType = "float32",
     requires_grad: bool = False,
@@ -118,7 +115,7 @@ def zeros(
     """Generate all-zeros Tensor.
 
     Args:
-        *shape: The shape of the output tensor
+        shape: The shape of the output tensor
         device: "Device" to store the tensor
         dtype: Data type of the tensor
         requires_grad: Whether to track gradients
@@ -127,12 +124,12 @@ def zeros(
         Tensor filled with zeros
     """
     return constant(
-        *shape, c=0.0, device=device, dtype=dtype, requires_grad=requires_grad
+        shape, c=0.0, device=device, dtype=dtype, requires_grad=requires_grad
     )
 
 
-def randb(
-    *shape: Shape,
+def rand_binary(
+    shape: Shape,
     p: float = 0.5,
     device: Device = default_device,
     dtype: DType = "bool",
@@ -141,7 +138,7 @@ def randb(
     """Generate binary random Tensor.
 
     Args:
-        *shape: The shape of the output tensor
+        shape: The shape of the output tensor
         p: Probability of 1 in binary distribution
         device: "Device" to store the tensor
         dtype: Data type of the tensor
@@ -150,7 +147,7 @@ def randb(
     Returns:
         Binary tensor with random values
     """
-    array = device.rand(*shape) <= p
+    array = device.rand(shape) <= p
     return Tensor(array, device=device, dtype=dtype, requires_grad=requires_grad)
 
 

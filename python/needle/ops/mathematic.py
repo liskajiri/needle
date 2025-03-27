@@ -328,10 +328,10 @@ def exp(a):
 
 
 class ReLU(TensorOp):
-    def compute(self, a: Tensor):
+    def compute(self, a: NDArray) -> NDArray:
         return array_api.maximum(a, 0)
 
-    def gradient(self, out_grad, node):
+    def gradient(self, out_grad: Tensor, node: Tensor) -> Tensor:
         # cannot be differentiated twice, so calling cached_data is ok
         return out_grad * (node.inputs[0].realize_cached_data() > 0)
 
