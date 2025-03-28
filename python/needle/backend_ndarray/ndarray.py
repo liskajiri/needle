@@ -12,7 +12,7 @@ import numpy as np
 from needle.typing.device import AbstractBackend
 
 if TYPE_CHECKING:
-    from needle.typing.types import DType, Scalar, Shape, Strides
+    from needle.typing import DType, IndexType, Scalar, Shape, Strides
 
 logger = logging.getLogger(__name__)
 
@@ -74,6 +74,11 @@ class BackendDevice(AbstractBackend):
     def ones(self, shape: Shape, dtype: DType) -> NDArray:
         arr = self.empty(shape, dtype=dtype)
         arr.fill(1.0)
+        return arr
+
+    def constant(self, shape: Shape, value: Scalar, dtype: DType) -> NDArray:
+        arr = self.empty(shape, dtype=dtype)
+        arr.fill(value)
         return arr
 
     def empty(self, shape: Shape, dtype: DType = "float32") -> NDArray:
@@ -214,7 +219,7 @@ class NDArray:
             array._handle = handle
         return array
 
-    ### Properties and string representations
+    # Properties and string representations
     @property
     def shape(self) -> Shape:
         return self._shape
@@ -256,7 +261,7 @@ class NDArray:
         """
         return self.shape[0]
 
-    ### Basic array manipulation
+    # Basic array manipulation
     def fill(self, value: float) -> None:
         """Fill (in place) with a constant value."""
         self._device.fill(self._handle, value)
@@ -300,7 +305,7 @@ class NDArray:
                 arrays.append(input)
         return getattr(ufunc, method)(*arrays, **kwargs)
 
-    ### Shapes and strides
+    # Shapes and strides
 
     def is_compact(self) -> bool:
         """
@@ -536,9 +541,7 @@ class NDArray:
 
     # TODO: standardize idxs type: int | iterable[int] | slice
     # TODO: getitem is not really working like numpy's
-    def __getitem__(
-        self, idxs: int | tuple[int | slice, ...] | list[int] | NDArray
-    ) -> NDArray:
+    def __getitem__(self, idxs: IndexType) -> NDArray:
         """
         The __getitem__ operator in Python allows access to elements of the
         array.
@@ -670,7 +673,7 @@ class NDArray:
 
     def __setitem__(
         self,
-        idxs: int | tuple[int | slice, ...] | list[int] | NDArray,
+        idxs: IndexType,
         other: NDArray | Scalar,
     ) -> None:
         """
@@ -693,7 +696,7 @@ class NDArray:
                 view.size, other, view._handle, view.shape, view.strides, view._offset
             )
 
-    ### Collection of element-wise and scalar function: add, multiply, boolean, etc
+    # Collection of element-wise and scalar function: add, multiply, boolean, etc
     # TODO: probably must implement in the backend
     def item(self) -> Scalar:
         raise NotImplementedError("item() not implemented")
@@ -751,6 +754,14 @@ class NDArray:
             other, self.device.ewise_div, self.device.scalar_div
         )
 
+    def __rtruediv__(self, other) -> NDArray:
+        if isinstance(other, int | float):
+            out = NDArray.make(self.shape, device=self.device)
+            out.fill(other)
+            return out / self
+        else:
+            return NDArray(other, device=self.device) / self
+
     def __neg__(self):
         return self * (-1)
 
@@ -790,7 +801,7 @@ class NDArray:
     def __le__(self, other: NDArray) -> bool:
         return 1 - (self > other)
 
-    ### Element-wise functions
+    # Element-wise functions
 
     # TODO: auto derive inplace functions
     def log(self) -> NDArray:
@@ -808,7 +819,7 @@ class NDArray:
         self.device.ewise_tanh(self.compact()._handle, out._handle)
         return out
 
-    ### Matrix multiplication
+    # Matrix multiplication
     def __matmul__(self, other: NDArray) -> NDArray:
         """
         Matrix multiplication of two arrays.
@@ -918,7 +929,7 @@ class NDArray:
         )
         return out
 
-    ### Reductions, i.e., sum/max over all element or over given axis
+    # Reductions, i.e., sum/max over all element or over given axis
     def reduce_view_out(
         self, axis: tuple | None, keepdims: bool = False
     ) -> tuple[NDArray, NDArray]:
@@ -978,7 +989,7 @@ class NDArray:
         self.device.reduce_max(view.compact()._handle, out._handle, view.shape[-1])
         return out
 
-    ### Other functions
+    # Other functions
 
     def flip(self, axes: tuple[int, ...] | int) -> NDArray:
         """
@@ -1193,7 +1204,7 @@ def flip(a: NDArray, axes: tuple[int, ...] | int) -> NDArray:
     return a.flip(axes)
 
 
-def stack(arrays: list[NDArray], axis: int = 0) -> NDArray:
+def stack(arrays: tuple[NDArray], axis: int = 0) -> NDArray:
     """Stack a list of arrays along specified axis.
 
     Args:
@@ -1214,10 +1225,12 @@ def stack(arrays: list[NDArray], axis: int = 0) -> NDArray:
     if not all(array.shape == base_array.shape for array in arrays):
         raise AssertionError("All arrays must have identical shapes")
 
-    if axis < -base_array.ndim - 1 or axis > base_array.ndim:
+    if axis < -(base_array.ndim + 1) or axis > base_array.ndim:
         raise ValueError(
             f"Axis {axis} is out of bounds for arrays of dimension {base_array.ndim}"
         )
+    if axis < 0:
+        axis += base_array.ndim + 1
 
     output_shape = list(base_array.shape)
     output_shape.insert(axis, len(arrays))
@@ -1234,11 +1247,15 @@ def stack(arrays: list[NDArray], axis: int = 0) -> NDArray:
     return out
 
 
-def split(arr: NDArray, axis: int = 0) -> list[NDArray]:
-    """Split an array into multiple sub-arrays along the specified axis.
+def split(
+    arr: NDArray, sections: int | list[int] | None = None, axis: int = 0
+) -> list[NDArray]:
+    """Split array into multiple sub-arrays along specified axis.
 
     Args:
-        array: NDArray to split
+        arr: NDArray to split
+        indices_or_sections: If int, number of equal sections to split into.
+                            If list/tuple, the indices indicating split points.
         axis: Integer axis along which to split (default=0)
 
     Returns:
@@ -1247,40 +1264,25 @@ def split(arr: NDArray, axis: int = 0) -> list[NDArray]:
     Raises:
         ValueError: If axis is out of bounds
     """
-    out_shape = list(arr.shape)
-    out_shape.pop(axis)
-    out_shape = tuple(out_shape)
-    out = []
-
-    slice_spec: list = [slice(None)] * arr.ndim
-    for i in range(arr.shape[axis]):
-        slice_spec[axis] = i
-        sub_array = arr[tuple(slice_spec)].compact().reshape(out_shape)
-        out.append(sub_array)
-
-    return out
-
-
-def array_split(
-    arr: NDArray, indices_or_sections: int | list[int], axis: int = 0
-) -> list[NDArray]:
-    """Split array into multiple sub-arrays, allowing uneven divisions."""
+    # Handle negative axis indexing
     if axis < 0:
         axis += arr.ndim
     if not 0 <= axis < arr.ndim:
         raise ValueError(f"Axis {axis} out of bounds")
+    if sections is None:
+        sections = arr.shape[axis]
 
-    if isinstance(indices_or_sections, int):
+    if isinstance(sections, int):
         # Handle N sections case
-        section_size = arr.shape[axis] // indices_or_sections
-        remainder = arr.shape[axis] % indices_or_sections
+        section_size = arr.shape[axis] // sections
+        remainder = arr.shape[axis] % sections
         indices = []
         acc = 0
-        for i in range(indices_or_sections - 1):
+        for i in range(sections - 1):
             acc += section_size + (1 if i < remainder else 0)
             indices.append(acc)
     else:
-        indices = indices_or_sections
+        indices = sections
 
     # Create split points
     split_points = [0, *list(indices), arr.shape[axis]]
@@ -1289,7 +1291,14 @@ def array_split(
 
     for start, end in itertools.pairwise(split_points):
         slice_spec[axis] = slice(start, end)
-        out.append(arr[tuple(slice_spec)])
+        # Get the sub-array
+        sub_array = arr[tuple(slice_spec)]
+        # For single-element slices, reshape to remove the dimension
+        if end - start == 1:
+            out_shape = list(arr.shape)
+            out_shape.pop(axis)
+            sub_array = sub_array.compact().reshape(tuple(out_shape))
+        out.append(sub_array)
 
     return out
 
@@ -1298,3 +1307,54 @@ def transpose(a: NDArray, axes: tuple = ()) -> NDArray:
     if not axes:
         axes = tuple(range(a.ndim))[::-1]
     return a.permute(axes)
+
+
+def concatenate(arrays: tuple[NDArray], axis: int = 0) -> NDArray:
+    """Concatenate arrays along an existing axis.
+
+    Args:
+        arrays: List of NDArrays with identical shapes except in the concat dimension
+        axis: Integer axis along which to concatenate (default=0)
+
+    Returns:
+        NDArray: Concatenated array
+    """
+    from builtins import sum as py_sum
+
+    base_array = arrays[0]
+
+    # Handle negative axis
+    if axis < 0:
+        axis += base_array.ndim
+
+    if not 0 <= axis < base_array.ndim:
+        raise ValueError(
+            f"Axis {axis} is out of bounds for array of dimension {base_array.ndim}"
+        )
+
+    # Validate shapes - all dimensions except concat axis must match
+    for arr in arrays[1:]:
+        for i in range(base_array.ndim):
+            if i != axis and arr.shape[i] != base_array.shape[i]:
+                raise ValueError(
+                    f"All arrays must have same shape except in the concatenation axis."
+                    f"Got {base_array.shape} and {arr.shape}"
+                )
+
+    # Calculate new shape
+    new_shape = list(base_array.shape)
+    new_shape[axis] = py_sum(arr.shape[axis] for arr in arrays)
+
+    # Create output array
+    out = empty(tuple(new_shape), device=base_array.device)
+
+    # Copy data into position
+    offset = 0
+    slice_spec = [slice(None)] * base_array.ndim
+    for arr in arrays:
+        size = arr.shape[axis]
+        slice_spec[axis] = slice(offset, offset + size)
+        out[tuple(slice_spec)] = arr
+        offset += size
+
+    return out

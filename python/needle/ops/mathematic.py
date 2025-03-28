@@ -336,7 +336,7 @@ class ReLU(TensorOp):
         return out_grad * (node.inputs[0].realize_cached_data() > 0)
 
 
-def relu(a):
+def relu(a: Tensor) -> Tensor:
     return ReLU()(a)
 
 
@@ -367,8 +367,21 @@ class Tanh(TensorOp):
 
     def gradient(self, out_grad: Tensor, node: Tensor) -> Tensor:
         tanh = array_api.tanh(node.inputs[0].realize_cached_data())
-        return out_grad.cached_data * (1 - tanh**2)
+        return out_grad * (1 - tanh**2)
 
 
 def tanh(a: Tensor) -> Tensor:
     return Tanh()(a)
+
+
+class Sigmoid(TensorOp):
+    def compute(self, a: NDArray) -> NDArray:
+        return 1.0 / (1.0 + array_api.exp(-a))
+
+    def gradient(self, out_grad: Tensor, node: Tensor) -> Tensor:
+        sigmoid = 1.0 / (1.0 + array_api.exp(-node.inputs[0].realize_cached_data()))
+        return out_grad * sigmoid * (1 - sigmoid)
+
+
+def sigmoid(a: Tensor) -> Tensor:
+    return Sigmoid()(a)

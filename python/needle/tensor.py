@@ -14,8 +14,8 @@ if TYPE_CHECKING:
     from typing import Self
 
     from needle.backend_selection import NDArray
+    from needle.typing import DType, IndexType, Scalar, Shape
     from needle.typing.device import AbstractBackend as Device
-    from needle.typing.types import DType, Scalar, Shape
 
 
 class Tensor(Value):
@@ -100,6 +100,20 @@ class Tensor(Value):
     def numpy(self) -> np.ndarray:
         return self.realize_cached_data().numpy()
 
+    def __getitem__(self, index: IndexType) -> Tensor:
+        sliced_data = self.realize_cached_data()[index]
+
+        # Create a new tensor with the sliced data, detached from the AD graph
+        return Tensor(
+            sliced_data,
+            device=self.device,
+            dtype=self.dtype,
+            requires_grad=self.requires_grad,
+        )
+
+    def __setitem__(self, index: IndexType, value) -> None:
+        self.realize_cached_data()[index] = value
+
     # Arithmetic operations
 
     # TODO: remove class instances, call functions directly
@@ -176,7 +190,7 @@ class TensorTuple(Value):
     def __getitem__(self, index: int) -> Value:
         return ndl.ops.tuple_get_item(self, index)
 
-    def tuple(self) -> tuple[Value]:
+    def tuple(self) -> tuple[Value, ...]:
         return tuple([x for x in self])
 
     def __repr__(self) -> str:

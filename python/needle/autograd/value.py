@@ -22,7 +22,7 @@ class Value(ABC):
     op: Op | None
     inputs: list[Self]
     # The following fields are cached fields for dynamic computation
-    cached_data: NDArray
+    cached_data: NDArray | None
     requires_grad: bool
     _counter: int = 0
 
@@ -49,6 +49,7 @@ class Value(ABC):
         if self.cached_data is not None:
             return self.cached_data
         # note: data implicitly calls realized cached data
+        assert self.op is not None, "Cannot call realize_cached_data on a leaf node"
         self.cached_data = self.op.compute(
             *[x.realize_cached_data() for x in self.inputs]
         )

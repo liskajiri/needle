@@ -39,6 +39,7 @@ from needle.ops.mathematic import (
     power_scalar,
     relu,
     reshape,
+    sigmoid,
     sqrt,
     summation,
     tanh,
@@ -46,7 +47,7 @@ from needle.ops.mathematic import (
 )
 from needle.ops.op import Op, TensorOp, TensorTupleOp
 from needle.ops.ops_tuple import fused_add_scalars, make_tuple, tuple_get_item
-from needle.ops.view import array_split, dilate, flip, split, stack, undilate
+from needle.ops.view import dilate, flip, split, stack, undilate
 
 __all__ = [
     "AddScalar",
@@ -73,7 +74,6 @@ __all__ = [
     "Transpose",
     "add",
     "add_scalar",
-    "array_split",
     "broadcast_to",
     "broadcast_to_new_axis",
     "conv",
@@ -99,6 +99,7 @@ __all__ = [
     "power_scalar",
     "relu",
     "reshape",
+    "sigmoid",
     "split",
     "sqrt",
     "stack",
