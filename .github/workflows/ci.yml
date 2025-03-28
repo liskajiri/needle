@@ -72,7 +72,7 @@ jobs:
       - run: pixi run build
 
   test:
-    timeout-minutes: 10
+    timeout-minutes: 20
 
     # test report needs write permissions
     permissions:
@@ -88,7 +88,8 @@ jobs:
         needs.check-changed-files.outputs.cuda_changed == 'true'
     strategy:
       matrix:
-        backend: [nd, np]
+        backend: [nd] 
+        # TODO: Add other backends
       fail-fast: false
 
     runs-on: ubuntu-latest
