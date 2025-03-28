@@ -4,8 +4,7 @@ import numpy as np
 import pytest
 import torch
 
-np.random.seed(3)
-
+rng = np.random.default_rng(3)
 
 _DEVICES = [
     ndl.cpu(),
@@ -21,6 +20,8 @@ HIDDEN_SIZES = [1, 12]
 BIAS = [True, False]
 INIT_HIDDEN = [True, False]
 NONLINEARITIES = ["tanh", "relu"]
+SEQ_LENGTHS = [1, 13]
+NUM_LAYERS = [1, 2]
 
 
 @pytest.mark.parametrize("batch_size", BATCH_SIZES)
@@ -32,17 +33,16 @@ NONLINEARITIES = ["tanh", "relu"]
 @pytest.mark.parametrize("device", _DEVICES, ids=["cpu", "cuda"])
 def test_rnn_cell(
     batch_size, input_size, hidden_size, bias, init_hidden, nonlinearity, device
-):
-    x = np.random.randn(batch_size, input_size).astype(np.float32)
-    h0 = np.random.randn(batch_size, hidden_size).astype(np.float32)
+) -> None:
+    x = rng.standard_normal((batch_size, input_size), dtype=np.float32)
+    h0 = rng.standard_normal((batch_size, hidden_size), dtype=np.float32)
 
     model_ = torch.nn.RNNCell(
         input_size, hidden_size, nonlinearity=nonlinearity, bias=bias
     )
-    if init_hidden:
-        h_ = model_(torch.tensor(x), torch.tensor(h0))
-    else:
-        h_ = model_(torch.tensor(x), None)
+    torch_input = torch.tensor(x)
+    torch_h0 = torch.tensor(h0) if init_hidden else None
+    h_ = model_(torch_input, torch_h0)
 
     model = nn.RNNCell(
         input_size, hidden_size, device=device, bias=bias, nonlinearity=nonlinearity
@@ -56,11 +56,13 @@ def test_rnn_cell(
     if bias:
         model.bias_ih = ndl.Tensor(model_.bias_ih.detach().numpy(), device=device)
         model.bias_hh = ndl.Tensor(model_.bias_hh.detach().numpy(), device=device)
-    if init_hidden:
-        h = model(ndl.Tensor(x, device=device), ndl.Tensor(h0, device=device))
-    else:
-        h = model(ndl.Tensor(x, device=device), None)
+
+    needle_input = ndl.Tensor(x, device=device)
+    needle_h0 = ndl.Tensor(h0, device=device) if init_hidden else None
+    h = model(needle_input, needle_h0)
+
     assert h.device == device
+
     np.testing.assert_allclose(h_.detach().numpy(), h.numpy(), atol=1e-5, rtol=1e-5)
     h.sum().backward()
     h_.sum().backward()
@@ -79,9 +81,9 @@ def test_rnn_cell(
 @pytest.mark.parametrize("init_hidden", INIT_HIDDEN)
 @pytest.mark.parametrize("device", _DEVICES, ids=["cpu", "cuda"])
 def test_lstm_cell(batch_size, input_size, hidden_size, bias, init_hidden, device):
-    x = np.random.randn(batch_size, input_size).astype(np.float32)
-    h0 = np.random.randn(batch_size, hidden_size).astype(np.float32)
-    c0 = np.random.randn(batch_size, hidden_size).astype(np.float32)
+    x = rng.standard_normal((batch_size, input_size), dtype=np.float32)
+    h0 = rng.standard_normal((batch_size, hidden_size), dtype=np.float32)
+    c0 = rng.standard_normal((batch_size, hidden_size), dtype=np.float32)
 
     model_ = torch.nn.LSTMCell(input_size, hidden_size, bias=bias)
     if init_hidden:
@@ -108,6 +110,9 @@ def test_lstm_cell(batch_size, input_size, hidden_size, bias, init_hidden, devic
         )
     else:
         h, c = model(ndl.Tensor(x, device=device), None)
+
+    assert h.device == device
+    assert c.device == device
     np.testing.assert_allclose(h_.detach().numpy(), h.numpy(), atol=1e-5, rtol=1e-5)
     np.testing.assert_allclose(c_.detach().numpy(), c.numpy(), atol=1e-5, rtol=1e-5)
 
@@ -119,10 +124,6 @@ def test_lstm_cell(batch_size, input_size, hidden_size, bias, init_hidden, devic
         atol=1e-5,
         rtol=1e-5,
     )
-
-
-SEQ_LENGTHS = [1, 13]
-NUM_LAYERS = [1, 2]
 
 
 @pytest.mark.parametrize("seq_length", SEQ_LENGTHS)
@@ -144,9 +145,9 @@ def test_rnn(
     init_hidden,
     nonlinearity,
     device,
-):
-    x = np.random.randn(seq_length, batch_size, input_size).astype(np.float32)
-    h0 = np.random.randn(num_layers, batch_size, hidden_size).astype(np.float32)
+) -> None:
+    x = rng.standard_normal((seq_length, batch_size, input_size), dtype=np.float32)
+    h0 = rng.standard_normal((num_layers, batch_size, hidden_size), dtype=np.float32)
 
     model_ = torch.nn.RNN(
         input_size,
@@ -189,6 +190,9 @@ def test_rnn(
     else:
         output, h = model(ndl.Tensor(x, device=device), None)
 
+    assert output.device == device
+    assert h.device == device
+
     np.testing.assert_allclose(h_.detach().numpy(), h.numpy(), atol=1e-5, rtol=1e-5)
     np.testing.assert_allclose(
         output_.detach().numpy(), output.numpy(), atol=1e-5, rtol=1e-5
@@ -212,6 +216,7 @@ def test_rnn(
 @pytest.mark.parametrize("bias", BIAS)
 @pytest.mark.parametrize("init_hidden", INIT_HIDDEN)
 @pytest.mark.parametrize("device", _DEVICES, ids=["cpu", "cuda"])
+@pytest.mark.slow
 def test_lstm(
     seq_length,
     num_layers,
@@ -221,10 +226,10 @@ def test_lstm(
     bias,
     init_hidden,
     device,
-):
-    x = np.random.randn(seq_length, batch_size, input_size).astype(np.float32)
-    h0 = np.random.randn(num_layers, batch_size, hidden_size).astype(np.float32)
-    c0 = np.random.randn(num_layers, batch_size, hidden_size).astype(np.float32)
+) -> None:
+    x = rng.standard_normal((seq_length, batch_size, input_size), dtype=np.float32)
+    h0 = rng.standard_normal((num_layers, batch_size, hidden_size), dtype=np.float32)
+    c0 = rng.standard_normal((num_layers, batch_size, hidden_size), dtype=np.float32)
 
     model_ = torch.nn.LSTM(input_size, hidden_size, bias=bias, num_layers=num_layers)
     if init_hidden:

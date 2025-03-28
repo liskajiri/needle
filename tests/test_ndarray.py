@@ -721,7 +721,7 @@ SPLIT_SHAPES = [(np.arange(8.0), 3), (np.arange(9), 4)]
 def test_array_split(x, indices, device):
     ndl_x = ndl.array(x, device=device)
     split_numpy = np.array_split(x, indices)
-    split_ndl = ndl.array_split(ndl_x, indices)
+    split_ndl = ndl.split(ndl_x, indices)
     for i in range(3):
         np.testing.assert_allclose(
             split_numpy[i], split_ndl[i].numpy(), atol=1e-5, rtol=1e-5
