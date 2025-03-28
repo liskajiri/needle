@@ -29,36 +29,56 @@ class Stack(TensorOp):
         return Split(self.axis)(out_grad)
 
 
-def stack(arr: list[Tensor], axis: int) -> Tensor:
+def stack(arr: tuple[Tensor, ...] | list[Tensor], axis: int) -> Tensor:
     return Stack(axis)(make_tuple(*arr))
 
 
 class Split(TensorTupleOp):
-    def __init__(self, axis: int) -> None:
+    def __init__(self, axis: int, sections: int | list[int] | None = None) -> None:
         """
         Splits a tensor along an axis into a tuple of tensors.
         (The "inverse" of Stack)
         Parameters:
         axis - dimension to split
+        sections - number of sections to split into
         """
         self.axis = axis
+        self.sections = sections
 
-    def compute(self, arr: NDArray) -> tuple[NDArray]:
-        return tuple(array_api.split(arr, self.axis))
+    def compute(self, arr: NDArray) -> list[NDArray]:
+        return array_api.split(arr, self.sections, self.axis)
 
     def gradient(self, out_grad, node: Tensor) -> Tensor:
+        # return concatenate(out_grad, self.axis)
         return Stack(self.axis)(out_grad)
 
 
-def split(arr: Tensor, axis: int) -> TensorTuple:
-    return Split(axis)(arr)
+def split(
+    arr: Tensor, axis: int = 0, sections: int | list[int] | None = None
+) -> TensorTuple:
+    return Split(axis, sections)(arr)
 
 
-# TODO: not an op
-def array_split(
-    arr: NDArray, indices_or_sections: int | list[int], axis: int = 0
-) -> list[NDArray]:
-    return array_api.array_split(arr, indices_or_sections, axis)
+class Concatenate(TensorOp):
+    def __init__(self, axis: int) -> None:
+        """
+        Concatenates a sequence of arrays along an existing dimension.
+        Parameters:
+        axis - dimension to concatenate along
+        Arrays need to have matching shapes except in the concat dimension.
+        """
+        self.axis = axis
+
+    def compute(self, arr: tuple[NDArray]) -> NDArray:
+        return array_api.concatenate(arr, self.axis)
+
+    def gradient(self, out_grad: Tensor, node: Tensor) -> TensorTuple:
+        input_sizes = [array.shape[self.axis] for array in node.inputs]
+        return Split(self.axis, sections=input_sizes[:-1])(out_grad)
+
+
+def concatenate(arr: tuple[Tensor, ...] | list[Tensor], axis: int) -> Tensor:
+    return Concatenate(axis)(make_tuple(*arr))
 
 
 class Flip(TensorOp):
@@ -143,7 +163,7 @@ class UnDilate(TensorOp):
     Reverse operation to Dilate.
     """
 
-    def __init__(self, axes: tuple[int], dilation: int) -> None:
+    def __init__(self, axes: tuple[int, ...], dilation: int) -> None:
         self.axes = axes
         self.dilation = dilation
 
@@ -168,5 +188,5 @@ class UnDilate(TensorOp):
         return dilate(out_grad, self.axes, self.dilation)
 
 
-def undilate(a: Tensor, axes: tuple[int], dilation: int) -> Tensor:
+def undilate(a: Tensor, axes: tuple[int, ...], dilation: int) -> Tensor:
     return UnDilate(axes, dilation)(a)
