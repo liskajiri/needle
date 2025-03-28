@@ -755,7 +755,7 @@ class NDArray:
         )
 
     def __rtruediv__(self, other) -> NDArray:
-        if isinstance(other, (int, float)):
+        if isinstance(other, int | float):
             out = NDArray.make(self.shape, device=self.device)
             out.fill(other)
             return out / self
@@ -1337,7 +1337,7 @@ def concatenate(arrays: tuple[NDArray], axis: int = 0) -> NDArray:
         for i in range(base_array.ndim):
             if i != axis and arr.shape[i] != base_array.shape[i]:
                 raise ValueError(
-                    f"All arrays must have same shape except in the concatenation axis. "
+                    f"All arrays must have same shape except in the concatenation axis."
                     f"Got {base_array.shape} and {arr.shape}"
                 )
 
