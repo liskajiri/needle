@@ -8,7 +8,6 @@ from needle.backend_selection import default_device
 from needle.nn import Module
 from needle.tensor import Tensor
 from needle.typing import AbstractBackend, DType
-from needle.backend_selection import array_api
 
 
 class SequenceModelConfigs(TypedDict):

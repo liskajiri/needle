@@ -50,9 +50,9 @@ class Value(ABC):
             return self.cached_data
         # note: data implicitly calls realized cached data
         assert self.op is not None, "Cannot call realize_cached_data on a leaf node"
-        self.cached_data = self.op.compute(*[
-            x.realize_cached_data() for x in self.inputs
-        ])
+        self.cached_data = self.op.compute(
+            *[x.realize_cached_data() for x in self.inputs]
+        )
         return self.cached_data
 
     @property
