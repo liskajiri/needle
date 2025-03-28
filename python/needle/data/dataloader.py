@@ -4,7 +4,6 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
-from needle.backend_selection import array_api
 from needle.tensor import Tensor
 
 if TYPE_CHECKING:
@@ -49,12 +48,13 @@ class DataLoader:
         Yields:
             Iterator[BatchType]: Batch of data.
         """
+        # TODO: get rid of the numpy dependency
         if self.shuffle:
             orders = np.random.permutation(len(self.dataset))
         else:
             orders = np.arange(len(self.dataset))
 
-        ordering = array_api.array_split(
+        ordering = np.split(
             orders, range(self.batch_size, len(self.dataset), self.batch_size)
         )
         for indices in ordering:
