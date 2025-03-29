@@ -142,6 +142,7 @@ class NDArray:
         self,
         other: NDArray | np.ndarray | list,
         device: AbstractBackend = default_device,
+        dtype: DType = "float32",
     ) -> None:
         # TODO: allow creating by itself and from list[]
         """Create by copying another NDArray, or from numpy."""
@@ -574,7 +575,7 @@ class NDArray:
             Convert input indices to tuple of slices and track squeeze dimensions.
             """
             # Convert single integer index to tuple
-            orig_idxs = (idxs,) if isinstance(idxs, int) else idxs
+            orig_idxs = (idxs,) if not isinstance(idxs, tuple) else idxs
             if not isinstance(orig_idxs, tuple):
                 raise TypeError(f"Invalid index type: {type(orig_idxs)}")
 
@@ -1062,11 +1063,11 @@ class NDArray:
             ValueError: If padding axes do not match array dimensions
 
         >>> a = NDArray(np.array([[1, 2], [3, 4]]))
-        >>> a.pad(((1, 1), (1, 1)))
-        array([[0., 0., 0., 0.],
-               [0., 1., 2., 0.],
-               [0., 3., 4., 0.],
-               [0., 0., 0., 0.]], dtype=float32)
+        >>> print(a.pad(((1, 1), (1, 1))))
+        [[0. 0. 0. 0.]
+         [0. 1. 2. 0.]
+         [0. 3. 4. 0.]
+         [0. 0. 0. 0.]]
         """
         if len(axes) != self.ndim:
             raise ValueError(
