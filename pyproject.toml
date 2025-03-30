@@ -1,6 +1,9 @@
 [tool.pytest.ini_options]
 pythonpath = "python/needle"
-testpaths = "tests/"
+testpaths = [
+    "tests/",
+    "python/needle", # doctests
+]
 addopts = [
     "-ra",
     "-n", "auto",
@@ -8,6 +11,7 @@ addopts = [
     "--strict-config",
     "-m not benchmark",
     "--import-mode=importlib",
+    "--doctest-modules",
 ]
 markers = [
     "slow: marks tests as slow",
@@ -40,7 +44,7 @@ fixable = ["ALL"]
 ]
 
 [tool.ruff.lint.pydocstyle]
-convention = "numpy"
+convention = "google"
 
 [tool.ruff.format]
 docstring-code-format = true
