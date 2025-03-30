@@ -282,6 +282,9 @@ class LSTMCell(Module):
         else:
             h0, c = h
 
+        # if self.hidden_size == 1:
+        #     c = c.reshape((batch_size,))
+
         # gates input: X @ W_ih + h0 @ W_hh + bias
         gates = X @ self.W_ih + h0 @ self.W_hh
 
@@ -290,9 +293,15 @@ class LSTMCell(Module):
             assert self.bias_ih is not None and self.bias_hh is not None
             gates = gates + self.bias_ih + self.bias_hh
 
+        batch_size, gate_size = gates.shape
+        assert gate_size == 4 * self.hidden_size, (
+            f"Expected gate size {4 * self.hidden_size}, got {gate_size}"
+        )
+
         # TODO: very slow
         # gates_splits = ops.split(gates, axis=1, sections=4)
         # i_gate, f_gate, g_gate, o_gate = gates_splits
+
         gates_splits = ops.split(gates, axis=1).tuple()
         gates = []
         for i in range(4):
@@ -310,13 +319,21 @@ class LSTMCell(Module):
         g_gate = ops.tanh(g_gate)
         o_gate = ops.sigmoid(o_gate)
 
+        # i_gate = i_gate.reshape((batch_size, self.hidden_size))
+        # f_gate = f_gate.reshape((batch_size, self.hidden_size))
+        # g_gate = g_gate.reshape((batch_size, self.hidden_size))
+        # o_gate = o_gate.reshape((batch_size, self.hidden_size))
+
         # Update cell state: c' = f_gate * c0 + i_gate * g_gate
         c_next = f_gate * c + i_gate * g_gate
 
         # Update hidden state: h' = o_gate * tanh(c')
         h_next = o_gate * ops.tanh(c_next)
 
-        return (h_next, c_next)
+        assert h_next.shape == (batch_size, self.hidden_size)
+        assert c_next.shape == (batch_size, self.hidden_size)
+
+        return h_next, c_next
 
 
 class LSTM(Module):
@@ -438,10 +455,14 @@ class LSTM(Module):
 
 
 class Embedding(Module):
-    def __init__(self, num_embeddings, embedding_dim, device=None, dtype="float32"):
-        super().__init__()
-        """
-        Maps one-hot word vectors from a dictionary of fixed size to embeddings.
+    def __init__(
+        self,
+        num_embeddings: int,
+        embedding_dim: int,
+        device: AbstractBackend = default_device,
+        dtype: DType = "float32",
+    ) -> None:
+        """Maps one-hot word vectors from a dictionary of fixed size to embeddings.
 
         Parameters:
         num_embeddings (int) - Size of the dictionary
@@ -451,20 +472,33 @@ class Embedding(Module):
         weight - The learnable weights of shape (num_embeddings, embedding_dim)
             initialized from N(0, 1).
         """
-        # BEGIN YOUR SOLUTION
-        raise NotImplementedError()
-        # END YOUR SOLUTION
+        super().__init__()
+        self.num_embeddings = num_embeddings
+        self.embedding_dim = embedding_dim
+        self.device = device
+        self.dtype = dtype
+
+        self.weight = nn.Parameter(
+            init.randn((num_embeddings, embedding_dim)), device=device, dtype=dtype
+        )
 
     def forward(self, x: Tensor) -> Tensor:
-        """
-        Maps word indices to one-hot vectors, and projects to embedding vectors
+        """Maps word indices to one-hot vectors, and projects to embedding vectors
 
-        Input:
-        x of shape (seq_len, bs)
+        Args:
+            Tensor: x: Input tensor of shape (seq_len, bs) containing word indices
 
-        Output:
-        output of shape (seq_len, bs, embedding_dim)
+        Returns:
+            Tensor: Tensor of shape (seq_len, bs, embedding_dim) containing embeddings
         """
-        # BEGIN YOUR SOLUTION
-        raise NotImplementedError()
-        # END YOUR SOLUTION
+        seq_len, batch_size = x.shape
+
+        x_one_hot = init.one_hot(
+            self.num_embeddings,
+            x,
+            device=self.device,
+            dtype=self.dtype,
+        )
+        out = x_one_hot @ self.weight
+        out = out.reshape((seq_len, batch_size, self.embedding_dim))
+        return out
