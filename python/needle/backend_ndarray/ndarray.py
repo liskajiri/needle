@@ -1,23 +1,26 @@
 from __future__ import annotations
 
-import itertools
 import logging
 import math
-from collections.abc import Callable
 from functools import cached_property
 from typing import TYPE_CHECKING
 
 import numpy as np
 
-from needle.typing.device import AbstractBackend
+from needle.typing import AbstractBackend
 
 if TYPE_CHECKING:
-    from needle.typing import DType, IndexType, Scalar, Shape, Strides
+    from collections.abc import Callable
+
+    from needle.typing import DType, IndexType, Scalar, Shape, Strides, np_ndarray
 
 logger = logging.getLogger(__name__)
 
 # TODO: reference hw3.ipynb for future optimizations
 # TODO: investigate usage of __slots__, Python's array.array for NDArray class
+
+if TYPE_CHECKING:
+    from needle.typing import DType, IndexType, Scalar, Shape
 
 
 class BackendDevice(AbstractBackend):
@@ -105,7 +108,7 @@ def cpu_numpy() -> AbstractBackend:
     """Return numpy device."""
     try:
         from needle import backend_numpy
-        from needle.backend_ndarray import BackendDevice as NumpyBackend
+        from needle.backend_numpy import NumpyBackend
 
         return NumpyBackend("cpu_numpy", backend_numpy)
     except ImportError:
@@ -122,12 +125,63 @@ def cpu() -> AbstractBackend:
         raise ImportError("CPU backend not available")
 
 
-default_device = cpu()
-
-
 def all_devices() -> list[AbstractBackend]:
     """Return a list of all available devices."""
     return [cpu(), cuda(), cpu_numpy()]
+
+
+default_device = cpu()
+
+
+def broadcast_shapes(*shapes: tuple[Shape, ...]) -> tuple:
+    """Return broadcasted shape for multiple input shapes.
+
+    Broadcasting rules (numpy-style):
+        1. Start with the trailing (rightmost) dimensions and continue left.
+        2. Two dimensions are compatible when:
+           - They are equal
+           - One of them is 1
+
+    Args:
+        *shapes: one or more shapes as tuples
+    Returns:
+        tuple: broadcast-compatible shape
+    Raises:
+        ValueError: If shapes cannot be broadcast together
+
+
+    Examples:
+        >>> broadcast_shapes((2, 3), (1, 3))
+        (2, 3)
+        >>> broadcast_shapes((2, 3), (3,))
+        (2, 3)
+        >>> broadcast_shapes((8, 1, 6, 1), (7, 1, 5), (8, 7, 6, 5))
+        (8, 7, 6, 5)
+        >>> broadcast_shapes((2, 3), (2, 4))
+        Traceback (most recent call last):
+        ...
+        ValueError: Incompatible shapes for broadcasting: ((2, 3), (2, 4))
+    """
+    # If only one shape provided, return it
+    if len(shapes) == 1:
+        return shapes[0]
+
+    from builtins import max as pymax
+
+    max_dims = pymax([len(shape) for shape in shapes])
+    # Left-pad shorter shapes with 1s to align dimensions
+    aligned_shapes = [(1,) * (max_dims - len(s)) + s for s in shapes]
+
+    # Determine output dimension for each position
+    result = []
+    for dims in zip(*aligned_shapes):
+        max_dim = pymax(dims)
+        for d in dims:
+            if d != 1 and d != max_dim:
+                raise ValueError(f"Incompatible shapes for broadcasting: {shapes}")
+        result.append(max_dim)
+
+    return tuple(result)
 
 
 class NDArray:
@@ -139,7 +193,7 @@ class NDArray:
 
     def __init__(
         self,
-        other: NDArray | np.ndarray | list,
+        other: NDArray | np_ndarray | list,
         device: AbstractBackend = default_device,
         dtype: DType = "float32",
     ) -> None:
@@ -272,7 +326,7 @@ class NDArray:
             return self
         return NDArray(self.numpy(), device=device)
 
-    def numpy(self) -> np.ndarray:
+    def numpy(self) -> np_ndarray:
         """Convert to a numpy array."""
         return self.device.to_numpy(
             self._handle, self.shape, self.strides, self._offset
@@ -280,7 +334,7 @@ class NDArray:
 
     @staticmethod
     def from_numpy(
-        a: np.ndarray,
+        a: np_ndarray,
     ) -> NDArray:
         """Copy from a numpy array."""
         array = NDArray.make(a.shape)
@@ -778,13 +832,13 @@ class NDArray:
     # Binary operators all return (0.0, 1.0) floating point values
     # TODO: could of course be optimized
 
-    def __eq__(self, other) -> bool:
+    def __eq__(self, other: NDArray) -> bool:
         """Support == comparison with numpy arrays and scalars"""
         if isinstance(other, np.ndarray):
             return np.array_equal(self.numpy(), other)
         return self.ewise_or_scalar(other, self.device.ewise_eq, self.device.scalar_eq)
 
-    def __ge__(self, other: NDArray) -> bool:
+    def __ge__(self, other: NDArray | Scalar) -> bool:
         if isinstance(other, np.ndarray):
             np.greater_equal(self.numpy(), other)
         return self.ewise_or_scalar(other, self.device.ewise_ge, self.device.scalar_ge)
@@ -1088,290 +1142,3 @@ class NDArray:
         # Copy data into padded array
         out[slices] = self
         return out
-
-
-def broadcast_shapes(*shapes: tuple[Shape, ...]) -> tuple:
-    """Return broadcasted shape for multiple input shapes.
-
-    Broadcasting rules (numpy-style):
-        1. Start with the trailing (rightmost) dimensions and continue left.
-        2. Two dimensions are compatible when:
-           - They are equal
-           - One of them is 1
-
-    Args:
-        *shapes: one or more shapes as tuples
-    Returns:
-        tuple: broadcast-compatible shape
-    Raises:
-        ValueError: If shapes cannot be broadcast together
-
-
-    Examples:
-        >>> broadcast_shapes((2, 3), (1, 3))
-        (2, 3)
-        >>> broadcast_shapes((2, 3), (3,))
-        (2, 3)
-        >>> broadcast_shapes((8, 1, 6, 1), (7, 1, 5), (8, 7, 6, 5))
-        (8, 7, 6, 5)
-        >>> broadcast_shapes((2, 3), (2, 4))
-        Traceback (most recent call last):
-        ...
-        ValueError: Incompatible shapes for broadcasting: ((2, 3), (2, 4))
-    """
-    # If only one shape provided, return it
-    if len(shapes) == 1:
-        return shapes[0]
-
-    from builtins import max as pymax
-
-    max_dims = pymax([len(shape) for shape in shapes])
-    # Left-pad shorter shapes with 1s to align dimensions
-    aligned_shapes = [(1,) * (max_dims - len(s)) + s for s in shapes]
-
-    # Determine output dimension for each position
-    result = []
-    for dims in zip(*aligned_shapes):
-        max_dim = pymax(dims)
-        for d in dims:
-            if d != 1 and d != max_dim:
-                raise ValueError(f"Incompatible shapes for broadcasting: {shapes}")
-        result.append(max_dim)
-
-    return tuple(result)
-
-
-def from_numpy(a):
-    return NDArray(a)
-
-
-def array(
-    a: np.ndarray | NDArray, dtype="float32", device: AbstractBackend = default_device
-) -> NDArray:
-    """Convenience methods to match numpy a bit more closely."""
-    if dtype != "float32":
-        logger.warning(f"Only support float32 for now, got {dtype}")
-        a = np.array(a, dtype="float32")
-        dtype = a.dtype
-        logger.warning(f"Converting to numpy array with dtype {dtype}")
-    assert dtype == "float32"
-    return NDArray(a, device=device)
-
-
-def empty(
-    shape: Shape, dtype: DType = "float32", device: AbstractBackend = default_device
-) -> NDArray:
-    return device.empty(shape, dtype)
-
-
-def zeros(
-    shape: Shape, dtype: DType = "float32", device: AbstractBackend = default_device
-) -> NDArray:
-    return device.zeros(shape, dtype)
-
-
-def ones(
-    shape: Shape, dtype: DType = "float32", device: AbstractBackend = default_device
-) -> NDArray:
-    return device.ones(shape, dtype)
-
-
-def full(
-    shape: Shape,
-    fill_value: float,
-    dtype: DType = "float32",
-    device: AbstractBackend = default_device,
-) -> NDArray:
-    return device.full(shape, fill_value, dtype)
-
-
-def broadcast_to(array, new_shape):
-    return array.broadcast_to(new_shape)
-
-
-def max(array: NDArray, axis=None, keepdims: bool = False) -> NDArray:
-    return array.max(axis=axis, keepdims=keepdims)
-
-
-def reshape(array, new_shape):
-    return array.reshape(new_shape)
-
-
-def maximum(a, b):
-    return a.maximum(b)
-
-
-def log(a):
-    return a.log()
-
-
-def exp(a):
-    return a.exp()
-
-
-def tanh(a: NDArray) -> NDArray:
-    return a.tanh()
-
-
-def sum(a, axis=None, keepdims=False):
-    return a.sum(axis=axis, keepdims=keepdims)
-
-
-def flip(a: NDArray, axes: tuple[int, ...] | int) -> NDArray:
-    return a.flip(axes)
-
-
-def stack(arrays: tuple[NDArray] | list[NDArray], axis: int = 0) -> NDArray:
-    """Stack a list of arrays along specified axis.
-
-    Args:
-        arrays: List of NDArrays with identical shapes
-        axis: Integer axis along which to stack (default=0)
-
-    Returns:
-        NDArray: Stacked array with shape expanded on specified axis
-
-    Raises:
-        AssertionError: If arrays list is empty or shapes don't match
-        ValueError: If axis is out of bounds
-    """
-    if not arrays:
-        raise AssertionError("Cannot stack empty list of arrays")
-
-    base_array = arrays[0]
-    if not all(array.shape == base_array.shape for array in arrays):
-        raise AssertionError("All arrays must have identical shapes")
-
-    if axis < -(base_array.ndim + 1) or axis > base_array.ndim:
-        raise ValueError(
-            f"Axis {axis} is out of bounds for arrays of dimension {base_array.ndim}"
-        )
-    if axis < 0:
-        axis += base_array.ndim + 1
-
-    output_shape = list(base_array.shape)
-    output_shape.insert(axis, len(arrays))
-    output_shape = tuple(output_shape)
-
-    out = empty(output_shape, device=base_array.device)
-
-    slice_spec: list = [slice(None)] * out.ndim
-
-    for idx, array in enumerate(arrays):
-        slice_spec[axis] = idx
-        out[tuple(slice_spec)] = array
-
-    return out
-
-
-def split(
-    arr: NDArray, sections: int | list[int] | None = None, axis: int = 0
-) -> list[NDArray]:
-    """Split array into multiple sub-arrays along specified axis.
-
-    Args:
-        arr: NDArray to split
-        indices_or_sections: If int, number of equal sections to split into.
-                            If list/tuple, the indices indicating split points.
-        axis: Integer axis along which to split (default=0)
-
-    Returns:
-        List of NDArrays: Split arrays along specified axis
-
-    Raises:
-        ValueError: If axis is out of bounds
-    """
-    # Handle negative axis indexing
-    if axis < 0:
-        axis += arr.ndim
-    if not 0 <= axis < arr.ndim:
-        raise ValueError(f"Axis {axis} out of bounds")
-    if sections is None:
-        sections = arr.shape[axis]
-
-    if isinstance(sections, int):
-        # Handle N sections case
-        section_size = arr.shape[axis] // sections
-        remainder = arr.shape[axis] % sections
-        indices = []
-        acc = 0
-        for i in range(sections - 1):
-            acc += section_size + (1 if i < remainder else 0)
-            indices.append(acc)
-    else:
-        indices = sections
-
-    # Create split points
-    split_points = [0, *list(indices), arr.shape[axis]]
-    out = []
-    slice_spec = [slice(None)] * arr.ndim
-
-    for start, end in itertools.pairwise(split_points):
-        slice_spec[axis] = slice(start, end)
-        # Get the sub-array
-        sub_array = arr[tuple(slice_spec)]
-        # For single-element slices, reshape to remove the dimension
-        if end - start == 1:
-            out_shape = list(arr.shape)
-            out_shape.pop(axis)
-            sub_array = sub_array.compact().reshape(tuple(out_shape))
-        out.append(sub_array)
-
-    return out
-
-
-def transpose(a: NDArray, axes: tuple = ()) -> NDArray:
-    if not axes:
-        axes = tuple(range(a.ndim))[::-1]
-    return a.permute(axes)
-
-
-def concatenate(arrays: tuple[NDArray], axis: int = 0) -> NDArray:
-    """Concatenate arrays along an existing axis.
-
-    Args:
-        arrays: List of NDArrays with identical shapes except in the concat dimension
-        axis: Integer axis along which to concatenate (default=0)
-
-    Returns:
-        NDArray: Concatenated array
-    """
-    from builtins import sum as py_sum
-
-    base_array = arrays[0]
-
-    # Handle negative axis
-    if axis < 0:
-        axis += base_array.ndim
-
-    if not 0 <= axis < base_array.ndim:
-        raise ValueError(
-            f"Axis {axis} is out of bounds for array of dimension {base_array.ndim}"
-        )
-
-    # Validate shapes - all dimensions except concat axis must match
-    for arr in arrays[1:]:
-        for i in range(base_array.ndim):
-            if i != axis and arr.shape[i] != base_array.shape[i]:
-                raise ValueError(
-                    f"All arrays must have same shape except in the concatenation axis."
-                    f"Got {base_array.shape} and {arr.shape}"
-                )
-
-    # Calculate new shape
-    new_shape = list(base_array.shape)
-    new_shape[axis] = py_sum(arr.shape[axis] for arr in arrays)
-
-    # Create output array
-    out = empty(tuple(new_shape), device=base_array.device)
-
-    # Copy data into position
-    offset = 0
-    slice_spec = [slice(None)] * base_array.ndim
-    for arr in arrays:
-        size = arr.shape[axis]
-        slice_spec[axis] = slice(offset, offset + size)
-        out[tuple(slice_spec)] = arr
-        offset += size
-
-    return out

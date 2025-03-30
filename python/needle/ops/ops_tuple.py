@@ -14,7 +14,7 @@ class MakeTensorTuple(TensorTupleOp):
     def compute(self, *args) -> tuple:
         return tuple(args)
 
-    def gradient(self, out_grad: TensorTuple, node) -> tuple:
+    def gradient(self, out_grad: TensorTuple, _node: Tensor) -> tuple:
         assert isinstance(out_grad, TensorTuple)
         return tuple([out_grad[i] for i in range(len(out_grad))])
 
@@ -57,12 +57,12 @@ class FusedAddScalars(TensorTupleOp):
         self.c0 = c0
         self.c1 = c1
 
-    def compute(self, a: Tensor) -> tuple[Tensor, Tensor]:
+    def compute(self, a: NDArray) -> tuple[NDArray, NDArray]:
         return a + self.c0, a + self.c1
 
     def gradient(self, out_grad: Tensor, node) -> Tensor:
         return out_grad[0] + out_grad[1]
 
 
-def fused_add_scalars(x, c0, c1) -> TensorTuple:
+def fused_add_scalars(x: NDArray, c0: float, c1: float) -> TensorTuple:
     return FusedAddScalars(c0, c1)(x)

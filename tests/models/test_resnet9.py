@@ -169,7 +169,6 @@ def test_train_cifar10(device, atol=1e-2):
         loss_fn=ndl.nn.SoftmaxLoss,
         optimizer=ndl.optim.Adam,
     )
-    print(f"Train accuracy: {acc}, loss: {loss}")
     np.testing.assert_allclose(
         acc,
         0.09375,

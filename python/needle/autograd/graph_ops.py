@@ -74,32 +74,3 @@ def topo_sort_dfs(node: Tensor, visited: set, topo_order: list[Tensor]) -> None:
     for input_node in node.inputs:
         topo_sort_dfs(input_node, visited, topo_order)
     topo_order.append(node)
-
-
-def print_operations(output_node: Tensor) -> None:
-    from needle.backend_selection import array_api
-    from needle.tensor import Tensor
-
-    """Print the operations in the graph."""
-    # a map from node to a list of gradient contributions from each output node
-    node_to_output_grads: defaultdict[Tensor, list[Tensor]] = defaultdict(list)
-    # Special note on initializing gradient of
-    # We are really taking a derivative of the scalar reduce_sum(output_node)
-    # instead of the vector output_node. But this is the common case for loss function.
-    node_to_output_grads[output_node] = [Tensor(array_api.ones(output_node.shape))]
-
-    # Traverse graph in reverse topological order given the output_node that we are
-    # taking gradient wrt.
-    reverse_topo_order = list(reversed(find_topo_sort([output_node])))
-
-    for indent, node in enumerate(reverse_topo_order):
-        node.grad = _sum_node_list(node_to_output_grads[node])
-
-        if node.op:
-            # partial adjoints
-            grads = node.op.gradient_as_tuple(node.grad, node)
-            for input_node, grad in zip(node.inputs, grads):
-                node_to_output_grads[input_node].append(grad)  # type: ignore
-
-            # Gradients do not need to be kept further in the AD graph
-            node.grad = node.grad.detach()

@@ -11,7 +11,7 @@ from needle.ops.op import TensorOp
 if TYPE_CHECKING:
     from needle.backend_selection import NDArray
     from needle.tensor import Tensor
-    from needle.typing.types import Scalar, Shape
+    from needle.typing import Scalar, Shape
 
 logger = logging.getLogger(__name__)
 
@@ -90,7 +90,7 @@ class EWisePow(TensorOp):
         return grad_a, grad_b
 
 
-def power(a, b):
+def power(a: Tensor, b: Tensor) -> Tensor:
     return EWisePow()(a, b)
 
 
@@ -176,7 +176,7 @@ class Transpose(TensorOp):
         else:
             raise ValueError(f"Invalid axes: {self.axes}")
 
-    def gradient(self, out_grad: Tensor, _node) -> Tensor:
+    def gradient(self, out_grad: Tensor, _node: Tensor) -> Tensor:
         """
         Apply the inverse transpose to the gradient.
         """
@@ -240,7 +240,7 @@ def broadcast_to(a: Tensor, shape: Shape) -> Tensor:
 
 
 class Summation(TensorOp):
-    def __init__(self, axes: tuple | None = None, keepdims: bool = False) -> None:
+    def __init__(self, axes: tuple | int | None = None, keepdims: bool = False) -> None:
         if isinstance(axes, int):
             self.axes = (axes,)
         else:
@@ -265,7 +265,9 @@ class Summation(TensorOp):
         # return broadcast_to(out_grad, target_shape)
 
 
-def summation(a: Tensor, axes: tuple | None = None, keepdims: bool = False) -> Tensor:
+def summation(
+    a: Tensor, axes: tuple | int | None = None, keepdims: bool = False
+) -> Tensor:
     return Summation(axes, keepdims)(a)
 
 
@@ -295,35 +297,35 @@ class Negate(TensorOp):
     def compute(self, a: NDArray):
         return -a
 
-    def gradient(self, out_grad, node):
+    def gradient(self, out_grad: Tensor, node: Tensor) -> Tensor:
         return negate(out_grad)
 
 
-def negate(a):
+def negate(a: Tensor) -> Tensor:
     return Negate()(a)
 
 
 class Log(TensorOp):
-    def compute(self, a):
+    def compute(self, a: NDArray) -> array_api.NDArray:
         return array_api.log(a)
 
-    def gradient(self, out_grad, node):
+    def gradient(self, out_grad: Tensor, node: Tensor) -> Tensor:
         return out_grad / node.inputs[0]
 
 
-def log(a):
+def log(a: Tensor) -> Tensor:
     return Log()(a)
 
 
 class Exp(TensorOp):
-    def compute(self, a):
+    def compute(self, a: NDArray) -> NDArray:
         return array_api.exp(a)
 
-    def gradient(self, out_grad, node):
+    def gradient(self, out_grad: Tensor, node: Tensor) -> Tensor:
         return out_grad * exp(node.inputs[0])
 
 
-def exp(a):
+def exp(a: Tensor) -> Tensor:
     return Exp()(a)
 
 
@@ -357,7 +359,7 @@ def sqrt(x: Tensor) -> Tensor:
     return x**0.5
 
 
-def mean(a: Tensor, axes=0) -> Tensor:
+def mean(a: Tensor, axes: int = 0) -> Tensor:
     return summation(a, axes=axes) / a.shape[axes]
 
 

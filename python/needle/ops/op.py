@@ -25,7 +25,7 @@ class Op(ABC):
 
         Parameters
         ----------
-        input: np.ndarray
+        input: NDArray
             A list of input arrays to the function
 
         Returns

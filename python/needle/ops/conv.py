@@ -3,7 +3,6 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
-from needle.backend_ndarray.ndarray import transpose
 from needle.backend_selection import array_api
 from needle.ops.op import TensorOp
 from needle.ops.view import dilate
@@ -111,7 +110,9 @@ class Conv(TensorOp):
 
                 # Reshape X_windows to (C_in, N*H'*W')
                 X_windows = (
-                    transpose(X_windows, (3, 0, 1, 2)).compact().reshape((C_in, -1))
+                    array_api.transpose(X_windows, (3, 0, 1, 2))
+                    .compact()
+                    .reshape((C_in, -1))
                 )
 
                 # Reshape out_grad to (N*H'*W', C_out)

@@ -16,7 +16,13 @@ if TYPE_CHECKING:
 
 
 class Dropout(Module):
-    def __init__(self, p=0.5) -> None:
+    def __init__(self, p: float = 0.5) -> None:
+        """
+        Dropout layer.
+
+        Args:
+            p: probability of dropping out a unit.
+        """
         super().__init__()
         self.p = p
 

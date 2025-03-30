@@ -6,11 +6,10 @@ import needle.init as init
 from needle.backend_selection import NDArray, array_api
 from needle.ops.op import TensorOp, TensorTupleOp
 from needle.ops.ops_tuple import make_tuple
-from needle.tensor import Tensor
 
 if TYPE_CHECKING:
     from needle.backend_selection import NDArray
-    from needle.tensor import TensorTuple
+    from needle.tensor import Tensor, TensorTuple
 
 
 class Stack(TensorOp):

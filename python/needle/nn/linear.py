@@ -5,12 +5,10 @@ from typing import TYPE_CHECKING, TypedDict
 from needle import init
 from needle.backend_selection import default_device
 from needle.nn.core import Module, Parameter
-from needle.ops.mathematic import broadcast_to
 
 if TYPE_CHECKING:
     from needle.tensor import Tensor
-    from needle.typing.device import AbstractBackend
-    from needle.typing.types import DType
+    from needle.typing import AbstractBackend, DType
 
 
 class Config(TypedDict):
@@ -56,5 +54,5 @@ class Linear(Module):
     def forward(self, X: Tensor) -> Tensor:
         X_weights = X @ self.weight
         if self.bias:
-            return X_weights + broadcast_to(self.bias, X_weights.shape)
+            return X_weights + self.bias.broadcast_to(X_weights.shape)
         return X_weights

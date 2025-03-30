@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import numpy as np
-
 import needle as ndl
 from needle.autograd.value import Value
 from needle.backend_selection import NDArray, array_api, default_device
@@ -13,8 +11,8 @@ from needle.backend_selection import NDArray, array_api, default_device
 if TYPE_CHECKING:
     from typing import Self
 
-    from needle.typing import DType, IndexType, Scalar, Shape
-    from needle.typing.device import AbstractBackend as Device
+    from needle.typing import AbstractBackend as Device
+    from needle.typing import DType, IndexType, Scalar, Shape, np_ndarray
 
 
 class Tensor(Value):
@@ -22,7 +20,7 @@ class Tensor(Value):
 
     def __init__(
         self,
-        array: np.ndarray | NDArray | Tensor,
+        array: np_ndarray | NDArray | Tensor,
         device: Device = default_device,
         dtype: DType = "float32",
         requires_grad: bool = True,
@@ -50,7 +48,7 @@ class Tensor(Value):
 
     @staticmethod
     def _array_from_numpy(
-        numpy_array: np.ndarray, device: Device, dtype: DType
+        numpy_array: np_ndarray, device: Device, dtype: DType
     ) -> NDArray:
         return array_api.array(numpy_array, device=device, dtype=dtype)
 
@@ -98,7 +96,7 @@ class Tensor(Value):
     def __str__(self) -> str:
         return self.realize_cached_data().__str__()
 
-    def numpy(self) -> np.ndarray:
+    def numpy(self) -> np_ndarray:
         return self.realize_cached_data().numpy()
 
     def __getitem__(self, index: IndexType) -> Tensor:
@@ -115,7 +113,7 @@ class Tensor(Value):
                 requires_grad=self.requires_grad,
             )
 
-    def __setitem__(self, index: IndexType, value) -> None:
+    def __setitem__(self, index: IndexType, value: NDArray | Scalar) -> None:
         self.realize_cached_data()[index] = value
 
     # Arithmetic operations

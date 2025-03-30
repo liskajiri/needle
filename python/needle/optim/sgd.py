@@ -2,8 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import numpy as np
-
+from needle.backend_selection import array_api
 from needle.nn.core import Parameter
 from needle.optim.base import Optimizer
 
@@ -26,7 +25,7 @@ class SGD(Optimizer):
 
         self.state = {}
         for p in self.params:
-            self.state[p] = Parameter(np.zeros(p.data.shape))
+            self.state[p] = Parameter(array_api.zeros(p.data.shape))
 
     def step(self) -> None:
         for p in self.params:

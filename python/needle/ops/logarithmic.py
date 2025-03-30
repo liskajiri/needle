@@ -48,7 +48,7 @@ def logsoftmax(a: Tensor) -> Tensor:
 
 
 class LogSumExp(TensorOp):
-    def __init__(self, axes: Shape | None = None) -> None:
+    def __init__(self, axes: Shape = ()) -> None:
         self.axes = (axes,) if isinstance(axes, int) else axes
 
     def compute(self, Z: NDArray) -> NDArray:
@@ -80,5 +80,5 @@ class LogSumExp(TensorOp):
         return out_grad * (exp_Z / denominator)
 
 
-def logsumexp(a: Tensor, axes: Shape | None = None) -> Tensor:
+def logsumexp(a: Tensor, axes: Shape = ()) -> Tensor:
     return LogSumExp(axes=axes)(a)

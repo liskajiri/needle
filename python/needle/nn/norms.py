@@ -10,8 +10,7 @@ from needle.nn.core import Module, Parameter
 
 if TYPE_CHECKING:
     from needle.tensor import Tensor
-    from needle.typing import DType
-    from needle.typing.device import AbstractBackend
+    from needle.typing import AbstractBackend, DType
 
 
 class Config(TypedDict):

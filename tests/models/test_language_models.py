@@ -124,7 +124,6 @@ def test_language_model_training(device: AbstractBackend) -> None:
     )
     if device.name == "cpu":
         # TODO: lower bounds
-        print(train_loss)
         np.testing.assert_array_less(train_loss, 6.65)
         # np.testing.assert_array_less(train_loss, 5.413616)
         np.testing.assert_array_less(test_loss, 6.6)

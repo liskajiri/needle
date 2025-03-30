@@ -1,6 +1,11 @@
-from typing import Any
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
 
 from needle.data.dataset import Dataset
+
+if TYPE_CHECKING:
+    from typing import Any
 
 
 class NDArrayDataset(Dataset):

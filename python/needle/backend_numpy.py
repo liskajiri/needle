@@ -3,13 +3,24 @@ This file defies specific implementations of devices
 when using numpy as NDArray backend.
 """
 
+from __future__ import annotations
+
 import sys
+from typing import TYPE_CHECKING
 
 import numpy as np
-from numpy import ndarray as NDArray
 
-from needle.typing.device import AbstractBackend
-from needle.typing.types import DType, Scalar, Shape
+from needle.typing import AbstractBackend
+
+if TYPE_CHECKING:
+    from needle.typing import (
+        DType,
+        Scalar,
+        Shape,
+    )
+    from needle.typing import (
+        np_ndarray as NDArray,
+    )
 
 __device_name__ = "numpy"
 _datatype = np.float32
@@ -69,15 +80,12 @@ class NumpyBackend(AbstractBackend):
         return np.full(shape, fill_value, dtype=dtype)
 
 
-### Devices ###
+# Devices
 
 
 def cpu() -> AbstractBackend:
     """Return cpu device."""
     return NumpyBackend("numpy", sys.modules[__name__])
-
-
-default_device = cpu()
 
 
 def all_devices() -> list[AbstractBackend]:
@@ -93,12 +101,15 @@ class NumpyCUDADevice:
         return False
 
 
-def cuda():
+def cuda() -> NumpyCUDADevice:
     # raise NotImplementedError("CUDA is not supported with numpy backend")
     return NumpyCUDADevice("np_dummy-cuda")
 
 
-### API functions ###
+default_device = cpu()
+
+
+# API functions
 
 
 def from_numpy(a, out):
