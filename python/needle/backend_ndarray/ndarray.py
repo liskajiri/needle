@@ -49,7 +49,7 @@ class BackendDevice(AbstractBackend):
             shape = (shape,)
         return NDArray(np.random.rand(*shape).astype(dtype), device=self)
 
-    def one_hot(self, n: int, i: int, dtype: DType) -> NDArray:
+    def one_hot(self, n: int, i: IndexType, dtype: DType) -> NDArray:
         """Create a one-hot vector.
 
         Args:
@@ -63,7 +63,6 @@ class BackendDevice(AbstractBackend):
         Returns:
             NDArray: A one-hot vector.
         """
-        # TODO: why are we constructing a NxN matrix to select a vector?
         return NDArray(np.eye(n, dtype=dtype)[i], device=self)
 
     def zeros(self, shape: Shape, dtype: DType) -> NDArray:
@@ -1091,13 +1090,14 @@ class NDArray:
         return out
 
 
-def broadcast_shapes(*shapes: tuple) -> tuple:
-    """
-    Return broadcasted shape for multiple input shapes.
+def broadcast_shapes(*shapes: tuple[Shape, ...]) -> tuple:
+    """Return broadcasted shape for multiple input shapes.
 
-    Broadcasting rules:
-        1. Two dimensions are compatible when they are equal.
-        2. One of the dimensions is 1.
+    Broadcasting rules (numpy-style):
+        1. Start with the trailing (rightmost) dimensions and continue left.
+        2. Two dimensions are compatible when:
+           - They are equal
+           - One of them is 1
 
     Args:
         *shapes: one or more shapes as tuples
@@ -1105,6 +1105,19 @@ def broadcast_shapes(*shapes: tuple) -> tuple:
         tuple: broadcast-compatible shape
     Raises:
         ValueError: If shapes cannot be broadcast together
+
+
+    Examples:
+        >>> broadcast_shapes((2, 3), (1, 3))
+        (2, 3)
+        >>> broadcast_shapes((2, 3), (3,))
+        (2, 3)
+        >>> broadcast_shapes((8, 1, 6, 1), (7, 1, 5), (8, 7, 6, 5))
+        (8, 7, 6, 5)
+        >>> broadcast_shapes((2, 3), (2, 4))
+        Traceback (most recent call last):
+        ...
+        ValueError: Incompatible shapes for broadcasting: ((2, 3), (2, 4))
     """
     # If only one shape provided, return it
     if len(shapes) == 1:
@@ -1113,17 +1126,18 @@ def broadcast_shapes(*shapes: tuple) -> tuple:
     from builtins import max as pymax
 
     max_dims = pymax([len(shape) for shape in shapes])
-    # pad the shapes with 1s to make them the same length
-    aligned = [(1,) * (max_dims - len(s)) + s for s in shapes]
+    # Left-pad shorter shapes with 1s to align dimensions
+    aligned_shapes = [(1,) * (max_dims - len(s)) + s for s in shapes]
 
+    # Determine output dimension for each position
     result = []
-    for dims in zip(*aligned):
+    for dims in zip(*aligned_shapes):
         max_dim = pymax(dims)
         for d in dims:
-            # See broadcast rules
             if d != 1 and d != max_dim:
                 raise ValueError(f"Incompatible shapes for broadcasting: {shapes}")
         result.append(max_dim)
+
     return tuple(result)
 
 
@@ -1131,7 +1145,9 @@ def from_numpy(a):
     return NDArray(a)
 
 
-def array(a, dtype="float32", device: AbstractBackend = default_device) -> NDArray:
+def array(
+    a: np.ndarray | NDArray, dtype="float32", device: AbstractBackend = default_device
+) -> NDArray:
     """Convenience methods to match numpy a bit more closely."""
     if dtype != "float32":
         logger.warning(f"Only support float32 for now, got {dtype}")
@@ -1173,7 +1189,7 @@ def broadcast_to(array, new_shape):
     return array.broadcast_to(new_shape)
 
 
-def max(array, axis=None, keepdims=False):
+def max(array: NDArray, axis=None, keepdims: bool = False) -> NDArray:
     return array.max(axis=axis, keepdims=keepdims)
 
 
@@ -1205,7 +1221,7 @@ def flip(a: NDArray, axes: tuple[int, ...] | int) -> NDArray:
     return a.flip(axes)
 
 
-def stack(arrays: tuple[NDArray], axis: int = 0) -> NDArray:
+def stack(arrays: tuple[NDArray] | list[NDArray], axis: int = 0) -> NDArray:
     """Stack a list of arrays along specified axis.
 
     Args:
