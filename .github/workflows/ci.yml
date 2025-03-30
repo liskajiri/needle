@@ -12,122 +12,28 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  check-files:
+    uses: ./.github/workflows/check-changed-files.yml
+
   style:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      # Add pre-commit cache step
-      - name: Cache pre-commit
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/pre-commit
-          key: pre-commit-${{ hashFiles('.pre-commit-config.yaml') }}
-          restore-keys: pre-commit-
+    uses: ./.github/workflows/style.yml
 
-      - name: Lint
-        uses: prefix-dev/setup-pixi@v0.8.3
-      - name: style
-        run: pixi run style
+  pyright:
+    needs: check-files
+    uses: ./.github/workflows/pyright.yml
+    with:
+      python_changed: ${{ needs.check-files.outputs.python_changed == 'true' }}
 
-  check-changed-files:
-
-    permissions:
-      contents: read
-      pull-requests: read
-
-    runs-on: ubuntu-latest
-    outputs:
-      python_changed: ${{ steps.filter.outputs.python }}
-      cpp_changed: ${{ steps.filter.outputs.cpp }}
-      cuda_changed: ${{ steps.filter.outputs.cuda }}
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Check for Python file changes
-        id: filter
-        uses: dorny/paths-filter@v3
-        with:
-          filters: |
-            python:
-              - '**/*.py'
-            cpp:
-              - '**/*.cpp'
-            cuda:
-              - '**/*.cu'
-
-  # TODO: CUDA build
   build:
-    needs: check-changed-files
-    if: needs.check-changed-files.outputs.cpp_changed == 'true'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Test
-        uses: prefix-dev/setup-pixi@v0.8.3
-        with:
-          pixi-version: v0.40.3
-          cache: true
-          cache-write:
-            ${{ github.event_name == 'push' && github.ref_name == 'main' }}
-      - run: pixi run build
+    needs: check-files
+    uses: ./.github/workflows/build.yml
+    with:
+      cpp_changed: ${{ needs.check-files.outputs.cpp_changed == 'true' }}
 
   test:
-    timeout-minutes: 20
-
-    # test report needs write permissions
-    permissions:
-      contents: read
-      issues: read
-      checks: write
-      pull-requests: write
-
-    needs: check-changed-files
-    if: >
-        needs.check-changed-files.outputs.python_changed == 'true' ||
-        needs.check-changed-files.outputs.cpp_changed == 'true' ||
-        needs.check-changed-files.outputs.cuda_changed == 'true'
-    strategy:
-      matrix:
-        backend: [nd]
-        # TODO: Add other backends
-      fail-fast: false
-
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Cache datasets
-        uses: actions/cache@v4
-        with:
-          path: data
-          key: ${{ runner.os }}-datasets-${{ hashFiles('data/**') }}-v1
-          restore-keys: |
-            ${{ runner.os }}-datasets-
-
-      - name: Set backend
-        run: echo "NEEDLE_BACKEND=${{ matrix.backend }}" >> "$GITHUB_ENV"
-      - name: Test
-        uses: prefix-dev/setup-pixi@v0.8.3
-      - run: pixi run test_all
-
-      - name: Publish Test Results
-        uses: EnricoMi/publish-unit-test-result-action@v2
-        if: matrix.backend == 'nd' && always()
-        with:
-          files: |
-            reports/test_report.xml
-
-      - name: Upload results to Codecov
-        uses: codecov/codecov-action@v5
-        if: matrix.backend == 'nd' && always()
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          slug: liskajiri/needle
-          files: reports/coverage.xml
-
-      - name: Upload test results to Codecov
-        if: matrix.backend == 'nd' && always()
-        uses: codecov/test-results-action@v1
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          files: reports/test_report.xml
+    needs: check-files
+    uses: ./.github/workflows/test.yml
+    with:
+      python_changed: ${{ needs.check-files.outputs.python_changed == 'true' }}
+      cpp_changed: ${{ needs.check-files.outputs.cpp_changed == 'true' }}
+      cuda_changed: ${{ needs.check-files.outputs.cuda_changed == 'true' }}
