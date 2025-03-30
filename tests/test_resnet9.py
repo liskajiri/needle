@@ -139,7 +139,7 @@ def test_resnet9_first_epoch(device):
     y = model(A)
 
     for m in torch_model.modules():
-        if isinstance(m, (torch.nn.Conv2d, torch.nn.Linear)):
+        if isinstance(m, (torch.nn.Conv2d | torch.nn.Linear)):
             torch.nn.init.kaiming_normal_(m.weight, mode="fan_in")
             if m.bias is not None:
                 torch.nn.init.zeros_(m.bias)
