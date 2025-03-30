@@ -1,4 +1,3 @@
-import needle as ndl
 import needle.nn as nn
 from needle.backend_selection import default_device
 from needle.tensor import Tensor
