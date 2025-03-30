@@ -1,11 +1,18 @@
+from __future__ import annotations
+
 import pickle
 from pathlib import Path
+from typing import TYPE_CHECKING
 
-from needle.backend_ndarray.ndarray import NDArray
 from needle.backend_selection import array_api
 from needle.data.dataset import Dataset
 
 CIFARPath = Path("data/cifar-10/cifar-10-batches-py")
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from needle.backend_ndarray.ndarray import NDArray
 
 
 class CIFAR10Dataset(Dataset):
@@ -17,7 +24,7 @@ class CIFAR10Dataset(Dataset):
         base_folder: Path = CIFARPath,
         train: bool = True,
         p: float | None = 0.5,
-        transforms: list | None = None,
+        transforms: list[Callable] = [],
     ) -> None:
         """
         Parameters:

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from collections.abc import Sequence
-from typing import TYPE_CHECKING, Generic, TypeVar
+from typing import TYPE_CHECKING, TypeVar
 
 T = TypeVar("T")
 
@@ -10,7 +10,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
 
-class Dataset(Sequence, Generic[T], ABC):
+class Dataset[T](Sequence, ABC):
     """
     An abstract class representing a `Dataset`.
 
@@ -57,7 +57,7 @@ class Dataset(Sequence, Generic[T], ABC):
         self._transforms = tuple(transforms) if transforms else ()
 
     @abstractmethod
-    def __getitem__(self, index: int) -> T:
+    def __getitem__(self, index: int | slice) -> Sequence[T]:
         raise NotImplementedError
 
     @abstractmethod

@@ -3,7 +3,6 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
-from needle.backend_ndarray.ndarray import transpose
 from needle.backend_selection import array_api
 from needle.ops.op import TensorOp
 from needle.ops.view import dilate
@@ -25,14 +24,12 @@ class Conv(TensorOp):
         kernel_height, kernel_width, _W, out_channels = kernel.shape
 
         if self.padding > 0:
-            img = img.pad(
-                (
-                    (0, 0),
-                    (self.padding, self.padding),
-                    (self.padding, self.padding),
-                    (0, 0),
-                )
-            )
+            img = img.pad((
+                (0, 0),
+                (self.padding, self.padding),
+                (self.padding, self.padding),
+                (0, 0),
+            ))
             height += 2 * self.padding
             width += 2 * self.padding
 
@@ -88,14 +85,12 @@ class Conv(TensorOp):
 
         X_padded = X.realize_cached_data()
         if self.padding > 0:
-            X_padded = X_padded.pad(
-                (
-                    (0, 0),
-                    (self.padding, self.padding),
-                    (self.padding, self.padding),
-                    (0, 0),
-                )
-            )
+            X_padded = X_padded.pad((
+                (0, 0),
+                (self.padding, self.padding),
+                (self.padding, self.padding),
+                (0, 0),
+            ))
 
         # TODO: Convert this to a convolution operation
         W_grad = array_api.zeros((K_H, K_W, C_in, C_out))
@@ -111,7 +106,9 @@ class Conv(TensorOp):
 
                 # Reshape X_windows to (C_in, N*H'*W')
                 X_windows = (
-                    transpose(X_windows, (3, 0, 1, 2)).compact().reshape((C_in, -1))
+                    array_api.transpose(X_windows, (3, 0, 1, 2))
+                    .compact()
+                    .reshape((C_in, -1))
                 )
 
                 # Reshape out_grad to (N*H'*W', C_out)

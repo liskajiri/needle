@@ -21,7 +21,7 @@ class Value(ABC):
 
     # trace of computational graph
     op: Op | None
-    inputs: Iterable[Self]
+    inputs: list[Self]
     # The following fields are cached fields for dynamic computation
     cached_data: NDArray | None
     requires_grad: bool
@@ -38,7 +38,7 @@ class Value(ABC):
         if requires_grad is None:
             requires_grad = any(x.requires_grad for x in inputs)
         self.op = op
-        self.inputs = inputs
+        self.inputs = list(inputs)
         self.num_outputs = num_outputs
         self.cached_data = cached_data
         self.requires_grad = requires_grad

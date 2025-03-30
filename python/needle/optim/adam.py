@@ -3,8 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-import numpy as np
-
+from needle.backend_selection import array_api
 from needle.nn.core import Parameter
 from needle.optim.base import Optimizer
 
@@ -38,10 +37,8 @@ class Adam(Optimizer):
 
         self.state = {}
         for p in self.params:
-            zeros = np.zeros(p.data.shape)
+            zeros = array_api.zeros(p.data.shape, dtype=p.data.dtype)
             self.state[p] = AdamState(
-                # TODO: ndl.zeros has a weird bug, where it adds another tuple item
-                # ie. (64, 32) becomes ((64, 32),)
                 Parameter(zeros),
                 Parameter(zeros),
             )

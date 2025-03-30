@@ -1,8 +1,13 @@
+from __future__ import annotations
+
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from needle.backend_selection import NDArray, array_api, default_device
 from needle.tensor import Tensor
-from needle.typing import AbstractBackend, DType
+
+if TYPE_CHECKING:
+    from needle.typing import AbstractBackend, DType
 
 
 class Dictionary:

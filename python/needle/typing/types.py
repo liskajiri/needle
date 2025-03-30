@@ -1,5 +1,7 @@
 from typing import TYPE_CHECKING
 
+import numpy as np
+
 if TYPE_CHECKING:
     from numpy import ndarray
 
@@ -17,3 +19,6 @@ float32: DType = "float32"
 type BatchType = tuple[Tensor, ...]
 # TODO: better definition of index type
 type IndexType = int | slice | tuple[int | slice, ...] | list[int] | NDArray | ndarray
+# TODO: Type for axes
+
+type np_ndarray = np.ndarray

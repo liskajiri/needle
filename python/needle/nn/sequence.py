@@ -1,13 +1,17 @@
+from __future__ import annotations
+
 from math import sqrt
-from typing import TypedDict
+from typing import TYPE_CHECKING, TypedDict
 
 import needle.init as init
 import needle.nn as nn
 import needle.ops as ops
 from needle.backend_selection import default_device
 from needle.nn import Module
-from needle.tensor import Tensor
-from needle.typing import AbstractBackend, DType
+
+if TYPE_CHECKING:
+    from needle.tensor import Tensor
+    from needle.typing import AbstractBackend, DType
 
 
 class SequenceModelConfigs(TypedDict):

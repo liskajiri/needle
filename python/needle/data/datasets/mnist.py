@@ -1,9 +1,15 @@
+from __future__ import annotations
+
 import gzip
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import numpy as np
 
 from needle.data.dataset import Dataset
+
+if TYPE_CHECKING:
+    from needle.typing import np_ndarray
 
 
 class MNISTPaths:
@@ -64,7 +70,7 @@ class MNISTDataset(Dataset):
     @staticmethod
     def parse_mnist(
         images_file: Path, labels_file: Path
-    ) -> tuple[np.ndarray, np.ndarray]:
+    ) -> tuple[np_ndarray, np_ndarray]:
         # Read the images file
         with gzip.open(images_file, "rb") as image_file:
             image_file.read(16)  # Skip the header

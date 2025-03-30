@@ -10,8 +10,7 @@ from needle.nn.core import Module, Parameter
 
 if TYPE_CHECKING:
     from needle.tensor import Tensor
-    from needle.typing import DType
-    from needle.typing.device import AbstractBackend
+    from needle.typing import AbstractBackend, DType
 
 
 class Config(TypedDict):
@@ -85,12 +84,10 @@ class BatchNorm2d(BatchNorm1d):
     def forward(self, x: Tensor) -> Tensor:
         # format: NCHW -> NHCW -> NHWC
         batch_size, channels, height, width = x.shape
-        x = ops.transpose(x, (0, 2, 3, 1)).reshape(
-            (
-                batch_size * height * width,
-                channels,
-            )
-        )
+        x = ops.transpose(x, (0, 2, 3, 1)).reshape((
+            batch_size * height * width,
+            channels,
+        ))
         y = super().forward(x).reshape((batch_size, height, width, channels))
         return y.transpose((0, 3, 1, 2))
 

@@ -1,6 +1,12 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from needle import ops
 from needle.nn.core import Module
-from needle.tensor import Tensor
+
+if TYPE_CHECKING:
+    from needle.tensor import Tensor
 
 __all__ = ["ReLU", "Sigmoid", "Tanh"]
 

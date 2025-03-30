@@ -1,16 +1,7 @@
-from needle.backend_ndarray import ndarray
-from needle.backend_ndarray.ndarray import (
-    BackendDevice,
-    NDArray,
-    all_devices,
+from needle.backend_ndarray.array_api import (
     array,
-    broadcast_shapes,
     broadcast_to,
     concatenate,
-    cpu,
-    cpu_numpy,
-    cuda,
-    default_device,
     empty,
     exp,
     flip,
@@ -27,6 +18,16 @@ from needle.backend_ndarray.ndarray import (
     tanh,
     transpose,
     zeros,
+)
+from needle.backend_ndarray.ndarray import (
+    BackendDevice,
+    NDArray,
+    all_devices,
+    broadcast_shapes,
+    cpu,
+    cpu_numpy,
+    cuda,
+    default_device,
 )
 
 __all__ = [
@@ -49,7 +50,6 @@ __all__ = [
     "log",
     "max",
     "maximum",
-    "ndarray",
     "ones",
     "reshape",
     "split",
