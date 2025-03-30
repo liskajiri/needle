@@ -1,6 +1,8 @@
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from numpy import ndarray
+
     from needle.tensor import Tensor
     from python.needle.backend_selection import NDArray
 
@@ -14,4 +16,4 @@ float32: DType = "float32"
 
 type BatchType = tuple[Tensor, ...]
 # TODO: better definition of index type
-type IndexType = int | slice | tuple[int | slice, ...] | list[int] | NDArray
+type IndexType = int | slice | tuple[int | slice, ...] | list[int] | NDArray | ndarray

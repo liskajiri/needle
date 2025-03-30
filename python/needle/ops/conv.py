@@ -24,14 +24,12 @@ class Conv(TensorOp):
         kernel_height, kernel_width, _W, out_channels = kernel.shape
 
         if self.padding > 0:
-            img = img.pad(
-                (
-                    (0, 0),
-                    (self.padding, self.padding),
-                    (self.padding, self.padding),
-                    (0, 0),
-                )
-            )
+            img = img.pad((
+                (0, 0),
+                (self.padding, self.padding),
+                (self.padding, self.padding),
+                (0, 0),
+            ))
             height += 2 * self.padding
             width += 2 * self.padding
 
@@ -83,18 +81,16 @@ class Conv(TensorOp):
         if X_grad.shape != X.shape:
             # In some cases with odd dimensions and strides, we might need to crop
             slices = tuple(slice(0, X.shape[i]) for i in range(4))
-            X_grad = X_grad.realize_cached_data()[slices]
+            X_grad = X_grad[slices]
 
         X_padded = X.realize_cached_data()
         if self.padding > 0:
-            X_padded = X_padded.pad(
-                (
-                    (0, 0),
-                    (self.padding, self.padding),
-                    (self.padding, self.padding),
-                    (0, 0),
-                )
-            )
+            X_padded = X_padded.pad((
+                (0, 0),
+                (self.padding, self.padding),
+                (self.padding, self.padding),
+                (0, 0),
+            ))
 
         # TODO: Convert this to a convolution operation
         W_grad = array_api.zeros((K_H, K_W, C_in, C_out))

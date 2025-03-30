@@ -66,7 +66,7 @@ class LogSumExp(TensorOp):
     def gradient(self, out_grad: Tensor, node: Tensor) -> Tensor:
         # gradient of LogSumExp is softmax
         Z = node.inputs[0]
-        max_Z = array_api.max(Z.cached_data, axis=self.axes, keepdims=True)
+        max_Z = array_api.max(Z.realize_cached_data(), axis=self.axes, keepdims=True)
         exp_Z = exp(Z - max_Z)
         denominator = summation(exp_Z, axes=self.axes)
         # denominator has a different shape than numerator

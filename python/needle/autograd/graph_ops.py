@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from collections import defaultdict
 from typing import TYPE_CHECKING
 
@@ -32,10 +33,13 @@ def compute_gradient_of_variables(output_tensor: Tensor, out_grad: Tensor) -> No
     # taking gradient wrt.
     reverse_topo_order = list(reversed(find_topo_sort([output_tensor])))
 
-    for node in reverse_topo_order:
+    for indent, node in enumerate(reverse_topo_order):
         node.grad = _sum_node_list(node_to_output_grads[node])
+        logging.debug(f"{indent * '='} Node: {node.__class__.__name__}")
+        logging.debug(f"{indent * '='} Grad: {node.grad.__class__.__name__}")
 
         if node.op:
+            logging.debug(f"{indent * '='} OP: {node.op.__class__.__name__}")
             # partial adjoints
             grads = node.op.gradient_as_tuple(node.grad, node)
             for input_node, grad in zip(node.inputs, grads):
@@ -90,11 +94,9 @@ def print_operations(output_node: Tensor) -> None:
 
     for indent, node in enumerate(reverse_topo_order):
         node.grad = _sum_node_list(node_to_output_grads[node])
-        print(f"{indent * '='} Grad_shape:{node.grad.shape}")
 
         if node.op:
             # partial adjoints
-            print(f"{indent * '='} OP: {node.op.__class__.__name__}")
             grads = node.op.gradient_as_tuple(node.grad, node)
             for input_node, grad in zip(node.inputs, grads):
                 node_to_output_grads[input_node].append(grad)  # type: ignore

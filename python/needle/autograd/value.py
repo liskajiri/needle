@@ -4,6 +4,7 @@ from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable
     from typing import Self
 
     from needle.backend_selection import NDArray
@@ -20,7 +21,7 @@ class Value(ABC):
 
     # trace of computational graph
     op: Op | None
-    inputs: list[Self]
+    inputs: Iterable[Self]
     # The following fields are cached fields for dynamic computation
     cached_data: NDArray | None
     requires_grad: bool
@@ -29,7 +30,7 @@ class Value(ABC):
     def _init(
         self,
         op: Op | None = None,
-        inputs: list[Self] = [],
+        inputs: Iterable[Self] = [],
         cached_data: NDArray | None = None,
         num_outputs: int = 1,
         requires_grad: bool | None = None,
@@ -50,8 +51,11 @@ class Value(ABC):
             return self.cached_data
         # note: data implicitly calls realized cached data
         assert self.op is not None, "Cannot call realize_cached_data on a leaf node"
+        for x in self.inputs:
+            assert isinstance(x, Value), "Inputs must be of type Value"
+
         self.cached_data = self.op.compute(
-            *[x.realize_cached_data() for x in self.inputs]
+            *tuple(x.realize_cached_data() for x in self.inputs)
         )
         return self.cached_data
 
@@ -69,7 +73,7 @@ class Value(ABC):
         return value
 
     @classmethod
-    def make_from_op(cls, op: Op, inputs: list[Self]) -> Self:
+    def make_from_op(cls, op: Op, inputs: Iterable[Self]) -> Self:
         value = cls.__new__(cls)
         value._init(op, inputs)
 
