@@ -20,7 +20,7 @@ class Op(ABC):
         raise NotImplementedError()
 
     @abstractmethod
-    def compute(self, arr: tuple[NDArray, ...]) -> NDArray:
+    def compute(self, *arr: tuple[NDArray, ...]) -> NDArray:
         """Calculate forward pass of operator.
 
         Parameters

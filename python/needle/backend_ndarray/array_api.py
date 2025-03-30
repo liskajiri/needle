@@ -17,7 +17,9 @@ def from_numpy(a: np_ndarray) -> NDArray:
 
 
 def array(
-    a: np_ndarray | NDArray, dtype="float32", device: AbstractBackend = default_device
+    a: np_ndarray | NDArray | list,
+    dtype="float32",
+    device: AbstractBackend = default_device,
 ) -> NDArray:
     """Convenience methods to match numpy a bit more closely."""
     if dtype != "float32":

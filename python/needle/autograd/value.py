@@ -55,7 +55,7 @@ class Value(ABC):
             assert isinstance(x, Value), "Inputs must be of type Value"
 
         self.cached_data = self.op.compute(
-            *tuple(x.realize_cached_data() for x in self.inputs)
+            *tuple(x.realize_cached_data() for x in self.inputs)  # type: ignore
         )
         return self.cached_data
 
