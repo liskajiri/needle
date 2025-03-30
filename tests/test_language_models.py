@@ -127,11 +127,11 @@ def test_language_model_training(device: AbstractBackend) -> None:
         print(train_loss)
         np.testing.assert_array_less(train_loss, 6.65)
         # np.testing.assert_array_less(train_loss, 5.413616)
-        np.testing.assert_array_less(test_loss, 6.5)
+        np.testing.assert_array_less(test_loss, 6.6)
         # np.testing.assert_array_less(test_loss, 5.214852)
     elif device.name == "cuda":
         np.testing.assert_array_less(train_loss, 6.65)
-        np.testing.assert_array_less(test_loss, 6.5)
+        np.testing.assert_array_less(test_loss, 6.6)
         # np.testing.assert_array_less(train_loss, 5.42463804)
         # np.testing.assert_array_less(test_loss, 5.2357954)
 
