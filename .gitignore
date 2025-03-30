@@ -140,8 +140,7 @@ cython_debug/
 nn_implementations/*
 figures/*
 
-notebooks/hw3.ipynb
-notebooks/hw4.ipynb
+notebooks/
 .build/*
 .idea/*
 *.vscode*
