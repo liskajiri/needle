@@ -1,0 +1,21 @@
+---
+name: Pyright Type Checking
+
+on:
+  workflow_call:
+    inputs:
+      python_changed:
+        required: true
+        type: boolean
+
+jobs:
+  type-check:
+    if: inputs.python_changed == true
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: jakebailey/pyright-action@v2
+        with:
+          version: 1.1.311
