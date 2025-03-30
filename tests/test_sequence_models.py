@@ -80,7 +80,9 @@ def test_rnn_cell(
 @pytest.mark.parametrize("bias", BIAS)
 @pytest.mark.parametrize("init_hidden", INIT_HIDDEN)
 @pytest.mark.parametrize("device", _DEVICES, ids=["cpu", "cuda"])
-def test_lstm_cell(batch_size, input_size, hidden_size, bias, init_hidden, device):
+def test_lstm_cell(
+    batch_size, input_size, hidden_size, bias, init_hidden, device
+) -> None:
     x = rng.standard_normal((batch_size, input_size), dtype=np.float32)
     h0 = rng.standard_normal((batch_size, hidden_size), dtype=np.float32)
     c0 = rng.standard_normal((batch_size, hidden_size), dtype=np.float32)
@@ -92,7 +94,6 @@ def test_lstm_cell(batch_size, input_size, hidden_size, bias, init_hidden, devic
         h_, c_ = model_(torch.tensor(x), None)
 
     model = nn.LSTMCell(input_size, hidden_size, device=device, bias=bias)
-
     model.W_ih = ndl.Tensor(
         model_.weight_ih.detach().numpy().transpose(), device=device
     )
@@ -113,14 +114,14 @@ def test_lstm_cell(batch_size, input_size, hidden_size, bias, init_hidden, devic
 
     assert h.device == device
     assert c.device == device
-    np.testing.assert_allclose(h_.detach().numpy(), h.numpy(), atol=1e-5, rtol=1e-5)
-    np.testing.assert_allclose(c_.detach().numpy(), c.numpy(), atol=1e-5, rtol=1e-5)
+    np.testing.assert_allclose(h.numpy(), h_.detach().numpy(), atol=1e-5, rtol=1e-5)
+    np.testing.assert_allclose(c.numpy(), c_.detach().numpy(), atol=1e-5, rtol=1e-5)
 
     h.sum().backward()
     h_.sum().backward()
     np.testing.assert_allclose(
-        model_.weight_ih.grad.detach().numpy().transpose(),
         model.W_ih.grad.numpy(),
+        model_.weight_ih.grad.detach().numpy().transpose(),
         atol=1e-5,
         rtol=1e-5,
     )
@@ -135,6 +136,7 @@ def test_lstm_cell(batch_size, input_size, hidden_size, bias, init_hidden, devic
 @pytest.mark.parametrize("init_hidden", INIT_HIDDEN)
 @pytest.mark.parametrize("nonlinearity", NONLINEARITIES)
 @pytest.mark.parametrize("device", _DEVICES, ids=["cpu", "cuda"])
+@pytest.mark.slow
 def test_rnn(
     seq_length,
     num_layers,
@@ -277,4 +279,54 @@ def test_lstm(
         model_.weight_ih_l0.grad.numpy().transpose(),
         atol=1e-5,
         rtol=1e-5,
+    )
+
+
+@pytest.mark.parametrize("seq_length", SEQ_LENGTHS)
+@pytest.mark.parametrize("batch_size", BATCH_SIZES)
+@pytest.mark.parametrize("num_embeddings", [10, 100])
+@pytest.mark.parametrize("embedding_dim", [8, 32])
+@pytest.mark.parametrize("device", _DEVICES, ids=["cpu", "cuda"])
+def test_embedding(
+    seq_length, batch_size, num_embeddings, embedding_dim, device
+) -> None:
+    """Tests the Embedding module against PyTorch's implementation.
+
+    Verifies both forward pass correctness and gradient computation.
+    """
+    # Generate random word indices with values in range [0, num_embeddings-1]
+    x = rng.integers(0, num_embeddings, size=(seq_length, batch_size))
+
+    model_ = torch.nn.Embedding(num_embeddings, embedding_dim)
+    output_ = model_(torch.tensor(x))
+
+    model = nn.Embedding(num_embeddings, embedding_dim, device=device)
+    model.weight = ndl.Tensor(model_.weight.detach().numpy(), device=device)
+
+    output = model(ndl.Tensor(x, device=device, dtype="int32"))
+
+    assert output.device == device
+
+    np.testing.assert_allclose(
+        output_.detach().numpy(), output.numpy(), atol=1e-5, rtol=1e-5
+    )
+
+    output.sum().backward()
+    output_.sum().backward()
+
+    np.testing.assert_allclose(
+        model_.weight.grad.detach().numpy(),
+        model.weight.grad.numpy(),
+        atol=1e-5,
+        rtol=1e-5,
+    )
+
+    # verify specific indices map to correct embeddings
+    test_indices = rng.integers(0, num_embeddings, size=(5, 1), dtype=np.int32)
+
+    needle_test = model(ndl.Tensor(test_indices, device=device, dtype="int32"))
+    torch_test = model_(torch.tensor(test_indices))
+
+    np.testing.assert_allclose(
+        torch_test.detach().numpy(), needle_test.numpy(), atol=1e-5, rtol=1e-5
     )

@@ -728,6 +728,76 @@ def test_array_split(x, indices, device):
         )
 
 
+@pytest.mark.parametrize(
+    "shapes, expected",
+    [
+        # Basic cases
+        ([(2, 3), (1, 3)], (2, 3)),
+        ([(2, 3), (3,)], (2, 3)),
+        ([(2,), (2, 1)], (2, 2)),
+        ([(2, 3), (1,)], (2, 3)),
+        ([(2, 3), (1, 1)], (2, 3)),
+        ([(2, 2, 3), (3,)], (2, 2, 3)),
+        ([(8, 1, 6, 1), (7, 1, 5), (8, 7, 6, 5)], (8, 7, 6, 5)),
+        ([(15, 3, 5), (15, 1, 5)], (15, 3, 5)),
+        ([(15, 3, 5), (3, 5)], (15, 3, 5)),
+        ([(15, 3, 5), (3, 1)], (15, 3, 5)),
+        # Single-dimension arrays
+        ([(5,)], (5,)),
+        ([(1,), (5,)], (5,)),
+        # Empty arrays
+        ([(0,), (0,)], (0,)),
+        ([(1, 0), (5, 0)], (5, 0)),
+    ],
+)
+def test_broadcast_shapes(shapes, expected):
+    """Test that broadcast_shapes returns the correct shape for compatible arrays."""
+    result = ndl.broadcast_shapes(*shapes)
+    assert result == expected, f"Expected {expected}, got {result}"
+
+
+@pytest.mark.parametrize(
+    "shapes",
+    [
+        # Incompatible dimensions
+        [(2, 3), (2, 4)],
+        [(3,), (4,)],
+        [(2, 1), (8, 4, 3)],
+        [(5, 6), (5, 7)],
+        # Complex incompatible cases
+        [(2, 3, 4), (2, 2, 4)],
+        [(8, 1, 3, 1), (7, 2, 3)],
+    ],
+)
+def test_broadcast_shapes_failure(shapes):
+    """Test that broadcast_shapes raises ValueError for incompatible shapes."""
+    with pytest.raises(ValueError, match="Incompatible shapes for broadcasting"):
+        ndl.broadcast_shapes(*shapes)
+
+
+@pytest.mark.parametrize(
+    "shapes, expected, np_arrays",
+    [
+        # Test broadcast shapes with actual arrays
+        ([(2, 3), (1, 3)], (2, 3), [np.ones((2, 3)), np.ones((1, 3))]),
+        ([(2,), (2, 1)], (2, 2), [np.ones((2,)), np.ones((2, 1))]),
+        ([(3, 1), (1, 4)], (3, 4), [np.ones((3, 1)), np.ones((1, 4))]),
+    ],
+)
+def test_broadcast_shape_consistency(shapes, expected, np_arrays):
+    """Test that broadcast_shapes is consistent with numpy's broadcasting behavior."""
+    result = ndl.broadcast_shapes(*shapes)
+    assert result == expected
+
+    try:
+        np_result = np.broadcast_arrays(*np_arrays)
+        assert all(arr.shape == expected for arr in np_result)
+    except ValueError:
+        pytest.fail(
+            f"NumPy couldn't broadcast shapes {shapes} but our needle returned {result}"
+        )
+
+
 def prepare(a):
     return (a.numpy().flatten()[:128], a.strides, a.shape)
 
