@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import numpy as np
-
 import needle as ndl
 from needle.autograd.value import Value
 from needle.backend_selection import NDArray, array_api, default_device

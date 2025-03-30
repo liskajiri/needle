@@ -84,10 +84,12 @@ class BatchNorm2d(BatchNorm1d):
     def forward(self, x: Tensor) -> Tensor:
         # format: NCHW -> NHCW -> NHWC
         batch_size, channels, height, width = x.shape
-        x = ops.transpose(x, (0, 2, 3, 1)).reshape((
-            batch_size * height * width,
-            channels,
-        ))
+        x = ops.transpose(x, (0, 2, 3, 1)).reshape(
+            (
+                batch_size * height * width,
+                channels,
+            )
+        )
         y = super().forward(x).reshape((batch_size, height, width, channels))
         return y.transpose((0, 3, 1, 2))
 
