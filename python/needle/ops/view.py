@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import needle.init as init
 from needle.backend_selection import NDArray, array_api
 from needle.ops.op import TensorOp, TensorTupleOp
 from needle.ops.ops_tuple import make_tuple
@@ -9,7 +10,7 @@ from needle.tensor import Tensor
 
 if TYPE_CHECKING:
     from needle.backend_selection import NDArray
-    from needle.tensor import Tensor, TensorTuple
+    from needle.tensor import TensorTuple
 
 
 class Stack(TensorOp):
@@ -48,7 +49,7 @@ class Split(TensorTupleOp):
     def compute(self, arr: NDArray) -> list[NDArray]:
         return array_api.split(arr, self.sections, self.axis)
 
-    def gradient(self, out_grad, node: Tensor) -> Tensor:
+    def gradient(self, out_grad: Tensor, node: Tensor) -> Tensor:
         # return concatenate(out_grad, self.axis)
         return Stack(self.axis)(out_grad)
 
@@ -74,7 +75,7 @@ class Concatenate(TensorOp):
 
     def gradient(self, out_grad: Tensor, node: Tensor) -> TensorTuple:
         input_sizes = [array.shape[self.axis] for array in node.inputs]
-        return Split(self.axis, sections=input_sizes[:-1])(out_grad)
+        return Split(self.axis, sections=input_sizes)(out_grad)
 
 
 def concatenate(arr: tuple[Tensor, ...] | list[Tensor], axis: int) -> Tensor:
@@ -190,3 +191,36 @@ class UnDilate(TensorOp):
 
 def undilate(a: Tensor, axes: tuple[int, ...], dilation: int) -> Tensor:
     return UnDilate(axes, dilation)(a)
+
+
+class GetItem(TensorOp):
+    def __init__(self, index) -> None:
+        self.index = index
+
+    def _convert_to_numpy_index(self, index) -> NDArray:
+        """Convert tensor indices to numpy arrays for indexing"""
+        if isinstance(index, (Tensor | NDArray)):
+            return index.numpy()
+        elif isinstance(index, tuple):
+            return tuple(self._convert_to_numpy_index(idx) for idx in index)
+        return index
+
+    def compute(self, a: NDArray) -> NDArray:
+        # Convert any tensor indices to numpy arrays
+        numpy_index = self._convert_to_numpy_index(self.index)
+        return a[numpy_index]
+
+    def gradient(self, out_grad, node) -> Tensor:
+        input_shape = node.inputs[0].shape
+
+        # Create a zero gradient with the shape of input
+        grad = init.zeros(input_shape, device=out_grad.device, dtype=out_grad.dtype)
+
+        grad_tensor = Tensor(grad, device=out_grad.device, requires_grad=False)
+        grad_tensor[self.index] = out_grad
+
+        return grad_tensor
+
+
+def get_item(a, index) -> Tensor:
+    return GetItem(index)(a)

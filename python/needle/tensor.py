@@ -8,12 +8,11 @@ import numpy as np
 
 import needle as ndl
 from needle.autograd.value import Value
-from needle.backend_selection import array_api, default_device
+from needle.backend_selection import NDArray, array_api, default_device
 
 if TYPE_CHECKING:
     from typing import Self
 
-    from needle.backend_selection import NDArray
     from needle.typing import DType, IndexType, Scalar, Shape
     from needle.typing.device import AbstractBackend as Device
 
@@ -36,6 +35,8 @@ class Tensor(Value):
                 cached_data = Tensor._array_from_numpy(
                     array.numpy(), device=device, dtype=dtype
                 )
+        elif isinstance(array, NDArray):
+            cached_data = array
         else:
             cached_data = Tensor._array_from_numpy(array, device=device, dtype=dtype)
 
@@ -101,15 +102,18 @@ class Tensor(Value):
         return self.realize_cached_data().numpy()
 
     def __getitem__(self, index: IndexType) -> Tensor:
-        sliced_data = self.realize_cached_data()[index]
+        if isinstance(index, Tensor):
+            return ndl.ops.GetItem(index)(self)
+        else:
+            sliced_data = self.realize_cached_data()[index]
 
-        # Create a new tensor with the sliced data, detached from the AD graph
-        return Tensor(
-            sliced_data,
-            device=self.device,
-            dtype=self.dtype,
-            requires_grad=self.requires_grad,
-        )
+            # Create a new tensor with the sliced data, detached from the AD graph
+            return Tensor(
+                sliced_data,
+                device=self.device,
+                dtype=self.dtype,
+                requires_grad=self.requires_grad,
+            )
 
     def __setitem__(self, index: IndexType, value) -> None:
         self.realize_cached_data()[index] = value
@@ -135,7 +139,7 @@ class Tensor(Value):
             return ndl.ops.EWiseAdd()(self, ndl.ops.Negate()(other))
         return ndl.ops.AddScalar(-other)(self)
 
-    def __truediv__(self, other: Tensor) -> Tensor:
+    def __truediv__(self, other: Tensor | Scalar) -> Tensor:
         if isinstance(other, Tensor):
             return ndl.ops.EWiseDiv()(self, other)
         return ndl.ops.DivScalar(other)(self)
@@ -190,7 +194,7 @@ class TensorTuple(Value):
     def __getitem__(self, index: int) -> Value:
         return ndl.ops.tuple_get_item(self, index)
 
-    def tuple(self) -> tuple[Value, ...]:
+    def tuple(self) -> tuple[Value | type[Value], ...]:
         return tuple([x for x in self])
 
     def __repr__(self) -> str:
@@ -202,7 +206,11 @@ class TensorTuple(Value):
     def __add__(self, other: TensorTuple) -> TensorTuple:
         assert isinstance(other, TensorTuple)
         assert len(self) == len(other)
-        return ndl.ops.make_tuple(*[self[i] + other[i] for i in range(len(self))])
+        assert all(
+            isinstance(self[i], Tensor) and isinstance(other[i], Tensor)
+            for i in range(len(self))
+        )
+        return ndl.ops.make_tuple(*[self[i] + other[i] for i in range(len(self))])  # type: ignore
 
     def detach(self) -> TensorTuple:
         """Create a new tensor that shares the data but detaches from the graph."""

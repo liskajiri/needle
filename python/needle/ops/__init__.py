@@ -47,7 +47,14 @@ from needle.ops.mathematic import (
 )
 from needle.ops.op import Op, TensorOp, TensorTupleOp
 from needle.ops.ops_tuple import fused_add_scalars, make_tuple, tuple_get_item
-from needle.ops.view import dilate, flip, split, stack, undilate
+from needle.ops.view import (
+    GetItem,
+    dilate,
+    flip,
+    split,
+    stack,
+    undilate,
+)
 
 __all__ = [
     "AddScalar",
@@ -58,6 +65,7 @@ __all__ = [
     "EWiseMul",
     "EWisePow",
     "Exp",
+    "GetItem",
     "Log",
     "LogSumExp",
     "MatMul",
