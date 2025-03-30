@@ -82,12 +82,12 @@ class Module(ABC):
     def forward(self, *args, **kwargs) -> Tensor:
         raise NotImplementedError
 
-    def __call__(self, *args, **kwargs):
+    def __call__(self, *args, **kwargs) -> Tensor:
         return self.forward(*args, **kwargs)
 
 
 class Identity(Module):
-    def forward(self, x):
+    def forward(self, x: Tensor) -> Tensor:
         return x
 
 

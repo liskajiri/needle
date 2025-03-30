@@ -2,9 +2,9 @@ from typing import NewType
 
 import needle as ndl
 import numpy as np
+from models.resnet9 import MLPResNet
 from needle import nn
 from needle.data.datasets.mnist import MNISTPaths
-from resnet9 import MLPResNet
 
 ErrorRate = NewType("ErrorRate", float)
 Loss = NewType("Loss", float)

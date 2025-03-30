@@ -69,32 +69,27 @@ class ResNet9(nn.Module):
         self.out_features = out_features
         self.config = Config(device=device, dtype=dtype)
 
-        self.layers1 = nn.Sequential(
-            self._make_conv_layer(in_features, 16, 7, 4),
+        self.module = nn.Sequential(
+            self._make_conv_layer(3, 16, 7, 4),
             self._make_conv_layer(16, 32, 3, 2),
-            # Residual out
-        )
-        self.layers2 = nn.Sequential(
-            self._make_conv_layer(32, 32, 3, 1),
-            self._make_conv_layer(32, 32, 3, 1),
-            # Residual + in
-        )
-        self.layers3 = nn.Sequential(
+            nn.Residual(
+                nn.Sequential(
+                    self._make_conv_layer(32, 32, 3, 1),
+                    self._make_conv_layer(32, 32, 3, 1),
+                )
+            ),
             self._make_conv_layer(32, 64, 3, 2),
             self._make_conv_layer(64, 128, 3, 2),
-            # Residual out
-        )
-
-        self.layers4 = nn.Sequential(
-            self._make_conv_layer(128, 128, 3, 1),
-            self._make_conv_layer(128, 128, 3, 1),
-            # Residual + in
-        )
-
-        self.layers_final = nn.Sequential(
+            nn.Residual(
+                nn.Sequential(
+                    self._make_conv_layer(128, 128, 3, 1),
+                    self._make_conv_layer(128, 128, 3, 1),
+                )
+            ),
+            nn.Flatten(),
             nn.Linear(128, 128, **self.config),
             nn.ReLU(),
-            nn.Linear(128, out_features, **self.config),
+            nn.Linear(128, 10, **self.config),
         )
 
     def _make_conv_layer(
@@ -113,10 +108,4 @@ class ResNet9(nn.Module):
         )
 
     def forward(self, x: Tensor) -> Tensor:
-        x = self.layers1(x)
-        x = self.layers2(x) + x
-        x = self.layers3(x)
-        x = self.layers4(x) + x
-        x = nn.Flatten()(x)
-        x = self.layers_final(x)
-        return x
+        return self.module(x)

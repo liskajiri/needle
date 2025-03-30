@@ -71,7 +71,7 @@ class Conv(Module):
             bias_range = 1 / math.sqrt(in_channels * kernel_size**2)
             self.bias = Parameter(
                 init.rand(
-                    out_channels,
+                    (out_channels,),
                     low=-bias_range,
                     high=bias_range,
                     device=device,

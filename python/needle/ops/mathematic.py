@@ -188,7 +188,7 @@ class Transpose(TensorOp):
         return transpose(out_grad, inverse_axes)
 
 
-def transpose(a, axes: tuple = ()) -> Tensor:
+def transpose(a: Tensor, axes: tuple = ()) -> Tensor:
     return Transpose(axes)(a)
 
 

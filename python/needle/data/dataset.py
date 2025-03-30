@@ -19,15 +19,21 @@ class Dataset(Sequence, Generic[T], ABC):
 
     Example:
         >>> class NumberDataset(Dataset[float]):
-        ...     def __init__(self, start: int, end: int):
-        ...         super().__init__()
+        ...     def __init__(
+        ...         self,
+        ...         start: int,
+        ...         end: int,
+        ...         transforms: Sequence[Callable] | None = None,
+        ...     ) -> None:
+        ...         super().__init__(transforms=transforms)
         ...         self.start = start
         ...         self.end = end
         ...
         ...     def __getitem__(self, idx: int) -> float:
         ...         if idx >= len(self):
         ...             raise IndexError("Index out of range")
-        ...         return float(self.start + idx)
+        ...         value = float(self.start + idx)
+        ...         return self.apply_transforms(value)
         ...
         ...     def __len__(self) -> int:
         ...         return self.end - self.start
@@ -41,9 +47,9 @@ class Dataset(Sequence, Generic[T], ABC):
         4.0
         >>> # Add transform to double values
         >>> ds_doubled = NumberDataset(0, 5, transforms=[lambda x: x * 2])
-        >>> ds_doubled[0]  # Get transformed first item
+        >>> ds_doubled[0]
         0.0
-        >>> ds_doubled[4]  # Get transformed last item
+        >>> ds_doubled[4]
         8.0
     """
 

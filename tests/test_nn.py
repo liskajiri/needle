@@ -1,12 +1,11 @@
 import needle as ndl
 import numpy as np
 import pytest
+from models.resnet9 import MLPResNet, ResidualBlock
 from needle import nn
 from needle.data.datasets.mnist import MNISTPaths
-from resnet9 import MLPResNet, ResidualBlock
 from resnet_mnist import epoch, train_mnist
 
-"""Deterministically generate a matrix"""
 # TODO: rework this whole files
 
 

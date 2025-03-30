@@ -12,7 +12,7 @@ from needle.nn.core import (
 from needle.nn.dropout import Dropout
 from needle.nn.linear import Linear
 from needle.nn.norms import BatchNorm1d, BatchNorm2d, LayerNorm1d
-from needle.nn.sequence import LSTM, RNN, LSTMCell, RNNCell
+from needle.nn.sequence import LSTM, RNN, Embedding, LSTMCell, RNNCell
 from needle.nn.softmax import SoftmaxLoss
 
 __all__ = [
@@ -22,6 +22,7 @@ __all__ = [
     "BatchNorm2d",
     "Conv",
     "Dropout",
+    "Embedding",
     "Flatten",
     "Identity",
     "LSTMCell",

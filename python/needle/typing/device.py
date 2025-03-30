@@ -7,7 +7,7 @@ if TYPE_CHECKING:
     from typing import Any
 
     from needle.backend_selection import NDArray
-    from needle.typing.types import DType, Scalar, Shape
+    from needle.typing import DType, IndexType, Scalar, Shape
 
 
 class AbstractBackend(ABC):
@@ -43,7 +43,7 @@ class AbstractBackend(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def one_hot(self, n: int, i: int, dtype: DType) -> NDArray:
+    def one_hot(self, n: int, i: IndexType, dtype: DType) -> NDArray:
         """Create a one-hot vector.
 
         Args:
