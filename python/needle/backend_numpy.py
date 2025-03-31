@@ -45,10 +45,10 @@ def to_numpy(a, shape, strides, offset) -> NDArray:
 class NumpyBackend(AbstractBackend):
     # note: numpy doesn't support types within standard random routines, and
     # .astype("float32") does work if we're generating a singleton
-    def randn(self, *shape: Shape, dtype: DType = "float32") -> NDArray:
+    def randn(self, shape: Shape, dtype: DType = "float32") -> NDArray:
         return np.random.randn(*shape)
 
-    def rand(self, *shape: Shape, dtype: DType = "float32") -> NDArray:
+    def rand(self, shape: Shape, dtype: DType = "float32") -> NDArray:
         return np.random.rand(*shape)
 
     def one_hot(self, n: int, i: int, dtype: DType) -> NDArray:

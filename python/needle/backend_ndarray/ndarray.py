@@ -852,7 +852,7 @@ class NDArray:
     def __lt__(self, other: NDArray) -> bool:
         return 1 - (self >= other)
 
-    def __le__(self, other: NDArray) -> bool:
+    def __le__(self, other: NDArray | Scalar) -> NDArray:
         return 1 - (self > other)
 
     # Element-wise functions

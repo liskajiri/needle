@@ -77,3 +77,17 @@ output = "reports/coverage.xml"
 [tool.coverage.html]
 directory = "reports/coverage-html"
 show_contexts = true
+
+[tool.pyright]
+include = ["python/needle"]
+exclude = [
+    "python/needle/ops",
+    "python/needle/backend_ndarray/",
+    "python/needle/backend_numpy.py"
+]
+
+reportMissingImports = false
+reportMissingTypeStubs = false
+
+pythonVersion = "3.12"
+pythonPlatform = "Linux"

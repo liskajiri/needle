@@ -1,0 +1,42 @@
+---
+name: Check Changed Files
+
+on:
+  workflow_call:
+    outputs:
+      python_changed:
+        description: "Whether Python files were changed"
+        value: ${{ jobs.check-changed-files.outputs.python_changed }}
+      cpp_changed:
+        description: "Whether C++ files were changed"
+        value: ${{ jobs.check-changed-files.outputs.cpp_changed }}
+      cuda_changed:
+        description: "Whether CUDA files were changed"
+        value: ${{ jobs.check-changed-files.outputs.cuda_changed }}
+
+jobs:
+  check-changed-files:
+    permissions:
+      contents: read
+      pull-requests: read
+
+    runs-on: ubuntu-latest
+    outputs:
+      python_changed: ${{ steps.filter.outputs.python }}
+      cpp_changed: ${{ steps.filter.outputs.cpp }}
+      cuda_changed: ${{ steps.filter.outputs.cuda }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Check for Python file changes
+        id: filter
+        uses: dorny/paths-filter@v3.0.2
+        with:
+          filters: |
+            python:
+              - '**/*.py'
+            cpp:
+              - '**/*.cpp'
+            cuda:
+              - '**/*.cu'

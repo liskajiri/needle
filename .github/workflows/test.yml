@@ -1,0 +1,74 @@
+---
+name: Test
+
+on:
+  workflow_call:
+    inputs:
+      python_changed:
+        required: true
+        type: boolean
+      cpp_changed:
+        required: true
+        type: boolean
+      cuda_changed:
+        required: true
+        type: boolean
+
+jobs:
+  test:
+    if: inputs.python_changed == true ||
+        inputs.cpp_changed == true ||
+        inputs.cuda_changed == true
+    timeout-minutes: 20
+
+    # test report needs write permissions
+    permissions:
+      contents: read
+      issues: read
+      checks: write
+      pull-requests: write
+
+    strategy:
+      matrix:
+        backend: [nd]
+        # TODO: Add other backends
+      fail-fast: false
+
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Cache datasets
+        uses: actions/cache@v4
+        with:
+          path: data
+          key: ${{ runner.os }}-datasets-${{ hashFiles('data/**') }}-v1
+          restore-keys: |
+            ${{ runner.os }}-datasets-
+
+      - name: Set backend
+        run: echo "NEEDLE_BACKEND=${{ matrix.backend }}" >> "$GITHUB_ENV"
+      - name: Test
+        uses: prefix-dev/setup-pixi@v0.8.3
+      - run: pixi run test_all
+
+      - name: Publish Test Results
+        uses: EnricoMi/publish-unit-test-result-action@v2
+        if: matrix.backend == 'nd' && always()
+        with:
+          files: |
+            reports/test_report.xml
+
+      - name: Upload results to Codecov
+        uses: codecov/codecov-action@v5
+        if: matrix.backend == 'nd' && always()
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          slug: liskajiri/needle
+          files: reports/coverage.xml
+
+      - name: Upload test results to Codecov
+        if: matrix.backend == 'nd' && always()
+        uses: codecov/test-results-action@v1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: reports/test_report.xml

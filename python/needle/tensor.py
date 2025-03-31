@@ -192,7 +192,7 @@ class TensorTuple(Value):
     def __getitem__(self, index: int) -> Value:
         return ndl.ops.tuple_get_item(self, index)
 
-    def tuple(self) -> tuple[Value | type[Value], ...]:
+    def tuple(self) -> tuple[Value, ...] | tuple[Tensor, ...]:
         return tuple([x for x in self])
 
     def __repr__(self) -> str:

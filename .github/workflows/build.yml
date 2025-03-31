@@ -1,0 +1,24 @@
+---
+name: Build
+
+on:
+  workflow_call:
+    inputs:
+      cpp_changed:
+        required: true
+        type: boolean
+
+jobs:
+  build:
+    if: inputs.cpp_changed == true
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build
+        uses: prefix-dev/setup-pixi@v0.8.3
+        with:
+          pixi-version: v0.40.3
+          cache: true
+          cache-write:
+            ${{ github.event_name == 'push' && github.ref_name == 'main' }}
+      - run: pixi run build

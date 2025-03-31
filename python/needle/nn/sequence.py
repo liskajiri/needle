@@ -100,8 +100,8 @@ class RNNCell(Module):
         if self.bias:
             hidden += self.bias_ih + self.bias_hh
 
-        h = self.nonlinearity(hidden)
-        return h
+        out = self.nonlinearity(hidden)
+        return out  # type: ignore
 
 
 class RNN(Module):
@@ -154,7 +154,7 @@ class RNN(Module):
                 RNNCell(hidden_size, hidden_size, bias, nonlinearity, device, dtype)
             )
 
-    def forward(self, X: Tensor, h0: Tensor | None = None) -> tuple[Tensor, Tensor]:
+    def forward(self, X: Tensor, h0: Tensor | None = None) -> tuple[Tensor, Tensor]:  # type: ignore
         """
         Inputs:
         X of shape (seq_len, bs, input_size) with the features of the input sequence.
@@ -183,6 +183,7 @@ class RNN(Module):
             # x_t: (batch_size, input_size)
             x_t = X[t]
 
+            h_next = None
             for layer in range(self.num_layers):
                 h_prev = h0[layer] if t == 0 else hs[layer]
 
@@ -255,7 +256,7 @@ class LSTMCell(Module):
         else:
             self.bias_ih = self.bias_hh = None
 
-    def forward(
+    def forward(  # type: ignore
         self, X: Tensor, h: tuple[Tensor, Tensor] | None = None
     ) -> tuple[Tensor, Tensor]:
         """
@@ -311,7 +312,7 @@ class LSTMCell(Module):
         for i in range(4):
             gates.append(
                 ops.stack(
-                    gates_splits[i * self.hidden_size : (i + 1) * self.hidden_size],
+                    gates_splits[i * self.hidden_size : (i + 1) * self.hidden_size],  # type: ignore
                     axis=1,
                 )
             )
@@ -384,7 +385,7 @@ class LSTM(Module):
                 LSTMCell(hidden_size, hidden_size, bias, device, dtype)
             )
 
-    def forward(
+    def forward(  # type: ignore
         self, X: Tensor, h: tuple[Tensor, Tensor] | None = None
     ) -> tuple[Tensor, tuple[Tensor, Tensor]]:
         """
@@ -433,6 +434,7 @@ class LSTM(Module):
             # x_t: (batch_size, input_size)
             x_t = X[t]
 
+            h_next = None
             for layer in range(self.num_layers):
                 h_prev = h0[layer] if t == 0 else hs[layer]
                 c_prev = c0[layer] if t == 0 else cs[layer]

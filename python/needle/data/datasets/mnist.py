@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
+from needle.backend_selection import NDArray
 from needle.data.dataset import Dataset
 
 if TYPE_CHECKING:
@@ -58,9 +59,10 @@ class MNISTDataset(Dataset):
 
         # TODO: should be (n, 784)
         # Fix tests afterwards
-        self.X = self.X.reshape(-1, 28, 28, 1)
+        self.X = NDArray(self.X).compact().reshape((-1, 28, 28, 1))
+        # self.y = NDArray(self.y)
 
-    def __getitem__(self, index: int) -> object:
+    def __getitem__(self, index: int | slice) -> tuple[NDArray, np_ndarray]:
         (x, y) = self.X[index], self.y[index]
         return self.apply_transforms(x), y
 

@@ -14,12 +14,9 @@ class BACKENDS(enum.StrEnum):
 
 
 DEFAULT_BACKEND = BACKENDS.NEEDLE
+BACKEND = os.getenv("NEEDLE_BACKEND", DEFAULT_BACKEND)  # type: ignore # type: BACKENDS
 
-BACKEND = os.getenv("NEEDLE_BACKEND", DEFAULT_BACKEND)
-if BACKEND not in BACKENDS:
-    raise RuntimeError(f"Unknown needle array backend {BACKEND}")
-
-if BACKENDS.NEEDLE == BACKEND:
+if True:  # BACKENDS.NEEDLE == BACKEND:
     logging.info("Using needle backend")
     from needle import backend_ndarray as array_api
     from needle.backend_ndarray.ndarray import (
@@ -49,3 +46,5 @@ elif BACKENDS.NUMPY == BACKEND:
     from needle.backend_numpy import (
         NumpyBackend as Device,  # noqa: F401
     )
+else:
+    raise RuntimeError(f"Unknown needle array backend {BACKEND}")
