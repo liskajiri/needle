@@ -19,24 +19,29 @@ permissions:
 
 jobs:
   check-files:
+    name: Check changed files
     uses: ./.github/workflows/check-changed-files.yml
 
   style:
+    name: Style
     uses: ./.github/workflows/style.yml
 
   pyright:
+    name: Pyright
     needs: check-files
     uses: ./.github/workflows/pyright.yml
     with:
       python_changed: ${{ needs.check-files.outputs.python_changed == 'true' }}
 
   build:
+    name: Build
     needs: check-files
     uses: ./.github/workflows/build.yml
     with:
       cpp_changed: ${{ needs.check-files.outputs.cpp_changed == 'true' }}
 
   test:
+    name: Test
     needs: check-files
     uses: ./.github/workflows/test.yml
     with:

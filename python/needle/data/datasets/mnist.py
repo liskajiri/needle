@@ -56,12 +56,11 @@ class MNISTDataset(Dataset):
         """
         super().__init__(transforms)
         self.X, self.y = MNISTDataset.parse_mnist(images, labels)
-        self.X = NDArray(self.X)
-        # self.y = NDArray(self.y)
 
         # TODO: should be (n, 784)
         # Fix tests afterwards
-        self.X = self.X.reshape((-1, 28, 28, 1))
+        self.X = NDArray(self.X).compact().reshape((-1, 28, 28, 1))
+        # self.y = NDArray(self.y)
 
     def __getitem__(self, index: int | slice) -> tuple[NDArray, np_ndarray]:
         (x, y) = self.X[index], self.y[index]

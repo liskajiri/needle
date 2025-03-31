@@ -1,7 +1,10 @@
 import needle as ndl
 import numpy as np
 import pytest
+from needle.backend_selection import NDArray
 from needle.data.datasets.mnist import MNISTPaths
+
+from tests.utils import set_random_seeds
 
 
 @pytest.fixture(scope="module")
@@ -149,7 +152,7 @@ EXPECTED_LABELS = [0, 7, 0, 5, 9, 7, 7, 8]
 def test_mnist_train_crop28_flip():
     """Test MNIST dataset with RandomCrop(28) + RandomFlip"""
     # Reset all random states
-    np.random.seed(0)
+    set_random_seeds(0)
 
     transforms = [ndl.data.RandomCrop(28), ndl.data.RandomFlipHorizontal()]
 
@@ -174,31 +177,32 @@ def test_mnist_train_crop28_flip():
     np.testing.assert_allclose(sample_labels, EXPECTED_LABELS)
 
 
-# TODO: BREAKS if randomness is set
-# def test_mnist_train_crop12_flip():
-#     """Test MNIST dataset with RandomCrop(12) + RandomFlip(0.4)"""
+@pytest.mark.skip(reason="RandomCrop(12) + RandomFlipHorizontal() is not deterministic")
+def test_mnist_train_crop12_flip():
+    """Test MNIST dataset with RandomCrop(12) + RandomFlip(0.4)"""
+    set_random_seeds(0)
 
-#     transforms = [ndl.data.RandomCrop(12), ndl.data.RandomFlipHorizontal(0.4)]
+    transforms = [ndl.data.RandomCrop(12), ndl.data.RandomFlipHorizontal(0.4)]
 
-#     expected_norms = [
-#         5.369537,
-#         5.5454974,
-#         8.966858,
-#         7.547235,
-#         8.785921,
-#         7.848442,
-#         7.1654058,
-#         9.361828,
-#     ]
+    expected_norms = [
+        5.369537,
+        5.5454974,
+        8.966858,
+        7.547235,
+        8.785921,
+        7.848442,
+        7.1654058,
+        9.361828,
+    ]
 
-#     dataset = ndl.data.MNISTDataset(
-#         MNISTPaths.TRAIN_IMAGES, MNISTPaths.TRAIN_LABELS, transforms=transforms
-#     )
-#     sample_norms = [np.linalg.norm(dataset[idx][0]) for idx in SAMPLE_INDICES]
-#     sample_labels = [dataset[idx][1] for idx in SAMPLE_INDICES]
+    dataset = ndl.data.MNISTDataset(
+        MNISTPaths.TRAIN_IMAGES, MNISTPaths.TRAIN_LABELS, transforms=transforms
+    )
+    sample_norms = [np.linalg.norm(dataset[idx][0]) for idx in SAMPLE_INDICES]
+    sample_labels = [dataset[idx][1] for idx in SAMPLE_INDICES]
 
-#     np.testing.assert_allclose(sample_norms, expected_norms, rtol=1e-5, atol=1e-5)
-#     np.testing.assert_allclose(sample_labels, EXPECTED_LABELS)
+    np.testing.assert_allclose(sample_norms, expected_norms, rtol=1e-5, atol=1e-5)
+    np.testing.assert_allclose(sample_labels, EXPECTED_LABELS)
 
 
 @pytest.mark.slow
@@ -209,7 +213,11 @@ def test_train_dataloader(
     for i, batch in enumerate(loader):
         batch_x, batch_y = batch[0].numpy(), batch[1].numpy()
         truth = mnist_train[i * batch_size : (i + 1) * batch_size]
-        truth_x = truth[0] if truth[0].shape[0] > 1 else truth[0].reshape(-1)
+        if isinstance(truth[0], NDArray):
+            truth_x = truth[0].numpy()
+            truth_x = truth_x if truth_x.shape[0] > 1 else truth_x.reshape(-1)
+        else:
+            truth_x = truth[0] if truth[0].shape[0] > 1 else truth[0].reshape(-1)
         truth_y = truth[1] if truth[1].shape[0] > 1 else truth[1].reshape(-1)
 
         np.testing.assert_allclose(truth_x, batch_x.flatten())
