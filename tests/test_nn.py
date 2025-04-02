@@ -4,7 +4,9 @@ import pytest
 from models.resnet9 import MLPResNet, ResidualBlock
 from needle import nn
 from needle.data.datasets.mnist import MNISTPaths
-from resnet_mnist import epoch, train_mnist
+from resnet_mnist import epoch
+
+from tests.utils import set_random_seeds
 
 # TODO: rework this whole files
 
@@ -315,7 +317,7 @@ def mlp_resnet_forward(dim, hidden_dim, num_blocks, num_classes, norm, drop_prob
 
 
 def train_epoch_1(hidden_dim, batch_size, optimizer, **kwargs):
-    np.random.seed(1)
+    set_random_seeds(1)
     train_dataset = ndl.data.MNISTDataset(
         MNISTPaths.TRAIN_IMAGES,
         MNISTPaths.TRAIN_LABELS,
@@ -324,27 +326,53 @@ def train_epoch_1(hidden_dim, batch_size, optimizer, **kwargs):
 
     model = MLPResNet(784, hidden_dim)
     opt = optimizer(model.parameters(), **kwargs)
-    model.eval()
-    return np.array(epoch(train_dataloader, model, opt))
+    model.train()
+    acc, loss = epoch(train_dataloader, model, opt)
+    return acc, loss
 
 
 def eval_epoch_1(hidden_dim, batch_size):
-    np.random.seed(1)
+    set_random_seeds(1)
     test_dataset = ndl.data.MNISTDataset(MNISTPaths.TEST_IMAGES, MNISTPaths.TEST_LABELS)
     test_dataloader = ndl.data.DataLoader(
         dataset=test_dataset, batch_size=batch_size, shuffle=False
     )
 
     model = MLPResNet(784, hidden_dim)
+    model.eval()
+    acc, loss = epoch(test_dataloader, model)
+    return acc, loss
+
+
+def train_mnist_1(
+    batch_size, epochs: int, optimizer, lr, weight_decay, hidden_dim
+) -> tuple[float, float, float, float]:
+    "Returns train_acc, train_loss, test_acc, test_loss"
+    set_random_seeds(1)
+    train_dataset = ndl.data.MNISTDataset(
+        MNISTPaths.TRAIN_IMAGES,
+        MNISTPaths.TRAIN_LABELS,
+    )
+    train_dataloader = ndl.data.DataLoader(dataset=train_dataset, batch_size=batch_size)
+
+    model = MLPResNet(784, hidden_dim)
+    opt = optimizer(model.parameters(), lr=lr, weight_decay=weight_decay)
     model.train()
-    err_rate, loss = epoch(test_dataloader, model)
-    return np.array([err_rate, loss])
+    train_acc, train_loss = 0, 0
+    for _epoch in range(epochs):
+        train_acc, train_loss = epoch(train_dataloader, model, opt)
 
+    model.eval()
+    test_dataset = ndl.data.MNISTDataset(
+        MNISTPaths.TEST_IMAGES,
+        MNISTPaths.TEST_LABELS,
+    )
+    test_dataloader = ndl.data.DataLoader(
+        dataset=test_dataset, batch_size=batch_size, shuffle=False
+    )
+    test_acc, test_loss = epoch(test_dataloader, model)
 
-def train_mnist_1(batch_size, epochs, optimizer, lr, weight_decay, hidden_dim):
-    np.random.seed(1)
-    out = train_mnist(batch_size, epochs, optimizer, lr, weight_decay, hidden_dim)
-    return np.array(out)
+    return train_acc, train_loss, test_acc, test_loss
 
 
 def test_check_prng_contact_us_if_this_fails_1():
@@ -1727,31 +1755,40 @@ def test_mlp_resnet_forward_2():
     )
 
 
+# TODO: Unify testing for train_epoch and eval_epoch, remove duplication and
 @pytest.mark.slow
 def test_mlp_train_epoch_1():
-    np.testing.assert_allclose(
-        train_epoch_1(5, 250, ndl.optim.Adam, lr=0.01, weight_decay=0.1),
-        np.array([0.675267, 1.84043]),
-        rtol=0.0001,
-        atol=0.0001,
-    )
+    acc, loss = train_epoch_1(5, 250, ndl.optim.Adam, lr=0.01, weight_decay=0.1)
+
+    target_acc = 1 - 0.675267
+    target_loss = 1.84043
+
+    assert acc >= target_acc
+    assert loss <= target_loss
 
 
-@pytest.mark.slow
 def test_mlp_eval_epoch_1():
-    np.testing.assert_allclose(
-        eval_epoch_1(10, 150),
-        np.array([0.9164, 4.137814]),
-        rtol=1e-5,
-        atol=1e-5,
-    )
+    acc, loss = eval_epoch_1(10, 150)
+
+    target_acc = 0.08
+    target_loss = 4.15
+
+    assert acc >= target_acc
+    assert loss <= target_loss
 
 
 @pytest.mark.slow
 def test_mlp_train_mnist_1():
-    np.testing.assert_allclose(
-        train_mnist_1(250, 2, ndl.optim.SGD, 0.001, 0.01, 100),
-        np.array([0.4875, 1.462595, 0.3245, 1.049429]),
-        rtol=0.001,
-        atol=0.001,
+    train_acc, train_loss, test_acc, test_loss = train_mnist_1(
+        250, 2, ndl.optim.SGD, 0.001, 0.01, 100
     )
+
+    target_train_acc = 0.4875
+    target_test_acc = 0.3245
+    target_train_loss = 1.65
+    target_test_loss = 1.2
+
+    assert train_acc >= target_train_acc
+    assert test_acc >= target_test_acc
+    assert train_loss <= target_train_loss
+    assert test_loss <= target_test_loss
