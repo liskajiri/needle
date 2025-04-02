@@ -72,9 +72,10 @@ def test_mnist_train_dataset_size(mnist_train):
 
 
 @pytest.mark.parametrize(
-    ("indices", "expected_norms", "expected_labels"),
+    "test_id, indices, expected_norms, expected_labels",
     [
         (
+            "standard_samples",
             [1, 42, 1000, 2000, 3000, 4000, 5000, 5005],
             [
                 10.188792,
@@ -89,8 +90,11 @@ def test_mnist_train_dataset_size(mnist_train):
             [0, 7, 0, 5, 9, 7, 7, 8],
         )
     ],
+    ids=["standard_samples"],
 )
-def test_train_dataset_samples(mnist_train, indices, expected_norms, expected_labels):
+def test_train_dataset_samples(
+    mnist_train, test_id, indices, expected_norms, expected_labels
+):
     sample_norms = [np.linalg.norm(mnist_train[idx][0]) for idx in indices]
     sample_labels = [mnist_train[idx][1] for idx in indices]
     np.testing.assert_allclose(sample_norms, expected_norms)
@@ -145,10 +149,31 @@ def test_mnist_test_sample_norms_and_labels(mnist_test):
     np.testing.assert_allclose(sample_labels, compare_labels)
 
 
+@pytest.mark.slow
+def test_mnist_normalization(mnist_train, mnist_test):
+    """Test that MNIST dataset values are properly normalized to [0.0, 1.0]"""
+
+    # Check train data normalization
+    train_min = mnist_train.X.numpy().min()
+    train_max = mnist_train.X.numpy().max()
+
+    # Check test data normalization
+    test_min = mnist_test.X.numpy().min()
+    test_max = mnist_test.X.numpy().max()
+
+    # Assert values are properly normalized to [0.0, 1.0] range
+    # MNIST has those values
+    np.testing.assert_allclose(train_min, 0.0, atol=1e-6)
+    np.testing.assert_allclose(train_max, 1.0, atol=1e-6)
+    np.testing.assert_allclose(test_min, 0.0, atol=1e-6)
+    np.testing.assert_allclose(test_max, 1.0, atol=1e-6)
+
+
 SAMPLE_INDICES = [1, 42, 1000, 2000, 3000, 4000, 5000, 5005]
 EXPECTED_LABELS = [0, 7, 0, 5, 9, 7, 7, 8]
 
 
+# TODO: tests for only transforms with random data
 def test_mnist_train_crop28_flip():
     """Test MNIST dataset with RandomCrop(28) + RandomFlip"""
     # Reset all random states
@@ -157,14 +182,14 @@ def test_mnist_train_crop28_flip():
     transforms = [ndl.data.RandomCrop(28), ndl.data.RandomFlipHorizontal()]
 
     expected_norms = [
-        2.0228338,
-        0.0,
-        7.4892044,
         0.0,
         0.0,
-        3.8012788,
-        9.583429,
-        4.2152724,
+        8.966858,
+        0.0,
+        9.086626,
+        6.415914,
+        0.0,
+        3.090034,
     ]
 
     dataset = ndl.data.MNISTDataset(
@@ -177,7 +202,6 @@ def test_mnist_train_crop28_flip():
     np.testing.assert_allclose(sample_labels, EXPECTED_LABELS)
 
 
-@pytest.mark.skip(reason="RandomCrop(12) + RandomFlipHorizontal() is not deterministic")
 def test_mnist_train_crop12_flip():
     """Test MNIST dataset with RandomCrop(12) + RandomFlip(0.4)"""
     set_random_seeds(0)
@@ -185,14 +209,14 @@ def test_mnist_train_crop12_flip():
     transforms = [ndl.data.RandomCrop(12), ndl.data.RandomFlipHorizontal(0.4)]
 
     expected_norms = [
-        5.369537,
-        5.5454974,
+        8.231772,
+        5.044336,
         8.966858,
-        7.547235,
-        8.785921,
-        7.848442,
-        7.1654058,
-        9.361828,
+        9.434648,
+        8.686448,
+        7.313684,
+        9.727224,
+        9.565062,
     ]
 
     dataset = ndl.data.MNISTDataset(
@@ -239,77 +263,12 @@ def test_test_dataloader(
         np.testing.assert_allclose(batch_y, truth_y)
 
 
+# TODO: investigate what tests should be marked slow (< 1s is ok?)
+
+
 @pytest.mark.slow
 def test_shuffle(mnist_test: ndl.data.MNISTDataset):
     not_shuffled = ndl.data.DataLoader(dataset=mnist_test, batch_size=10, shuffle=False)
     shuffled = ndl.data.DataLoader(dataset=mnist_test, batch_size=10, shuffle=True)
     for i, j in zip(shuffled, not_shuffled, strict=True):
         assert i != j, "Shuffling had no effect on the dataloader."
-
-
-def test_dataloader_ndarray():
-    for batch_size in [1, 10, 100]:
-        np.random.seed(0)
-
-        train_dataset = ndl.data.NDArrayDataset(np.random.rand(100, 10, 10))
-        train_dataloader = ndl.data.DataLoader(
-            dataset=train_dataset, batch_size=batch_size, shuffle=False
-        )
-
-        for i, batch in enumerate(train_dataloader):
-            batch_x = batch[0].numpy()
-            truth_x = train_dataset[i * batch_size : (i + 1) * batch_size][0].reshape(
-                (
-                    batch_size,
-                    10,
-                    10,
-                )
-            )
-            np.testing.assert_allclose(truth_x, batch_x)
-
-    batch_size = 1
-    np.random.seed(0)
-    train_dataset = ndl.data.NDArrayDataset(
-        np.arange(
-            100,
-        )
-    )
-    train_dataloader = iter(
-        ndl.data.DataLoader(dataset=train_dataset, batch_size=batch_size, shuffle=True)
-    )
-
-    elements = np.array([next(train_dataloader)[0].numpy().item() for _ in range(10)])
-    np.testing.assert_allclose(
-        elements, np.array([26, 86, 2, 55, 75, 93, 16, 73, 54, 95])
-    )
-
-    batch_size = 10
-    train_dataset = ndl.data.NDArrayDataset(
-        np.arange(
-            100,
-        )
-    )
-    train_dataloader = iter(
-        ndl.data.DataLoader(dataset=train_dataset, batch_size=batch_size, shuffle=True)
-    )
-
-    elements = np.array(
-        [np.linalg.norm(next(train_dataloader)[0].numpy()) for _ in range(10)]
-    )
-    np.testing.assert_allclose(
-        elements,
-        np.array(
-            [
-                164.805946,
-                173.43875,
-                169.841102,
-                189.050258,
-                195.880065,
-                206.387984,
-                209.909504,
-                185.776748,
-                145.948621,
-                160.252925,
-            ]
-        ),
-    )

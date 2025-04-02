@@ -26,6 +26,7 @@ if True:  # BACKENDS.NEEDLE == BACKEND:
         NDArray,
         all_devices,
         cpu,
+        cpu_numpy,  # noqa: F401
         cuda,
     )
 
@@ -39,6 +40,7 @@ elif BACKENDS.NUMPY == BACKEND:
         NDArray,
         all_devices,
         cpu,  # noqa: F401
+        cpu_numpy,  # noqa: F401
         cuda,
     )
 

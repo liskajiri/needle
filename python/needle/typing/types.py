@@ -5,8 +5,8 @@ import numpy as np
 if TYPE_CHECKING:
     from numpy import ndarray
 
+    from needle.backend_selection import NDArray
     from needle.tensor import Tensor
-    from python.needle.backend_selection import NDArray
 
 
 type DType = str

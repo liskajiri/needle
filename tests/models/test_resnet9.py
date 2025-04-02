@@ -110,15 +110,13 @@ class PytorchResNet9(nn.Module):
         # Flatten and FC layers
         x = torch.flatten(x, 1)
         x = F.relu(self.fc1(x))
-        x = self.fc2(x)
-
-        return x
+        return self.fc2(x)
 
 
 @pytest.mark.parametrize("device", _DEVICES, ids=["cpu", "cuda"])
 def test_resnet9_number_of_parameters(device):
     def num_params(model):
-        return sum([math.prod(x.shape) for x in model.parameters()])
+        return sum(math.prod(x.shape) for x in model.parameters())
 
     model = ResNet9(device=device)
 

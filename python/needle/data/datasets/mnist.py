@@ -21,45 +21,39 @@ class MNISTPaths:
 
 
 class MNISTDataset(Dataset):
-    IMAGE_SIZE = 28 * 28
+    IMAGE_DIM = 28
+    IMAGE_SIZE = IMAGE_DIM * IMAGE_DIM
 
     def __init__(
         self,
-        images: Path,
-        labels: Path,
-        transforms: list | None = None,
-    ):
+        images: Path = MNISTPaths.TRAIN_IMAGES,
+        labels: Path = MNISTPaths.TRAIN_LABELS,
+        **kwargs,
+    ) -> None:
         """
         Read an images and labels file in MNIST format.  See this page:
         http://yann.lecun.com/exdb/mnist/ for a description of the file format.
 
         Args:
-            image_filename (str): name of gzipped images file in MNIST format
-            label_filename (str): name of gzipped labels file in MNIST format
+            images (Path): Path to the gzipped images file in MNIST format.
+                Defaults to MNISTPaths.TRAIN_IMAGES.
+            labels (Path): Path to the gzipped labels file in MNIST format.
+                Defaults to MNISTPaths.TRAIN_LABELS.
+            *kwargs: Additional arguments passed to the Dataset parent class.
 
-        Returns
-        -------
-            Tuple (X,y):
-                X (numpy.ndarray[np.float32]): 2D numpy array containing the loaded
-                    data.  The dimensionality of the data should be
-                    (num_examples x input_dim) where 'input_dim' is the full
-                    dimension of the data, e.g., since MNIST images are 28x28, it
-                    will be 784.  Values should be of type np.float32, and the data
-                    should be normalized to have a minimum value of 0.0 and a
-                    maximum value of 1.0. The normalization should be applied uniformly
-                    across the whole dataset, _not_ individual images.
-
-                y (numpy.ndarray[dtype=np.uint8]): 1D numpy array containing the
-                    labels of the examples.  Values should be of type np.uint8 and
-                    for MNIST will contain the values 0-9.
-
+        Notes:
+            The loaded data will be stored as:
+            - self.X: NDArray containing the images, reshaped to (-1, 28, 28, 1).
+              Values are normalized to range [0.0, 1.0].
+            - self.y: numpy.ndarray[dtype=np.uint8] containing the labels (0-9).
         """
-        super().__init__(transforms)
-        self.X, self.y = MNISTDataset.parse_mnist(images, labels)
 
-        # TODO: should be (n, 784)
-        # Fix tests afterwards
-        self.X = NDArray(self.X).compact().reshape((-1, 28, 28, 1))
+        super().__init__(**kwargs)
+
+        self.X, self.y = MNISTDataset.parse_mnist(images, labels)
+        self.X = (
+            NDArray(self.X).compact().reshape((-1, self.IMAGE_DIM, self.IMAGE_DIM, 1))
+        )
         # self.y = NDArray(self.y)
 
     def __getitem__(self, index: int | slice) -> tuple[NDArray, np_ndarray]:
@@ -78,6 +72,7 @@ class MNISTDataset(Dataset):
             image_file.read(16)  # Skip the header
             buffer = image_file.read()
             num_images = len(buffer) // MNISTDataset.IMAGE_SIZE
+            # normalize to [0.0, 1.0]
             X = np.frombuffer(buffer, dtype=np.uint8).astype(np.float32) / 255.0
             X = X.reshape(num_images, MNISTDataset.IMAGE_SIZE)
 

@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+import random
 from abc import abstractmethod
 from typing import TYPE_CHECKING
 
-import numpy as array_api
+from needle.backend_selection import array_api
 
 if TYPE_CHECKING:
     from needle.backend_ndarray.ndarray import NDArray
@@ -28,8 +29,7 @@ class RandomFlipHorizontal(Transform):
             H x W x C ndarray corresponding to image flipped with probability self.p
         Note: use the provided code to provide randomness, for easier testing
         """
-        # # TODO: Transformations without numpy
-        if array_api.random.random() < self.p:
+        if random.random() < self.p:
             return array_api.flip(img, axis=1)
         return img
 
@@ -47,9 +47,9 @@ class RandomCrop(Transform):
         Note: generate the image shifted by shift_x, shift_y specified below
         """
         assert img.ndim == 3, f"Image should be H x W x C NDArray, got {img.shape}"
-        shift_x, shift_y = array_api.random.randint(
-            low=-self.padding, high=self.padding + 1, size=2
-        )
+
+        shift_x = random.randint(-self.padding, self.padding)
+        shift_y = random.randint(-self.padding, self.padding)
 
         H, W, C = tuple(img.shape)
 

@@ -9,6 +9,7 @@ from needle.autograd.value import Value
 from needle.backend_selection import NDArray, array_api, default_device
 
 if TYPE_CHECKING:
+    from collections.abc import Generator
     from typing import Self
 
     from needle.typing import AbstractBackend as Device
@@ -102,16 +103,15 @@ class Tensor(Value):
     def __getitem__(self, index: IndexType) -> Tensor:
         if isinstance(index, Tensor):
             return ndl.ops.GetItem(index)(self)
-        else:
-            sliced_data = self.realize_cached_data()[index]
+        sliced_data = self.realize_cached_data()[index]
 
-            # Create a new tensor with the sliced data, detached from the AD graph
-            return Tensor(
-                sliced_data,
-                device=self.device,
-                dtype=self.dtype,
-                requires_grad=self.requires_grad,
-            )
+        # Create a new tensor with the sliced data, detached from the AD graph
+        return Tensor(
+            sliced_data,
+            device=self.device,
+            dtype=self.dtype,
+            requires_grad=self.requires_grad,
+        )
 
     def __setitem__(self, index: IndexType, value: NDArray | Scalar) -> None:
         self.realize_cached_data()[index] = value
@@ -178,6 +178,7 @@ class Tensor(Value):
     __rmul__ = __mul__
 
 
+# TODO: this class may be redundant
 class TensorTuple(Value):
     """
     Represent a tuple of tensors.
@@ -189,11 +190,15 @@ class TensorTuple(Value):
         cdata = self.realize_cached_data()
         return len(cdata)
 
-    def __getitem__(self, index: int) -> Value:
+    def __getitem__(self, index: int) -> Tensor:
         return ndl.ops.tuple_get_item(self, index)
 
+    def __iter__(self) -> Generator[Tensor, None, None]:
+        for i in range(len(self)):
+            yield self[i]
+
     def tuple(self) -> tuple[Value, ...] | tuple[Tensor, ...]:
-        return tuple([x for x in self])
+        return tuple(self)
 
     def __repr__(self) -> str:
         return "TensorTuple" + str(self.tuple())

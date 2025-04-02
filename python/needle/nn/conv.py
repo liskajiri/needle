@@ -105,5 +105,4 @@ class Conv(Module):
         if self.bias:
             bias_broadcasted = self.bias.broadcast_to(conv_x.shape)
             conv_x = conv_x + bias_broadcasted
-        conv_x = conv_x.transpose((0, 3, 1, 2))
-        return conv_x
+        return conv_x.transpose((0, 3, 1, 2))

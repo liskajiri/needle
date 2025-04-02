@@ -5,24 +5,23 @@ from hypothesis import strategies as st
 from hypothesis.extra.numpy import array_shapes, arrays
 from needle.backend_selection import NDArray
 
+from tests.utils import set_random_seeds
+
 
 @given(arrays(dtype=np.float32, shape=(5, 5, 5), elements=st.floats(0, 1)))
-def test_flip_horizontal_hypothesis(a: NDArray):
+def test_flip_horizontal_hypothesis(a: np.ndarray):
     transform = ndl.data.RandomFlipHorizontal(p=1)
 
-    np.random.seed(0)
     b = np.flip(a, axis=1)
 
-    result = transform(a)
+    ndl_a = ndl.NDArray(a)
+    result = transform(ndl_a)
 
     np.testing.assert_allclose(result, b)
 
     # The transform should be reversible by applying it twice
     double_transform = transform(result)
-    np.testing.assert_allclose(double_transform, a)
-
-
-# ==============================
+    np.testing.assert_allclose(double_transform.numpy(), a)
 
 
 def numpy_crop(img: NDArray, padding: int = 3) -> NDArray:
@@ -36,7 +35,11 @@ def numpy_crop(img: NDArray, padding: int = 3) -> NDArray:
 
     """
     assert img.ndim == 3
-    shift_x, shift_y = np.random.randint(low=-padding, high=padding + 1, size=2)
+    import random
+
+    shift_x = random.randint(-padding, padding)
+    shift_y = random.randint(-padding, padding)
+    # shift_x, shift_y = np.random.randint(low=-padding, high=padding + 1, size=2)
     H, W, C = tuple(img.shape)
 
     H += 2 * padding
@@ -61,17 +64,16 @@ def numpy_crop(img: NDArray, padding: int = 3) -> NDArray:
     ),
     st.integers(1, 8),
 )
-def test_random_crop_hypothesis(a: NDArray, padding: int):
+def test_random_crop_hypothesis(a: np.ndarray, padding: int):
+    set_random_seeds(0)
+
     transform = ndl.data.RandomCrop(padding)
 
-    # set seeds to ensure reproducibility
-    np.random.seed(0)
+    ndl_a = ndl.NDArray(a)
+    ndl_result = transform(ndl_a)
+
+    # set the same random values
+    set_random_seeds(0)
     b = numpy_crop(a, padding)
-    np.random.seed(0)
 
-    np.testing.assert_allclose(transform(a), b)
-
-
-if __name__ == "__main__":
-    test_flip_horizontal_hypothesis()
-    test_random_crop_hypothesis()
+    np.testing.assert_allclose(ndl_result.numpy(), b)

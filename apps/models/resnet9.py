@@ -7,6 +7,11 @@ from needle.typing.device import AbstractBackend
 from needle.typing.types import DType
 
 
+class Config(TypedDict):
+    device: AbstractBackend
+    dtype: DType
+
+
 def ResidualBlock(
     dim: int,
     hidden_dim: int,
@@ -49,11 +54,6 @@ def MLPResNet(
             nn.Linear(hidden_dim, num_classes),
         )
     )
-
-
-class Config(TypedDict):
-    device: AbstractBackend
-    dtype: DType
 
 
 class ResNet9(nn.Module):

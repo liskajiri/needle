@@ -71,10 +71,9 @@ class TorchOps:
     def get_op(cls, op_name: str) -> Callable:
         if op_name in cls.OP_MAP:
             return cls.OP_MAP[op_name]
-        elif op_name in cls.SHAPE_OPS:
+        if op_name in cls.SHAPE_OPS:
             return cls.SHAPE_OPS[op_name]
-        else:
-            raise ValueError(f"PyTorch function not found for: {op_name}")
+        raise ValueError(f"PyTorch function not found for: {op_name}")
 
 
 def handle_torch_op(
@@ -155,12 +154,12 @@ def backward_check(
         # Compare gradients
         error = sum(
             np.linalg.norm(computed - torch_grad)
-            for computed, torch_grad in zip(computed_grads, torch_grads)
+            for computed, torch_grad in zip(computed_grads, torch_grads, strict=False)
         )
         assert error < 1e-4, f"Gradient check failed. Error: {error:.4e}"
         logger.info(f"Gradient check passed. Error: {error:.4e}")
 
-        for computed, torch_grad in zip(computed_grads, torch_grads):
+        for computed, torch_grad in zip(computed_grads, torch_grads, strict=False):
             np.testing.assert_allclose(computed, torch_grad, rtol=tol, atol=tol)
 
     # numerical_gradient(f, out, computed_grads, *args, tol=tol, **kwargs)

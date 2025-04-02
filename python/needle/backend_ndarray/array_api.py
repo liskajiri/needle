@@ -90,8 +90,8 @@ def sum(a: NDArray, axis: tuple = (), keepdims: bool = False) -> NDArray:
     return a.sum(axis=axis, keepdims=keepdims)
 
 
-def flip(a: NDArray, axes: tuple[int, ...] | int) -> NDArray:
-    return a.flip(axes)
+def flip(a: NDArray, axis: tuple[int, ...] | int) -> NDArray:
+    return a.flip(axis)
 
 
 def stack(arrays: tuple[NDArray] | list[NDArray], axis: int = 0) -> NDArray:

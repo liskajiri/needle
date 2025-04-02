@@ -1,3 +1,42 @@
+[project]
+name = "needle"
+version = "0.1"
+requires-python = ">=3.12"
+description = "A Python library for deep learning and neural networks"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+classifiers = [
+  "Programming Language :: Python"
+]
+dependencies = [
+    # [AUTOGEN] by pydependence resolver 'needle' **DO NOT EDIT** [AUTOGEN]
+    "numpy",
+    #     ← needle.backend_ndarray.array_api
+    #     ← needle.backend_ndarray.ndarray
+    #     ← needle.backend_numpy
+    #     ← needle.backend_selection
+    #     ← needle.data.dataloader
+    #     ← needle.data.datasets.mnist
+    #     ← needle.typing.types
+]
+
+[project.urls]
+Repository = "https://github.com/liskajiri/needle"
+
+[project.optional-dependencies]
+all = [
+    # [AUTOGEN] by pydependence resolver 'all' **DO NOT EDIT** [AUTOGEN]
+    "numpy",
+    #     ← needle.backend_ndarray.array_api
+    #     ← needle.backend_ndarray.ndarray
+    #     ← needle.backend_numpy
+    #     ← needle.backend_selection
+    #     ← needle.data.dataloader
+    #     ← needle.data.datasets.mnist
+    #     ← needle.typing.types
+]
+
 [tool.pytest.ini_options]
 pythonpath = "python/needle"
 testpaths = [
@@ -6,7 +45,6 @@ testpaths = [
 ]
 addopts = [
     "-ra",
-    "-n", "auto",
     "--strict-markers",
     "--strict-config",
     "-m not benchmark",
@@ -91,3 +129,11 @@ reportMissingTypeStubs = false
 
 pythonVersion = "3.12"
 pythonPlatform = "Linux"
+
+[tool.pydependence]
+versions = ["tomlkit>=0.12,<1"]
+scopes = [{name = "needle", pkg_paths = "./python/needle"}]
+resolvers = [
+    {strict_requirements_map=false, scope='needle', output_mode='dependencies'},
+    {strict_requirements_map=false, scope='needle', output_mode='optional-dependencies', output_name='all', visit_lazy=true},
+]

@@ -100,8 +100,7 @@ class RNNCell(Module):
         if self.bias:
             hidden += self.bias_ih + self.bias_hh
 
-        out = self.nonlinearity(hidden)
-        return out  # type: ignore
+        return self.nonlinearity(hidden)
 
 
 class RNN(Module):
@@ -506,5 +505,4 @@ class Embedding(Module):
             dtype=self.dtype,
         )
         out = x_one_hot @ self.weight
-        out = out.reshape((seq_len, batch_size, self.embedding_dim))
-        return out
+        return out.reshape((seq_len, batch_size, self.embedding_dim))
