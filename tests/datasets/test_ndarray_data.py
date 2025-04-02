@@ -17,11 +17,13 @@ def test_dataloader_batch(batch_size):
 
     for i, batch in enumerate(train_dataloader):
         batch_x = batch[0].numpy()
-        truth_x = train_dataset[i * batch_size : (i + 1) * batch_size][0].reshape((
-            batch_size,
-            10,
-            10,
-        ))
+        truth_x = train_dataset[i * batch_size : (i + 1) * batch_size][0].reshape(
+            (
+                batch_size,
+                10,
+                10,
+            )
+        )
         np.testing.assert_allclose(truth_x, batch_x)
 
 
@@ -35,18 +37,20 @@ def test_dataloader_batch(batch_size):
         ),
         (
             10,
-            np.array([
-                207.12556,
-                143.83324,
-                193.41406,
-                197.38034,
-                103.75934,
-                144.15616,
-                195.77794,
-                218.46281,
-                180.46883,
-                195.50447,
-            ]),
+            np.array(
+                [
+                    207.12556,
+                    143.83324,
+                    193.41406,
+                    197.38034,
+                    103.75934,
+                    144.15616,
+                    195.77794,
+                    218.46281,
+                    180.46883,
+                    195.50447,
+                ]
+            ),
             lambda batch: np.linalg.norm(batch[0].numpy()),
         ),
     ],
