@@ -193,7 +193,7 @@ class TensorTuple(Value):
     def __getitem__(self, index: int) -> Tensor:
         return ndl.ops.tuple_get_item(self, index)
 
-    def __iter__(self) -> Generator[Tensor]:
+    def __iter__(self) -> Generator[Tensor, None, None]:
         for i in range(len(self)):
             yield self[i]
 
