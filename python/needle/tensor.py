@@ -9,6 +9,7 @@ from needle.autograd.value import Value
 from needle.backend_selection import NDArray, array_api, default_device
 
 if TYPE_CHECKING:
+    from collections.abc import Generator
     from typing import Self
 
     from needle.typing import AbstractBackend as Device
@@ -177,6 +178,7 @@ class Tensor(Value):
     __rmul__ = __mul__
 
 
+# TODO: this class may be redundant
 class TensorTuple(Value):
     """
     Represent a tuple of tensors.
@@ -188,8 +190,12 @@ class TensorTuple(Value):
         cdata = self.realize_cached_data()
         return len(cdata)
 
-    def __getitem__(self, index: int) -> Value:
+    def __getitem__(self, index: int) -> Tensor:
         return ndl.ops.tuple_get_item(self, index)
+
+    def __iter__(self) -> Generator[Tensor]:
+        for i in range(len(self)):
+            yield self[i]
 
     def tuple(self) -> tuple[Value, ...] | tuple[Tensor, ...]:
         return tuple(self)

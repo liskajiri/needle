@@ -45,7 +45,6 @@ testpaths = [
 ]
 addopts = [
     "-ra",
-    "-n", "auto",
     "--strict-markers",
     "--strict-config",
     "-m not benchmark",
