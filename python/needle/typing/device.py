@@ -20,7 +20,7 @@ class AbstractBackend(ABC):
         # A module that implements the backend.
         self.module = module
 
-    def __eq__(self, other: Any) -> bool:
+    def __eq__(self, other: object) -> bool:
         if not isinstance(other, AbstractBackend):
             return False
         return self.name == other.name

@@ -174,15 +174,12 @@ class UnDilate(TensorOp):
 
         # TODO: does not have to reallocate memory - probably enough to shrink size and
         # move around values
-        new_arr = array_api.zeros(tuple(new_shap), arr.dtype, arr.device)
-
         indices = [slice(None)] * len(new_shap)
         for axis in self.axes:
             indices[axis] = slice(0, None, self.dilation + 1)
         indices = tuple(indices)
 
-        new_arr = arr[indices]
-        return new_arr
+        return arr[indices]
 
     def gradient(self, out_grad: Tensor, node: Tensor) -> Tensor:
         return dilate(out_grad, self.axes, self.dilation)
@@ -200,7 +197,7 @@ class GetItem(TensorOp):
         """Convert tensor indices to numpy arrays for indexing"""
         if isinstance(index, (Tensor | NDArray)):
             return index.numpy()
-        elif isinstance(index, tuple):
+        if isinstance(index, tuple):
             return tuple(self._convert_to_numpy_index(idx) for idx in index)
         return index
 

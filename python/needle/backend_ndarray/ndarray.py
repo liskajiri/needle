@@ -174,7 +174,7 @@ def broadcast_shapes(*shapes: tuple[Shape, ...]) -> tuple:
 
     # Determine output dimension for each position
     result = []
-    for dims in zip(*aligned_shapes):
+    for dims in zip(*aligned_shapes, strict=False):
         max_dim = pymax(dims)
         for d in dims:
             if d != 1 and d != max_dim:
@@ -501,8 +501,7 @@ class NDArray:
             )
 
         missing_dim = self.size // other_dims_product
-        new_shape = new_shape[:neg_idx] + (missing_dim,) + new_shape[neg_idx + 1 :]
-        return new_shape
+        return new_shape[:neg_idx] + (missing_dim,) + new_shape[neg_idx + 1 :]
 
     def permute(self, new_axes: tuple) -> NDArray:
         """Permute order of the dimensions.  new_axes describes a permutation of the
@@ -595,7 +594,7 @@ class NDArray:
 
     # TODO: standardize idxs type: int | iterable[int] | slice
     # TODO: getitem is not really working like numpy's
-    def __getitem__(self, idxs: IndexType) -> NDArray:
+    def __getitem__(self, idxs: IndexType) -> NDArray:  # noqa: C901
         """
         The __getitem__ operator in Python allows access to elements of the
         array.
@@ -728,13 +727,15 @@ class NDArray:
     def __setitem__(
         self,
         idxs: IndexType,
-        other: NDArray | Scalar,
+        other: NDArray | np.ndarray | Scalar,
     ) -> None:
         """
         Set the values of a view into an array,
         using the same semantics as __getitem__().
         """
         view = self.__getitem__(idxs)
+        if isinstance(other, np.ndarray):
+            other = NDArray(other, device=self.device)
         if isinstance(other, NDArray):
             if view.size != other.size:
                 raise ValueError(f"Size mismatch: {view.size} != {other.size}")
@@ -813,8 +814,7 @@ class NDArray:
             out = NDArray.make(self.shape, device=self.device)
             out.fill(other)
             return out / self
-        else:
-            return NDArray(other, device=self.device) / self
+        return NDArray(other, device=self.device) / self
 
     def __neg__(self):
         return self * (-1)
@@ -874,7 +874,7 @@ class NDArray:
         return out
 
     # Matrix multiplication
-    def __matmul__(self, other: NDArray) -> NDArray:
+    def __matmul__(self, other: NDArray) -> NDArray:  # noqa: C901
         """
         Matrix multiplication of two arrays.
         This requires that both arrays be 2D
@@ -1092,9 +1092,7 @@ class NDArray:
         )
         # Return compacted array to ensure standard memory layout
         # TODO: Copies memory, if negative strides are supported, this can be avoided
-        out = out.compact()
-
-        return out
+        return out.compact()
 
     def pad(self, axes: tuple[tuple[int, int], ...]) -> NDArray:
         """
@@ -1129,7 +1127,8 @@ class NDArray:
 
         # Calculate new shape after padding
         new_shape = tuple(
-            dim + left + right for dim, (left, right) in zip(self.shape, axes)
+            dim + left + right
+            for dim, (left, right) in zip(self.shape, axes, strict=False)
         )
 
         # Create output array filled with zeros
@@ -1137,7 +1136,8 @@ class NDArray:
 
         # Create slices to insert original data
         slices = tuple(
-            slice(left, left + dim) for dim, (left, _) in zip(self.shape, axes)
+            slice(left, left + dim)
+            for dim, (left, _) in zip(self.shape, axes, strict=False)
         )
         # Copy data into padded array
         out[slices] = self

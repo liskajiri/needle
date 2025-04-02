@@ -42,7 +42,7 @@ def compute_gradient_of_variables(output_tensor: Tensor, out_grad: Tensor) -> No
             logging.debug(f"{indent * '='} OP: {node.op.__class__.__name__}")
             # partial adjoints
             grads = node.op.gradient_as_tuple(node.grad, node)
-            for input_node, grad in zip(node.inputs, grads):
+            for input_node, grad in zip(node.inputs, grads, strict=False):
                 node_to_output_grads[input_node].append(grad)  # type: ignore
 
             # Gradients do not need to be kept further in the AD graph

@@ -17,7 +17,7 @@ class Op(ABC):
 
     @abstractmethod
     def __call__(self, *args) -> Any:
-        raise NotImplementedError()
+        raise NotImplementedError
 
     @abstractmethod
     def compute(self, *arr: tuple[NDArray, ...]) -> NDArray:
@@ -34,7 +34,7 @@ class Op(ABC):
             Array output of the operation
 
         """
-        raise NotImplementedError()
+        raise NotImplementedError
 
     @abstractmethod
     def gradient(self, out_grad: Value, _node: Value) -> Value | tuple[Value]:
@@ -54,14 +54,14 @@ class Op(ABC):
             A list containing partial gradient adjoints to be propagated to
             each of the input node.
         """
-        raise NotImplementedError()
+        raise NotImplementedError
 
     def gradient_as_tuple(self, out_grad: Value, node: Value) -> tuple[Value]:
         """Convenience method to always return a tuple from gradient call."""
         output = self.gradient(out_grad, node)
         if isinstance(output, tuple):
             return output
-        elif isinstance(output, list):
+        if isinstance(output, list):
             return tuple(output)
         return (output,)
 

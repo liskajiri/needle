@@ -149,9 +149,7 @@ def batchify(
     data = NDArray(data, device=device, dtype=dtype)
 
     # reshape the data to (batch_size, n_batches)
-    data = array_api.transpose(data.reshape((batch_size, n_batches)))
-
-    return data
+    return array_api.transpose(data.reshape((batch_size, n_batches)))
 
 
 def get_batch(

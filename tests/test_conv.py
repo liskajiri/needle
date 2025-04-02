@@ -442,14 +442,14 @@ op_conv_shapes = [
 @pytest.mark.parametrize("device", _DEVICES, ids=["cpu", "cuda"])
 @pytest.mark.parametrize("backward", [True, False], ids=["backward", "forward"])
 def test_op_conv(Z_shape, W_shape, stride, padding, backward, device):
-    _Z = rng.standard_normal(Z_shape, dtype=np.float32)
-    _W = rng.standard_normal(W_shape, dtype=np.float32)
+    z = rng.standard_normal(Z_shape, dtype=np.float32)
+    w = rng.standard_normal(W_shape, dtype=np.float32)
 
-    Z = ndl.Tensor(_Z, device=device)
-    W = ndl.Tensor(_W, device=device)
+    Z = ndl.Tensor(z, device=device)
+    W = ndl.Tensor(w, device=device)
 
-    Z_torch = torch.tensor(_Z, dtype=torch.float32, requires_grad=True)
-    W_torch = torch.tensor(_W, dtype=torch.float32, requires_grad=True)
+    Z_torch = torch.tensor(z, dtype=torch.float32, requires_grad=True)
+    W_torch = torch.tensor(w, dtype=torch.float32, requires_grad=True)
 
     y = ndl.conv(Z, W, padding=padding, stride=stride)
     y2 = y.sum()
@@ -468,7 +468,9 @@ def test_op_conv(Z_shape, W_shape, stride, padding, backward, device):
         rtol=1e-4,
         atol=1e-4,
     )
-    np.testing.assert_allclose(y2.numpy(), out2.detach().numpy(), rtol=1e-4, atol=1e-4)
+    np.testing.assert_allclose(
+        y2.numpy().item(), out2.detach().numpy().item(), rtol=1e-4, atol=1e-4
+    )
 
     if backward:
         out2.backward()

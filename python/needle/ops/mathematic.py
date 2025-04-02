@@ -166,15 +166,14 @@ class Transpose(TensorOp):
             return array_api.transpose(a, self.axes)
         if len(self.axes) == 2:
             # swap two axes
-            permutation = [i for i in range(len(a.shape))]
+            permutation = list(range(len(a.shape)))
             lhs, rhs = self.axes
             permutation[lhs], permutation[rhs] = (
                 rhs,
                 lhs,
             )
             return array_api.transpose(a, tuple(permutation))
-        else:
-            raise ValueError(f"Invalid axes: {self.axes}")
+        raise ValueError(f"Invalid axes: {self.axes}")
 
     def gradient(self, out_grad: Tensor, _node: Tensor) -> Tensor:
         """
