@@ -49,5 +49,4 @@ jobs:
               - '**/*.toml'
               - '**/*.yaml'
               - '**/*.yml'
-              # lockfiles
               - '**/*.lock'
