@@ -45,7 +45,7 @@ jobs:
               - '**/*.cpp'
             cuda:
               - '**/*.cu'
-            configs
+            configs:
               - '**/*.toml'
               - '**/*.yaml'
               - '**/*.yml'
