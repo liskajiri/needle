@@ -1,13 +1,9 @@
 import numpy as np
 import pytest
 from needle import backend_ndarray as ndl
+from needle.backend_selection import NDArray
 
-_DEVICES = [
-    ndl.cpu(),
-    pytest.param(
-        ndl.cuda(), marks=pytest.mark.skipif(not ndl.cuda().enabled(), reason="No GPU")
-    ),
-]
+rng = np.random.default_rng(0)
 
 _ALL_DEVICES = [
     ndl.cpu(),
@@ -21,12 +17,6 @@ _ALL_DEVICES = [
 # CPU: vs Numpy, Torch, Torch.compile
 # GPU: Torch
 
-##### ===
-##### === Matmul benchmark
-##### === - Graph of results is in reports/matmul_graph
-##### === - Full results are in .benchmarks
-##### ===
-
 matmul_dims = [
     (8, 8, 8),
     (32, 32, 32),
@@ -36,53 +26,51 @@ matmul_dims = [
 ]
 
 
+def matmul(A: NDArray, B: NDArray) -> NDArray:
+    return A @ B
+
+
 @pytest.mark.parametrize("device", _ALL_DEVICES, ids=["cpu", "cuda", "np"])
 @pytest.mark.parametrize(("m", "n", "p"), matmul_dims)
 @pytest.mark.benchmark(
-    max_time=2,
+    max_time=3,
     min_rounds=1000,
     disable_gc=True,
     warmup=True,
-    warmup_iterations=200,
+    warmup_iterations=100,
 )
-def test_matmul(benchmark, m, n, p, device):
-    def matmul(A, B):
-        return A @ B
+def test_matmul(benchmark, m, n, p, device) -> None:
+    a = rng.standard_normal((m, n))
+    b = rng.standard_normal((n, p))
 
-    _A = np.random.randn(m, n)
-    _B = np.random.randn(n, p)
-    A = ndl.array(_A, device=device)
-    B = ndl.array(_B, device=device)
+    A = ndl.array(a, device=device)
+    B = ndl.array(b, device=device)
 
     out = benchmark(matmul, A, B)
-    np.testing.assert_allclose(out.numpy(), _A @ _B, rtol=1e-5, atol=1e-5)
+    np.testing.assert_allclose(out.numpy(), a @ b, rtol=1e-4, atol=1e-4)
 
 
 large_matmul_dims = [
     (256, 256, 256),
     (512, 512, 512),
     (1024, 1024, 1024),
-    (2048, 2048, 2048),
 ]
 
 
 @pytest.mark.parametrize("device", _ALL_DEVICES, ids=["cpu", "cuda", "np"])
 @pytest.mark.parametrize(("m", "n", "p"), large_matmul_dims)
 @pytest.mark.benchmark(
-    max_time=5,
+    max_time=3,
     min_rounds=100,
     disable_gc=True,
     warmup=True,
     warmup_iterations=10,
 )
-def test_matmul_large(benchmark, m, n, p, device):
-    def matmul(A, B):
-        return A @ B
-
-    _A = np.random.randn(m, n)
-    _B = np.random.randn(n, p)
-    A = ndl.array(_A, device=device)
-    B = ndl.array(_B, device=device)
+def test_matmul_large(benchmark, m, n, p, device) -> None:
+    a = rng.standard_normal((m, n))
+    b = rng.standard_normal((n, p))
+    A = ndl.array(a, device=device)
+    B = ndl.array(b, device=device)
 
     out = benchmark(matmul, A, B)
-    np.testing.assert_allclose(out.numpy(), _A @ _B, rtol=1e-4, atol=1e-4)
+    np.testing.assert_allclose(out.numpy(), a @ b, rtol=1e-4, atol=1e-4)

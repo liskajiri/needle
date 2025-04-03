@@ -13,6 +13,10 @@ on:
       cuda_changed:
         description: "Whether CUDA files were changed"
         value: ${{ jobs.check-changed-files.outputs.cuda_changed }}
+      configs_changed:
+        description: "Whether config files
+                      (TOML & YAML or lockfiles) were changed"
+        value: ${{ jobs.check-changed-files.outputs.configs }}
 
 jobs:
   check-changed-files:
@@ -25,6 +29,7 @@ jobs:
       python_changed: ${{ steps.filter.outputs.python }}
       cpp_changed: ${{ steps.filter.outputs.cpp }}
       cuda_changed: ${{ steps.filter.outputs.cuda }}
+      configs: ${{ steps.filter.outputs.configs }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -40,3 +45,9 @@ jobs:
               - '**/*.cpp'
             cuda:
               - '**/*.cu'
+            configs
+              - '**/*.toml'
+              - '**/*.yaml'
+              - '**/*.yml'
+              # lockfiles
+              - '**/*.lock'

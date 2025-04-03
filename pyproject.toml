@@ -47,7 +47,6 @@ addopts = [
     "-ra",
     "--strict-markers",
     "--strict-config",
-    "-m not benchmark",
     "--import-mode=importlib",
     "--doctest-modules",
 ]
