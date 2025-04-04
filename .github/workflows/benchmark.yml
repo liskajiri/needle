@@ -30,6 +30,12 @@ on:
         required: true
         type: boolean
 
+permissions:
+  contents: read
+  pull-requests: write  # check-files
+  checks: write         # test workflow
+  issues: read          # test workflow
+
 jobs:
   benchmark:
     if: inputs.python_changed == true ||
@@ -37,14 +43,6 @@ jobs:
         inputs.cuda_changed == true ||
         inputs.configs_changed == true
     timeout-minutes: 20
-
-    # Add explicit permissions
-    # permissions:
-    #   actions: write
-    #   checks: write
-    #   contents: read
-    #   pull-requests: write
-    #   statuses: read
 
     name: Run benchmarks
     runs-on: ubuntu-latest
