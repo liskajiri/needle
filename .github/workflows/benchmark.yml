@@ -25,12 +25,12 @@ jobs:
     timeout-minutes: 20
 
     # Add explicit permissions
-    permissions:
-      actions: write
-      checks: write
-      contents: read
-      pull-requests: write
-      statuses: read
+    # permissions:
+    #   actions: write
+    #   checks: write
+    #   contents: read
+    #   pull-requests: write
+    #   statuses: read
 
     name: Run benchmarks
     runs-on: ubuntu-latest

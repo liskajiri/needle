@@ -16,7 +16,6 @@ dependencies = [
     #     ← needle.backend_ndarray.ndarray
     #     ← needle.backend_numpy
     #     ← needle.backend_selection
-    #     ← needle.data.dataloader
     #     ← needle.data.datasets.mnist
     #     ← needle.typing.types
 ]
@@ -32,7 +31,6 @@ all = [
     #     ← needle.backend_ndarray.ndarray
     #     ← needle.backend_numpy
     #     ← needle.backend_selection
-    #     ← needle.data.dataloader
     #     ← needle.data.datasets.mnist
     #     ← needle.typing.types
 ]
