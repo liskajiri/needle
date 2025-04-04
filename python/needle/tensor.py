@@ -118,7 +118,6 @@ class Tensor(Value):
 
     # Arithmetic operations
 
-    # TODO: remove class instances, call functions directly
     def __add__(self, other: Tensor | Scalar) -> Tensor:
         if isinstance(other, Tensor):
             return ndl.ops.EWiseAdd()(self, other)

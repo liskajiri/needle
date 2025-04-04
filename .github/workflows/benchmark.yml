@@ -15,6 +15,20 @@ on:
       configs_changed:
         required: true
         type: boolean
+  workflow_dispatch:
+    inputs:
+      python_changed:
+        required: true
+        type: boolean
+      cpp_changed:
+        required: true
+        type: boolean
+      cuda_changed:
+        required: true
+        type: boolean
+      configs_changed:
+        required: true
+        type: boolean
 
 jobs:
   benchmark:
