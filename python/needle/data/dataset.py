@@ -9,6 +9,8 @@ T = TypeVar("T")
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+    from needle.typing import IndexType
+
 
 class Dataset[T](Sequence, ABC):
     """
@@ -57,7 +59,7 @@ class Dataset[T](Sequence, ABC):
         self._transforms = tuple(transforms) if transforms else ()
 
     @abstractmethod
-    def __getitem__(self, index: int | slice) -> Sequence[T]:
+    def __getitem__(self, index: IndexType) -> Sequence[T]:
         raise NotImplementedError
 
     @abstractmethod
