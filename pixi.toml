@@ -126,3 +126,4 @@ benchmark_matmul = {cmd = "pytest benchmarks/test_matmul.py -m benchmark", depen
 
 [activation.env]
 PYTHONPATH = "./python:./apps"
+NEEDLE_BACKEND = "nd"
