@@ -2,6 +2,7 @@
 name: Benchmark
 
 on:
+  # Support being called from other workflows
   workflow_call:
     inputs:
       python_changed:
@@ -16,32 +17,32 @@ on:
       configs_changed:
         required: true
         type: boolean
+  # run on pushes to the master branch
+  push:
+    branches: [main]
+  # run on pull requests
+  pull_request:
+  # `workflow_dispatch` allows codspeed to trigger
+  # performance analysis in order to generate initial data.
   workflow_dispatch:
-
-# on:
-#   # run on pushes to the master branch
-#   push:
-#     branches:
-#       - "main"
-#   # run on pull requests
-#   pull_request:
-#   # `workflow_dispatch` allows codspeed to trigger
-#   # performance analysis in order to generate initial data.
-#   workflow_dispatch:
 
 jobs:
   benchmark:
-    if: inputs.python_changed == true ||
-        inputs.cpp_changed == true ||
-        inputs.cuda_changed == true ||
-        inputs.configs_changed == true
     timeout-minutes: 30
+    # Skip benchmarks if called from another workflow and no relevant files changed
+    if: >
+      github.event_name != 'workflow_call' ||
+      inputs.python_changed == true ||
+      inputs.cpp_changed == true ||
+      inputs.cuda_changed == true ||
+      inputs.configs_changed == true
 
     name: Run benchmarks
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: prefix-dev/setup-pixi@v0.8.3
+      # the codspeed runner is slow, so do everything possible before
       - run: pixi install -e benchmark
       - run: pixi run build
 
