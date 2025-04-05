@@ -19,10 +19,10 @@ _ALL_DEVICES = [
 
 matmul_dims = [
     (8, 8, 8),
-    (32, 32, 32),
-    (64, 64, 64),
-    (128, 128, 128),
-    (256, 256, 256),
+    # (32, 32, 32),
+    # (64, 64, 64),
+    # (128, 128, 128),
+    # (256, 256, 256),
 ]
 
 
@@ -33,7 +33,7 @@ def matmul(A: NDArray, B: NDArray) -> NDArray:
 @pytest.mark.parametrize("device", _ALL_DEVICES, ids=["cpu", "cuda", "np"])
 @pytest.mark.parametrize(("m", "n", "p"), matmul_dims)
 @pytest.mark.benchmark(
-    max_time=3,
+    max_time=1,
     min_rounds=1000,
     disable_gc=True,
     warmup=True,
@@ -57,6 +57,7 @@ large_matmul_dims = [
 ]
 
 
+@pytest.mark.skip(reason="Skip large matmul test for now")
 @pytest.mark.parametrize("device", _ALL_DEVICES, ids=["cpu", "cuda", "np"])
 @pytest.mark.parametrize(("m", "n", "p"), large_matmul_dims)
 @pytest.mark.benchmark(

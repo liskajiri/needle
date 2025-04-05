@@ -42,7 +42,7 @@ jobs:
         inputs.cpp_changed == true ||
         inputs.cuda_changed == true ||
         inputs.configs_changed == true
-    timeout-minutes: 20
+    timeout-minutes: 30
 
     name: Run benchmarks
     runs-on: ubuntu-latest
@@ -53,5 +53,5 @@ jobs:
       - name: Run benchmarks
         uses: CodSpeedHQ/action@v3
         with:
-          token: ${{ secrets.CODSPEED_TOKEN }}
           run: pixi run benchmarks
+          token: ${{ secrets.CODSPEED_TOKEN }}
