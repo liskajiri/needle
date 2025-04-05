@@ -67,7 +67,7 @@ def kaiming_uniform(
     fan_in: int = 1,
     fan_out: int = 1,
     shape: Shape | None = None,
-    gain: float = 2**0.5,
+    gain: float = math.sqrt(2),
     nonlinearity: ReLU | None = None,
     **kwargs,
 ) -> Tensor:
@@ -101,7 +101,7 @@ def kaiming_uniform(
 def kaiming_normal(
     fan_in: int,
     fan_out: int,
-    gain: float = 2**0.5,
+    gain: float = math.sqrt(2),
     nonlinearity: ReLU | None = None,
     **kwargs,
 ) -> Tensor:
@@ -126,5 +126,5 @@ def kaiming_normal(
     if not nonlinearity:
         nonlinearity = ReLU()
 
-    std = gain / (fan_in**0.5)
+    std = gain / math.sqrt(fan_in)
     return randn((fan_in, fan_out), std=std, **kwargs)

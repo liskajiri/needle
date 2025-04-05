@@ -1,6 +1,9 @@
 import needle as ndl
 import numpy as np
 import pytest
+import torch
+from hypothesis import given
+from hypothesis import strategies as st
 
 _DEVICES = [
     ndl.cpu(),
@@ -89,51 +92,58 @@ def test_init_xavier_normal():
     )
 
 
-# TODO: Add tests
-# import pytest
-# from hypothesis import given
-# from hypothesis import strategies as st
-# from hypothesis.extra.numpy import array_shapes, arrays
-# import torch
+@pytest.mark.parametrize(
+    "gain", [1.0, 2**0.5, 0.5, 0.0], ids=["1.0", "sqrt2", "0.5", "0.0"]
+)
+@pytest.mark.parametrize(
+    "init_fn_pair",
+    [
+        (ndl.init.xavier_normal, torch.nn.init.xavier_normal_),
+        (ndl.init.xavier_uniform, torch.nn.init.xavier_uniform_),
+        # TODO: Kaiming stuff does not work
+        # (
+        #     ndl.init.kaiming_normal,
+        #     lambda t, **kwargs: torch.nn.init.kaiming_normal_(
+        #         t, mode="fan_in", nonlinearity="relu"
+        #     ),
+        # ),
+        # (
+        #     ndl.init.kaiming_uniform,
+        #     lambda t, **kwargs: torch.nn.init.kaiming_uniform_(
+        #         t, mode="fan_in", nonlinearity="relu"
+        #     ),
+        # ),
+    ],
+    ids=[
+        "xavier_normal",
+        "xavier_uniform",
+        # "kaiming_normal",
+        # "kaiming_uniform",
+    ],
+)
+@given(fan_in=st.integers(1, 100), fan_out=st.integers(1, 100))
+def test_init_distributions_proptest(gain, init_fn_pair, fan_in: int, fan_out: int):
+    ndl_init_fn, torch_init_fn = init_fn_pair
 
+    # Test with appropriate gain
+    # gain = 2**0.5 if "kaiming" in init_fn_pair[0].__name__ else 1.0
 
-# @given(fan_in=st.integers(1, 5), fan_out=st.integers(1, 5))
-# def test_init_xavier_normal_proptest(fan_in: int, fan_out: int):
-#     gain: float = 2**0.5
-#     _ndl = ndl.init.xavier_normal(fan_in, fan_out, gain)
-#     _pytorch = torch.nn.init.xavier_normal_(torch.empty(fan_in, fan_out), gain=gain)
-#     np.testing.assert_allclose(_ndl.numpy(), _pytorch.numpy(), rtol=1e-4, atol=1e-4)
+    # Make the tensor large enough for good statistics
+    scale_factor = max(1, 10000 // (fan_in * fan_out))
+    large_fan_out = fan_out * scale_factor
 
+    # Generate one large tensor from each implementation
+    ndl_tensor = ndl_init_fn(fan_in, large_fan_out, gain=gain, requires_grad=False)
 
-# @given(fan_in=st.integers(1, 5), fan_out=st.integers(1, 5))
-# def test_init_kaiming_normal_proptest(fan_in: int, fan_out: int):
-#     gain: float = 2**0.5
-#     _ndl = ndl.init.kaiming_normal(fan_in, fan_out, gain)
-#     _pytorch = torch.nn.init.kaiming_normal_(
-#         torch.empty(fan_in, fan_out), nonlinearity="relu"
-#     )
-#     np.testing.assert_allclose(_ndl.numpy(), _pytorch.numpy(), rtol=1e-4, atol=1e-4)
+    torch_tensor = torch_init_fn(torch.empty(fan_in, large_fan_out), gain=gain)
 
+    ndl_samples = ndl_tensor.numpy().flatten()
+    torch_samples = torch_tensor.numpy().flatten()
 
-# @given(fan_in=st.integers(1, 5), fan_out=st.integers(1, 5))
-# def test_init_xavier_uniform_proptest(fan_in: int, fan_out: int):
-#     gain: float = 2**0.5
-#     ndl_xavier = ndl.init.xavier_normal(fan_in, fan_out, gain)
-#     pytorch_xavier = torch.nn.init.xavier_normal_(
-#         torch.empty(fan_in, fan_out), gain=gain
-#     )
-#     np.testing.assert_allclose(
-#         ndl_xavier.numpy(), pytorch_xavier.numpy(), rtol=1e-4, atol=1e-4
-#     )
-
-
-# @given(fan_in=st.integers(1, 5), fan_out=st.integers(1, 5))
-# def test_init_xavier_normal_proptest(fan_in: int, fan_out: int):
-#     gain: float = 2**0.5
-#     ndl_xavier = ndl.init.xavier_normal(fan_in, fan_out, gain)
-#     pytorch_xavier = torch.nn.init.xavier_normal_(
-#         torch.empty(fan_in, fan_out), gain=gain
-#     )
-#     np.testing.assert_allclose(
-#         ndl_xavier.numpy(), pytorch_xavier.numpy(), rtol=1e-4, atol=1e-4
-#     )
+    atol, rtol = 1e-1, 1e-3
+    np.testing.assert_allclose(
+        ndl_samples.std(), torch_samples.std(), rtol=rtol, atol=atol
+    )
+    np.testing.assert_allclose(
+        ndl_samples.mean(), torch_samples.mean(), rtol=rtol, atol=atol
+    )

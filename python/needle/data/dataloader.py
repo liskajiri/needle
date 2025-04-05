@@ -1,8 +1,7 @@
 from __future__ import annotations
 
+import random
 from typing import TYPE_CHECKING
-
-import numpy as np
 
 from needle.tensor import Tensor
 
@@ -48,14 +47,11 @@ class DataLoader:
         Yields:
             Iterator[BatchType]: Batch of data.
         """
-        # TODO: get rid of the numpy dependency
         if self.shuffle:
-            orders = np.random.permutation(len(self.dataset))
+            indices = random.sample(range(len(self.dataset)), len(self.dataset))
         else:
-            orders = np.arange(len(self.dataset))
+            indices = list(range(len(self.dataset)))
 
-        ordering = np.split(
-            orders, range(self.batch_size, len(self.dataset), self.batch_size)
-        )
-        for indices in ordering:
-            yield tuple(Tensor(i) for i in self.dataset[indices])
+        for start_idx in range(0, len(indices), self.batch_size):
+            batch_indices = indices[start_idx : start_idx + self.batch_size]
+            yield tuple(Tensor(i) for i in self.dataset[batch_indices])

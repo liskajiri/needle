@@ -31,20 +31,29 @@ jobs:
     needs: check-files
     uses: ./.github/workflows/pyright.yml
     with:
-      python_changed: ${{ needs.check-files.outputs.python_changed == 'true' }}
+      python_changed:
+        ${{ needs.check-files.outputs.python_changed == 'true' }}
 
   build:
     name: Build
     needs: check-files
     uses: ./.github/workflows/build.yml
     with:
-      cpp_changed: ${{ needs.check-files.outputs.cpp_changed == 'true' }}
+      cpp_changed:
+        ${{ needs.check-files.outputs.cpp_changed == 'true' }}
+      configs_changed:
+        ${{ needs.check-files.outputs.configs_changed == 'true'}}
 
   test:
     name: Test
     needs: check-files
     uses: ./.github/workflows/test.yml
     with:
-      python_changed: ${{ needs.check-files.outputs.python_changed == 'true' }}
-      cpp_changed: ${{ needs.check-files.outputs.cpp_changed == 'true' }}
-      cuda_changed: ${{ needs.check-files.outputs.cuda_changed == 'true' }}
+      python_changed:
+        ${{ needs.check-files.outputs.python_changed == 'true' }}
+      cpp_changed:
+        ${{ needs.check-files.outputs.cpp_changed == 'true' }}
+      cuda_changed:
+        ${{ needs.check-files.outputs.cuda_changed == 'true' }}
+      configs_changed:
+        ${{ needs.check-files.outputs.configs_changed == 'true' }}
