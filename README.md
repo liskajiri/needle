@@ -1,4 +1,5 @@
-# Needle
+<div align="center">
+<h1>Needle</h1>
 
 [![codecov](https://codecov.io/gh/liskajiri/needle/graph/badge.svg?token=73039E6OB2)](https://codecov.io/gh/liskajiri/needle)
 [![CI](https://github.com/liskajiri/needle/actions/workflows/ci.yml/badge.svg)](https://github.com/liskajiri/needle/actions/workflows/ci.yml)
