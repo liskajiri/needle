@@ -57,4 +57,3 @@ jobs:
         ${{ needs.check-files.outputs.cuda_changed == 'true' }}
       configs_changed:
         ${{ needs.check-files.outputs.configs_changed == 'true' }}
-
