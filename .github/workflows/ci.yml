@@ -58,16 +58,16 @@ jobs:
       configs_changed:
         ${{ needs.check-files.outputs.configs_changed == 'true' }}
 
-  # benchmark:
-  #   name: Benchmark
-  #   needs: check-files
-  #   uses: ./.github/workflows/benchmark.yml
-  #   with:
-  #     python_changed:
-  #       ${{ needs.check-files.outputs.python_changed == 'true' }}
-  #     cpp_changed:
-  #       ${{ needs.check-files.outputs.cpp_changed == 'true' }}
-  #     cuda_changed:
-  #       ${{ needs.check-files.outputs.cuda_changed == 'true' }}
-  #     configs_changed:
-  #       ${{ needs.check-files.outputs.configs_changed == 'true' }}
+  benchmark:
+    name: Benchmark
+    needs: check-files
+    uses: ./.github/workflows/benchmark.yml
+    with:
+      python_changed:
+        ${{ needs.check-files.outputs.python_changed == 'true' }}
+      cpp_changed:
+        ${{ needs.check-files.outputs.cpp_changed == 'true' }}
+      cuda_changed:
+        ${{ needs.check-files.outputs.cuda_changed == 'true' }}
+      configs_changed:
+        ${{ needs.check-files.outputs.configs_changed == 'true' }}
