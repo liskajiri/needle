@@ -18,37 +18,6 @@ permissions:
   issues: read          # test workflow
 
 jobs:
-  check-skip-ci:
-    runs-on: ubuntu-latest
-    outputs:
-      should-skip: ${{ steps.skip-check.outputs.should-skip }}
-    steps:
-      - id: skip-check
-        name: Check for skip-ci
-        run: |
-          # Debug: Print the commit message for troubleshooting
-          echo "Commit message: ${{ github.event.head_commit.message }}"
-          echo "PR title: ${{ github.event.pull_request.title }}"
-          
-          # Check commit message
-          if [[ "${{ github.event.head_commit.message }}" =~ ^skip-ci ]] || 
-             [[ "${{ github.event.head_commit.message }}" =~ \[skip-ci\] ]]; then
-            echo "should-skip=true" >> $GITHUB_OUTPUT
-            echo "Detected skip-ci in commit message, will skip all jobs"
-            exit 0
-          fi
-          
-          # Check PR title
-          if [[ "${{ github.event.pull_request.title }}" =~ ^skip-ci ]] || 
-             [[ "${{ github.event.pull_request.title }}" =~ \[skip-ci\] ]]; then
-            echo "should-skip=true" >> $GITHUB_OUTPUT
-            echo "Detected skip-ci in PR title, will skip all jobs"
-            exit 0
-          fi
-          
-          echo "should-skip=false" >> $GITHUB_OUTPUT
-          echo "No skip-ci detected, continuing with all jobs"
-
   check-files:
     name: Check changed files
     uses: ./.github/workflows/check-changed-files.yml
@@ -59,8 +28,7 @@ jobs:
 
   pyright:
     name: Pyright
-    needs: [check-skip-ci, check-files]
-    if: needs.check-skip-ci.outputs.should-skip != 'true'
+    needs: check-files
     uses: ./.github/workflows/pyright.yml
     with:
       python_changed:
@@ -68,8 +36,7 @@ jobs:
 
   build:
     name: Build
-    needs: [check-skip-ci, check-files]
-    if: needs.check-skip-ci.outputs.should-skip != 'true'
+    needs: check-files
     uses: ./.github/workflows/build.yml
     with:
       cpp_changed:
@@ -79,8 +46,7 @@ jobs:
 
   test:
     name: Test
-    needs: [check-skip-ci, check-files]
-    if: needs.check-skip-ci.outputs.should-skip != 'true'
+    needs: check-files
     uses: ./.github/workflows/test.yml
     with:
       python_changed:
@@ -94,8 +60,7 @@ jobs:
 
   benchmark:
     name: Benchmark
-    needs: [check-skip-ci, check-files]
-    if: needs.check-skip-ci.outputs.should-skip != 'true'
+    needs: check-files
     uses: ./.github/workflows/benchmark.yml
     with:
       python_changed:
