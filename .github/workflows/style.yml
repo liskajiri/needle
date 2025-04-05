@@ -18,6 +18,6 @@ jobs:
           restore-keys: pre-commit-
 
       - name: Lint
-        uses: prefix-dev/setup-pixi@v0.8.3
+        uses: prefix-dev/setup-pixi@v0.8.4
       - name: style
         run: pixi run style
