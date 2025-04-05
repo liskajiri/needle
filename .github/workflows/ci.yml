@@ -18,6 +18,19 @@ permissions:
   issues: read          # test workflow
 
 jobs:
+  check-commit-message:
+    runs-on: ubuntu-latest
+    outputs:
+      skip-ci: ${{ steps.check.outputs.skip-ci }}
+    steps:
+      - id: check
+        run: |
+          if [[ "${{ github.event.head_commit.message }}" == "skip-ci"* ]] || [[ "${{ github.event.head_commit.message }}" == *"[skip-ci]"* ]]; then
+            echo "skip-ci=true" >> $GITHUB_OUTPUT
+          else
+            echo "skip-ci=false" >> $GITHUB_OUTPUT
+          fi
+
   check-files:
     name: Check changed files
     uses: ./.github/workflows/check-changed-files.yml
@@ -28,7 +41,8 @@ jobs:
 
   pyright:
     name: Pyright
-    needs: check-files
+    needs: [check-commit-message, check-files]
+    if: needs.check-commit-message.outputs.skip-ci != 'true'
     uses: ./.github/workflows/pyright.yml
     with:
       python_changed:
@@ -36,7 +50,8 @@ jobs:
 
   build:
     name: Build
-    needs: check-files
+    needs: [check-commit-message, check-files]
+    if: needs.check-commit-message.outputs.skip-ci != 'true'
     uses: ./.github/workflows/build.yml
     with:
       cpp_changed:
@@ -46,7 +61,8 @@ jobs:
 
   test:
     name: Test
-    needs: check-files
+    needs: [check-commit-message, check-files]
+    if: needs.check-commit-message.outputs.skip-ci != 'true'
     uses: ./.github/workflows/test.yml
     with:
       python_changed:
@@ -60,7 +76,8 @@ jobs:
 
   benchmark:
     name: Benchmark
-    needs: check-files
+    needs: [check-commit-message, check-files]
+    if: needs.check-commit-message.outputs.skip-ci != 'true'
     uses: ./.github/workflows/benchmark.yml
     with:
       python_changed:
