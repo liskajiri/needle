@@ -14,7 +14,6 @@ environments:
       - conda: https://prefix.dev/conda-forge/noarch/exceptiongroup-1.2.2-pyhd8ed1ab_1.conda
       - conda: https://prefix.dev/conda-forge/linux-64/icu-75.1-he02047a_0.conda
       - conda: https://prefix.dev/conda-forge/noarch/importlib-metadata-8.6.1-pyha770c72_0.conda
-      - conda: https://prefix.dev/conda-forge/noarch/importlib_metadata-8.6.1-hd8ed1ab_0.conda
       - conda: https://prefix.dev/conda-forge/noarch/iniconfig-2.0.0-pyhd8ed1ab_1.conda
       - conda: https://prefix.dev/conda-forge/linux-64/ld_impl_linux-64-2.43-h712a8e2_4.conda
       - conda: https://prefix.dev/conda-forge/linux-64/libblas-3.9.0-31_hfdb39a5_mkl.conda
@@ -34,10 +33,8 @@ environments:
       - conda: https://prefix.dev/conda-forge/linux-64/libuuid-2.38.1-h0b41bf4_0.conda
       - conda: https://prefix.dev/conda-forge/linux-64/libxcrypt-4.4.36-hd590300_1.conda
       - conda: https://prefix.dev/conda-forge/linux-64/libxml2-2.13.6-h8d12d68_0.conda
-      - conda: https://prefix.dev/conda-forge/linux-64/libxslt-1.1.39-h76b75d6_0.conda
       - conda: https://prefix.dev/conda-forge/linux-64/libzlib-1.3.1-hb9d3cd8_2.conda
       - conda: https://prefix.dev/conda-forge/linux-64/llvm-openmp-19.1.7-h024ca30_0.conda
-      - conda: https://prefix.dev/conda-forge/linux-64/lxml-5.3.1-py312he28fd5a_0.conda
       - conda: https://prefix.dev/conda-forge/noarch/markdown-it-py-3.0.0-pyhd8ed1ab_1.conda
       - conda: https://prefix.dev/conda-forge/noarch/mdurl-0.1.2-pyhd8ed1ab_1.conda
       - conda: https://prefix.dev/conda-forge/linux-64/mkl-2024.2.2-ha957f24_16.conda
@@ -47,7 +44,6 @@ environments:
       - conda: https://prefix.dev/conda-forge/noarch/packaging-24.2-pyhd8ed1ab_2.conda
       - conda: https://prefix.dev/conda-forge/noarch/pluggy-1.5.0-pyhd8ed1ab_1.conda
       - conda: https://prefix.dev/conda-forge/noarch/pycparser-2.22-pyh29332c3_1.conda
-      - conda: https://prefix.dev/conda-forge/noarch/pygal-3.0.5-pyhd8ed1ab_1.conda
       - conda: https://prefix.dev/conda-forge/noarch/pygments-2.19.1-pyhd8ed1ab_0.conda
       - conda: https://prefix.dev/conda-forge/noarch/pytest-8.3.5-pyhd8ed1ab_0.conda
       - conda: https://prefix.dev/conda-forge/linux-64/pytest-codspeed-3.1.2-py312h66e93f0_0.conda
@@ -1228,15 +1224,6 @@ packages:
   license_family: APACHE
   size: 29141
   timestamp: 1737420302391
-- conda: https://prefix.dev/conda-forge/noarch/importlib_metadata-8.6.1-hd8ed1ab_0.conda
-  sha256: 1e3eb9d65c4d7b87c7347553ef9eef6f994996f90a2299e19b35f5997d3a3e79
-  md5: 7f46575a91b1307441abc235d01cab66
-  depends:
-  - importlib-metadata >=8.6.1,<8.6.2.0a0
-  license: Apache-2.0
-  license_family: APACHE
-  size: 9502
-  timestamp: 1737420303228
 - conda: https://prefix.dev/conda-forge/noarch/importlib_resources-6.5.2-pyhd8ed1ab_0.conda
   sha256: acc1d991837c0afb67c75b77fdc72b4bf022aac71fedd8b9ea45918ac9b08a80
   md5: c85c76dc67d75619a92f51dfbce06992
@@ -2222,16 +2209,6 @@ packages:
   license_family: MIT
   size: 690296
   timestamp: 1739952967309
-- conda: https://prefix.dev/conda-forge/linux-64/libxslt-1.1.39-h76b75d6_0.conda
-  sha256: 684e9b67ef7b9ca0ca993762eeb39705ec58e2e7f958555c758da7ef416db9f3
-  md5: e71f31f8cfb0a91439f2086fc8aa0461
-  depends:
-  - libgcc-ng >=12
-  - libxml2 >=2.12.1,<3.0.0a0
-  license: MIT
-  license_family: MIT
-  size: 254297
-  timestamp: 1701628814990
 - conda: https://prefix.dev/conda-forge/linux-64/libzlib-1.3.1-hb9d3cd8_2.conda
   sha256: d4bfe88d7cb447768e31650f06257995601f89076080e76df55e3112d4e47dc4
   md5: edb0dca6bc32e4f4789199455a1dbeb8
@@ -2256,20 +2233,6 @@ packages:
   license_family: APACHE
   size: 3190529
   timestamp: 1736986301022
-- conda: https://prefix.dev/conda-forge/linux-64/lxml-5.3.1-py312he28fd5a_0.conda
-  sha256: 4f3a78b59890f2175a381d9ae5e74b4523aea23daaa01cafbb150456bc8b857c
-  md5: 52d16dd592060d4b2fa9ad325e0c1f90
-  depends:
-  - __glibc >=2.17,<3.0.a0
-  - libgcc >=13
-  - libxml2 >=2.13.5,<3.0a0
-  - libxslt >=1.1.39,<2.0a0
-  - libzlib >=1.3.1,<2.0a0
-  - python >=3.12,<3.13.0a0
-  - python_abi 3.12.* *_cp312
-  license: BSD-3-Clause and MIT-CMU
-  size: 1403423
-  timestamp: 1739211901003
 - conda: https://prefix.dev/conda-forge/linux-64/marimo-0.10.19-py312h76ec4c3_0.conda
   sha256: afcdcab065f76bd8498bd854dbe2be49c1e6b1eb28da21be688d5ae3bb4bcd33
   md5: 1658b87e8937320312d2c0c9ceb99e1f
@@ -2892,17 +2855,6 @@ packages:
   license_family: MIT
   size: 781208
   timestamp: 1735984473651
-- conda: https://prefix.dev/conda-forge/noarch/pygal-3.0.5-pyhd8ed1ab_1.conda
-  sha256: 524084cb0856bfaf99609ce66015e0b5d89d727808665a13d0d2de5f2fc65a2c
-  md5: 9535f336421e16375b3783c90de1f1a9
-  depends:
-  - importlib_metadata
-  - lxml
-  - python >=3.9
-  license: LGPL-3.0-or-later
-  license_family: LGPL
-  size: 81652
-  timestamp: 1737239244790
 - conda: https://prefix.dev/conda-forge/noarch/pygments-2.19.1-pyhd8ed1ab_0.conda
   sha256: 28a3e3161390a9d23bc02b4419448f8d27679d9e2c250e29849e37749c8de86b
   md5: 232fb4577b6687b2d503ef8e254270c9
