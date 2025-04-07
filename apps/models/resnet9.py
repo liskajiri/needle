@@ -61,6 +61,7 @@ class ResNet9(nn.Module):
         self,
         in_features: int = 3,
         out_features: int = 10,
+        hidden_linear_dim=128,
         device: AbstractBackend = default_device,
         dtype: DType = "float32",
     ) -> None:
@@ -87,9 +88,9 @@ class ResNet9(nn.Module):
                 )
             ),
             nn.Flatten(),
-            nn.Linear(128, 128, **self.config),
+            nn.Linear(128, hidden_linear_dim, **self.config),
             nn.ReLU(),
-            nn.Linear(128, 10, **self.config),
+            nn.Linear(hidden_linear_dim, 10, **self.config),
         )
 
     def _make_conv_layer(
