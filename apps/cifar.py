@@ -1,16 +1,26 @@
 import logging
+from typing import NewType
 
 import needle as ndl
 from models.resnet9 import ResNet9
 from needle import nn
 
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
-)
+try:
+    from tqdm import tqdm  # type: ignore
+
+    TQDM_AVAILABLE = True
+except ImportError:
+    TQDM_AVAILABLE = False
+
+
+Loss = NewType("Loss", float)
+Accuracy = NewType("Accuracy", float)
 
 
 # === CIFAR-10 training ===
-def epoch_general_cifar10(dataloader, model, loss_fn=nn.SoftmaxLoss(), opt=None):
+def epoch_general_cifar10(
+    dataloader, model, loss_fn=nn.SoftmaxLoss(), opt=None, log_interval: int = 1
+) -> tuple[Accuracy, Loss]:
     """
     Iterates over the dataloader.
     If optimizer is not None, sets the model to train mode,
@@ -37,7 +47,8 @@ def epoch_general_cifar10(dataloader, model, loss_fn=nn.SoftmaxLoss(), opt=None)
     total_correct = 0
     total_samples = 0
 
-    for batch in dataloader:
+    progress_bar = tqdm(dataloader, desc="Batch: ") if TQDM_AVAILABLE else dataloader  # type: ignore
+    for batch_idx, batch in enumerate(progress_bar):
         x, y = batch[0], batch[1]
         logits = model(x)
         loss = loss_fn(logits, y)
@@ -48,11 +59,33 @@ def epoch_general_cifar10(dataloader, model, loss_fn=nn.SoftmaxLoss(), opt=None)
             opt.step()
 
         predictions = logits.numpy().argmax(axis=1)
-        total_correct += (predictions == y.numpy()).sum()
-        total_samples += y.shape[0]
-        total_loss += loss.numpy() * y.shape[0]
-        logging.info(f"Total acc: {total_correct / total_samples}")
-        logging.info(f"Avg loss: {total_loss / total_samples}")
+        batch_correct = (predictions == y.numpy()).sum().item()
+        batch_size = y.shape[0]
+        batch_acc = batch_correct / batch_size
+
+        total_correct += batch_correct
+        total_samples += batch_size
+        total_loss += loss.numpy() * batch_size
+
+        # Update progress bar with current metrics
+        avg_acc = total_correct / total_samples
+        curr_loss = (total_loss / total_samples).item()
+
+        if TQDM_AVAILABLE:
+            progress_bar.set_postfix(
+                {
+                    "loss": f"{curr_loss:.4f}",
+                    "batch_acc": f"{batch_acc:.4f}",
+                    "avg_acc": f"{avg_acc:.4f}",
+                }
+            )
+        else:
+            if batch_idx % log_interval == 0:
+                logging.info(
+                    f"Batch {batch_idx + 1}/{len(dataloader)} | "
+                    f"Avg Acc: {avg_acc:.4f} | "
+                    f"Avg loss: {curr_loss:.4f}"
+                )
 
     avg_loss = total_loss / total_samples
     avg_acc = total_correct / total_samples
@@ -126,7 +159,12 @@ def evaluate_cifar10(model, dataloader, loss_fn=nn.SoftmaxLoss):
 
 
 if __name__ == "__main__":
-    batch_size = 32
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s - %(levelname)s - %(message)s",
+        force=True,
+    )
+    batch_size = 16
 
     train_dataset = ndl.data.datasets.CIFAR10Dataset(train=True)
     test_dataset = ndl.data.datasets.CIFAR10Dataset(train=False)
@@ -140,4 +178,5 @@ if __name__ == "__main__":
 
     model = ResNet9(in_features=3, out_features=10)
 
+    logging.info("Training CIFAR-10 model...")
     train_cifar10(model=model, dataloader=train_dataloader)
