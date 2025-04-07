@@ -12,7 +12,6 @@ _ALL_DEVICES = [
     ),
 ]
 
-# TODO: split to CPU/GPU separate tests
 # CPU: vs Numpy, Torch, Torch.compile
 
 matmul_dims = [
