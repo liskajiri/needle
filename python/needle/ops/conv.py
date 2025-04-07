@@ -144,17 +144,17 @@ def conv(img: Tensor, kernel: Tensor, stride: int = 1, padding: int = 1) -> Tens
     assert img.ndim == 4, f"Expected 4D input tensor, got shape {img.shape}"
     assert kernel.ndim == 4, f"Expected 4D kernel tensor, got shape {kernel.shape}"
 
-    _n, img_height, img_width, in_channels = img.shape
+    _n, _img_height, _img_width, in_channels = img.shape
     kernel_height, kernel_width, kernel_in_channels, _out_channels = kernel.shape
     if in_channels != kernel_in_channels:
         raise ValueError(
             f"C_in={in_channels} does not match kernel C_in={kernel_in_channels}\n"
             f"In shape {img.shape} and {kernel.shape}"
         )
-    if kernel_height > img_height or kernel_width > img_width:
-        raise ValueError(
-            f"Kernel size {kernel.shape} is larger than input size {img.shape}"
-        )
+    # if kernel_height > img_height or kernel_width > img_width:
+    #     raise ValueError(
+    #         f"Kernel size {kernel.shape} is larger than input size {img.shape}"
+    #     )
 
     logging.debug(
         f"Convolution with kernel size {kernel_height}x{kernel_width}, "
