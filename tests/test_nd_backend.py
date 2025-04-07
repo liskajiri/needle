@@ -19,6 +19,7 @@ _DEVICES = [
     ),
 ]
 
+# TODO: test that the results are on the same device as they started
 
 EWISE_OPS = {"divide": lambda a, b: a / b, "subtract": lambda a, b: a - b}
 EWISE_OP_FNS = [EWISE_OPS[k] for k in EWISE_OPS]

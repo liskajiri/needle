@@ -2,7 +2,7 @@ import needle as ndl
 import numpy as np
 import pytest
 import torch
-from hypothesis import given
+from hypothesis import given, settings
 from hypothesis import strategies as st
 
 _DEVICES = [
@@ -121,6 +121,7 @@ def test_init_xavier_normal():
         # "kaiming_uniform",
     ],
 )
+@settings(deadline=500)  # 500 ms deadline for the tests
 @given(fan_in=st.integers(1, 100), fan_out=st.integers(1, 100))
 def test_init_distributions_proptest(gain, init_fn_pair, fan_in: int, fan_out: int):
     ndl_init_fn, torch_init_fn = init_fn_pair

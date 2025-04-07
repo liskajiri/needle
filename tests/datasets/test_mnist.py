@@ -1,8 +1,9 @@
 import needle as ndl
 import numpy as np
 import pytest
+from mnist_needle import softmax_loss
 from needle.backend_selection import NDArray
-from needle.data.datasets.mnist import MNISTPaths
+from needle.data.datasets.mnist import MNISTDataset, MNISTPaths
 
 from tests.utils import set_random_seeds
 
@@ -272,3 +273,25 @@ def test_shuffle(mnist_test: ndl.data.MNISTDataset):
     shuffled = ndl.data.DataLoader(dataset=mnist_test, batch_size=10, shuffle=True)
     for i, j in zip(shuffled, not_shuffled, strict=True):
         assert i != j, "Shuffling had no effect on the dataloader."
+
+
+def test_softmax_loss_ndl():
+    _X, y = MNISTDataset.parse_mnist(MNISTPaths.TRAIN_IMAGES, MNISTPaths.TRAIN_LABELS)
+    np.random.seed(0)
+    Z = ndl.Tensor(np.zeros((y.shape[0], 10)).astype(np.float32))
+    y_one_hot = np.zeros((y.shape[0], 10))
+    y_one_hot[np.arange(y.size), y] = 1
+    y = ndl.Tensor(y_one_hot)
+    np.testing.assert_allclose(
+        softmax_loss(Z, y).numpy(), 2.3025850, rtol=1e-6, atol=1e-6
+    )
+    Z = ndl.Tensor(np.random.randn(y.shape[0], 10).astype(np.float32))
+    np.testing.assert_allclose(
+        softmax_loss(Z, y).numpy(), 2.7291998, rtol=1e-6, atol=1e-6
+    )
+
+    # TODO:
+    # # test softmax loss backward
+    # Zsmall = ndl.Tensor(np.random.randn(16, 10).astype(np.float32))
+    # ysmall = ndl.Tensor(y_one_hot[:16])
+    # backward_check(softmax_loss, Zsmall, ysmall, tol=0.01, backward=True)
