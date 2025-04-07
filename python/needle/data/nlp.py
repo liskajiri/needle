@@ -68,13 +68,34 @@ class Corpus:
     TRAIN_FILE = "train.txt"
     TEST_FILE = "test.txt"
     END_OF_SENTENCE_TOKEN = "<eos>"
+    UNKNOWN_TOKEN = "<unk>"
 
     def __init__(
         self, base_dir: Path = Path("data/tree_bank"), max_lines: int = -1
     ) -> None:
         self.dictionary = Dictionary()
+        self.dictionary.add_word(self.END_OF_SENTENCE_TOKEN)
+        self.dictionary.add_word(self.UNKNOWN_TOKEN)
+
         self.train = self.tokenize(base_dir.joinpath(self.TRAIN_FILE), max_lines)
-        self.test = self.tokenize(base_dir.joinpath(self.TEST_FILE), max_lines)
+        self.test = self.tokenize_test(base_dir.joinpath(self.TEST_FILE), max_lines)
+
+    def build_dictionary(self, path: Path, max_lines: int = -1) -> None:
+        """Builds the dictionary from training data.
+
+        Processes the training file and adds all words to the dictionary.
+
+        Args:
+            path (Path): Path to training text file
+            max_lines (int): Maximum number of lines to read
+        """
+        with path.open(encoding="utf-8") as f:
+            for i, line in enumerate(f):
+                if max_lines != -1 and i >= max_lines:
+                    break
+                words = line.strip().split()
+                for word in words:
+                    self.dictionary.add_word(word)
 
     def tokenize(self, path: Path, max_lines: int = -1) -> list[int]:
         """Tokenizes a text file to a list of IDs.
@@ -100,6 +121,31 @@ class Corpus:
                 words = line.strip().split()
                 ids += [self.dictionary.add_word(word) for word in words]
                 ids.append(self.dictionary.add_word(self.END_OF_SENTENCE_TOKEN))
+        return ids
+
+    def tokenize_test(self, path: Path, max_lines: int = -1) -> list[int]:
+        """Tokenizes a test file to a list of IDs.
+
+        For words not in the dictionary (not seen during training),
+        returns the ID for the UNKNOWN_TOKEN.
+
+        Args:
+            path (Path): Path to test text file
+            max_lines (int): Maximum number of lines to read
+
+        Returns:
+            list[int]: List of token ids
+        """
+        unk_id = self.dictionary.word2idx[self.UNKNOWN_TOKEN]
+        with path.open(encoding="utf-8") as f:
+            ids = []
+            for i, line in enumerate(f):
+                if max_lines != -1 and i >= max_lines:
+                    break
+                words = line.strip().split()
+                # Use get() to return unk_id for words not in dictionary
+                ids += [self.dictionary.word2idx.get(word, unk_id) for word in words]
+                ids.append(self.dictionary.word2idx[self.END_OF_SENTENCE_TOKEN])
         return ids
 
 

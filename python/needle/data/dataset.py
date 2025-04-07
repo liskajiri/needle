@@ -11,6 +11,8 @@ if TYPE_CHECKING:
 
     from needle.typing import IndexType
 
+# TODO: track device in dataset too and not only in dataloader?
+
 
 class Dataset[T](Sequence, ABC):
     """
