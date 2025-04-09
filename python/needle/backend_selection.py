@@ -14,39 +14,73 @@ class BACKENDS(enum.StrEnum):
 
 
 DEFAULT_BACKEND = BACKENDS.NEEDLE
-BACKEND = os.getenv("NEEDLE_BACKEND", DEFAULT_BACKEND)  # type: ignore # type: BACKENDS
+BACKEND = os.getenv("NEEDLE_BACKEND", DEFAULT_BACKEND)
 
-if True:  # BACKENDS.NEEDLE == BACKEND:
-    logging.info("Using needle backend")
-    from needle import backend_ndarray as array_api
-    from needle.backend_ndarray.ndarray import (
-        BackendDevice as Device,
-    )
-    from needle.backend_ndarray.ndarray import (
-        NDArray,
-        all_devices,
-        cpu,
-        cpu_numpy,  # noqa: F401
-        cuda,
-    )
+# Store loaded backend modules
+_loaded_backend = None
+default_device = None
 
-    default_device = cpu()
 
-elif BACKENDS.NUMPY == BACKEND:
-    logging.info("Using numpy backend")
-    import numpy as array_api  # noqa: F401, ICN001
+def set_backend(backend_name: str) -> BACKENDS:
+    """
+    Set the backend for needle to use.
 
-    from needle.backend_numpy import (  # noqa: F401
-        NDArray,
-        all_devices,
-        cpu,  # noqa: F401
-        cpu_numpy,  # noqa: F401
-        cuda,
-    )
+    Parameters:
+    -----------
+    backend_name : str
+        Name of the backend to use. Options: "needle", "numpy"
 
-    default_device = cpu()
-    from needle.backend_numpy import (
-        NumpyBackend as Device,  # noqa: F401
-    )
-else:
-    raise RuntimeError(f"Unknown needle array backend {BACKEND}")
+    Returns:
+    --------
+    None
+    """
+    global \
+        BACKEND, \
+        _loaded_backend, \
+        default_device, \
+        array_api, \
+        Device, \
+        NDArray, \
+        all_devices, \
+        cpu, \
+        cuda
+
+    if backend_name == "needle" or backend_name == BACKENDS.NEEDLE:
+        BACKEND = BACKENDS.NEEDLE
+    elif backend_name == "numpy" or backend_name == BACKENDS.NUMPY:
+        BACKEND = BACKENDS.NUMPY
+    else:
+        raise ValueError(
+            f"Unknown backend: {backend_name}. Supported backends: 'needle', 'numpy'"
+        )
+
+    # Only reload if backend has changed
+    if _loaded_backend != BACKEND:
+        if BACKEND == BACKENDS.NEEDLE:
+            logging.info("Using needle backend")
+            from needle import backend_ndarray as array_api
+            from needle.backend_ndarray.ndarray import BackendDevice as Device
+            from needle.backend_ndarray.ndarray import (
+                NDArray,
+                all_devices,
+                cpu,
+                cuda,
+            )
+
+            default_device = cpu()
+
+        elif BACKEND == BACKENDS.NUMPY:
+            logging.info("Using numpy backend")
+            import numpy as array_api
+
+            from needle.backend_numpy import NDArray, all_devices, cpu, cuda
+            from needle.backend_numpy import NumpyBackend as Device
+
+            default_device = cpu()
+
+        _loaded_backend = BACKEND
+
+    return BACKEND
+
+
+set_backend(BACKEND)
