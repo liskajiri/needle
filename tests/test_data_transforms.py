@@ -1,5 +1,8 @@
+import random
+
 import needle as ndl
 import numpy as np
+import pytest
 from hypothesis import given
 from hypothesis import strategies as st
 from hypothesis.extra.numpy import array_shapes, arrays
@@ -24,6 +27,7 @@ def test_flip_horizontal_hypothesis(a: np.ndarray):
     np.testing.assert_allclose(double_transform.numpy(), a)
 
 
+# TODO: Torch random crop
 def numpy_crop(img: NDArray, padding: int = 3) -> NDArray:
     """Zero pad and then randomly crop an image.
 
@@ -35,7 +39,6 @@ def numpy_crop(img: NDArray, padding: int = 3) -> NDArray:
 
     """
     assert img.ndim == 3
-    import random
 
     shift_x = random.randint(-padding, padding)
     shift_y = random.randint(-padding, padding)
@@ -64,16 +67,26 @@ def numpy_crop(img: NDArray, padding: int = 3) -> NDArray:
     ),
     st.integers(1, 8),
 )
-def test_random_crop_hypothesis(a: np.ndarray, padding: int):
+def test_random_crop(a: np.ndarray, padding: int) -> None:
     set_random_seeds(0)
 
     transform = ndl.data.RandomCrop(padding)
-
     ndl_a = ndl.NDArray(a)
-    ndl_result = transform(ndl_a)
 
-    # set the same random values
-    set_random_seeds(0)
-    b = numpy_crop(a, padding)
+    try:
+        ndl_result = transform(ndl_a)
+        # set the same random values
+        set_random_seeds(0)
 
-    np.testing.assert_allclose(ndl_result.numpy(), b)
+        b = numpy_crop(a, padding)
+
+        # b = torchvision.transforms.RandomCrop(
+        #     (1,), padding=padding, pad_if_needed=True
+        # )(torch.tensor(a))
+
+        np.testing.assert_allclose(ndl_result.numpy(), b)
+    except ValueError:
+        # If the input is smaller than the crop size, it should raise an error
+        with pytest.raises(ValueError):
+            transform(ndl_a)
+        return

@@ -12,7 +12,8 @@ CIFARPath = Path("data/cifar-10/cifar-10-batches-py")
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from needle.backend_ndarray.ndarray import NDArray
+    from needle.backend_selection import NDArray
+    from needle.typing import IndexType
 
 
 class CIFAR10Dataset(Dataset):
@@ -54,9 +55,7 @@ class CIFAR10Dataset(Dataset):
         self.X = array_api.stack(X).reshape(new_shape)
         self.Y = array_api.array(Y)
 
-    def __getitem__(
-        self, index: int | slice | tuple | NDArray
-    ) -> tuple[NDArray, NDArray]:
+    def __getitem__(self, index: IndexType) -> tuple[NDArray, NDArray]:
         """
         Returns the image, label at given index
         Image should be of shape (3, 32, 32)

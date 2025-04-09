@@ -47,11 +47,14 @@ class RandomCrop(Transform):
         Note: generate the image shifted by shift_x, shift_y specified below
         """
         assert img.ndim == 3, f"Image should be H x W x C NDArray, got {img.shape}"
+        H, W, C = img.shape
+        if self.padding > H or self.padding > W:
+            raise ValueError(
+                f"Image size {H} x {W} is smaller than padding {self.padding}"
+            )
 
         shift_x = random.randint(-self.padding, self.padding)
         shift_y = random.randint(-self.padding, self.padding)
-
-        H, W, C = tuple(img.shape)
 
         H += 2 * self.padding
         W += 2 * self.padding

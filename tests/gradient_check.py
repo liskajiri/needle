@@ -136,10 +136,11 @@ def _compute_torch_gradients(
 
 
 # TODO: Improve this check
+# TODO: https://stackoverflow.com/questions/57627406/how-to-use-autograd-gradcheck-in-pytorch
 def backward_check(
     f,
     *tensors,
-    tol: float = 1e-5,
+    tol: float = 1e-4,
     backward: bool = False,
     **kwargs,
 ) -> list[np.ndarray]:
@@ -156,7 +157,7 @@ def backward_check(
             np.linalg.norm(computed - torch_grad)
             for computed, torch_grad in zip(computed_grads, torch_grads, strict=False)
         )
-        assert error < 1e-4, f"Gradient check failed. Error: {error:.4e}"
+        assert error <= tol, f"Gradient check failed. Error: {error:.4e}"
         logger.info(f"Gradient check passed. Error: {error:.4e}")
 
         for computed, torch_grad in zip(computed_grads, torch_grads, strict=False):

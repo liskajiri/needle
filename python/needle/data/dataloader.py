@@ -3,13 +3,14 @@ from __future__ import annotations
 import random
 from typing import TYPE_CHECKING
 
+from needle.backend_selection import default_device
 from needle.tensor import Tensor
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
     from needle.data.dataset import Dataset
-    from needle.typing import BatchType
+    from needle.typing import AbstractBackend, BatchType
 
 
 class DataLoader:
@@ -29,6 +30,7 @@ class DataLoader:
         self,
         dataset: Dataset,
         batch_size: int = 1,
+        device: AbstractBackend = default_device,
         shuffle: bool = False,
     ) -> None:
         if batch_size < 1:
@@ -39,6 +41,7 @@ class DataLoader:
         self.dataset = dataset
         self.shuffle = shuffle
         self.batch_size = batch_size
+        self.device = device
 
     def __iter__(self) -> Iterator[BatchType]:
         """
@@ -54,4 +57,15 @@ class DataLoader:
 
         for start_idx in range(0, len(indices), self.batch_size):
             batch_indices = indices[start_idx : start_idx + self.batch_size]
-            yield tuple(Tensor(i) for i in self.dataset[batch_indices])
+            yield tuple(
+                Tensor(i, device=self.device) for i in self.dataset[batch_indices]
+            )
+
+    def __len__(self) -> int:
+        """
+        Returns the number of batches in the dataset.
+
+        Returns:
+            int: Number of batches.
+        """
+        return (len(self.dataset) + self.batch_size - 1) // self.batch_size

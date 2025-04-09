@@ -13,8 +13,6 @@ TRAIN = [True, False]
 BATCH_SIZES = [1, 15]
 BPTT = [3, 32]
 
-# TODO update with more tests
-
 
 @pytest.mark.parametrize("batch_size", BATCH_SIZES)
 @pytest.mark.parametrize("bptt", BPTT)

@@ -1,9 +1,10 @@
 import needle as ndl
 import numpy as np
 import pytest
-from models import LanguageModel
 from needle.typing import AbstractBackend
 from tree_bank import evaluate_ptb, train_ptb
+
+from apps.models.language_model import LanguageModel
 
 rng = np.random.default_rng(3)
 

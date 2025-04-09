@@ -1,12 +1,17 @@
 import needle as ndl
+import numdifftools as nd
 import numpy as np
 import pytest
+import torch
+from mnist_needle import loss_err, nn_epoch, softmax_loss
 from models.resnet9 import MLPResNet, ResidualBlock
 from needle import nn
-from needle.data.datasets.mnist import MNISTPaths
+from needle.data.datasets.mnist import MNISTDataset, MNISTPaths
 from resnet_mnist import epoch
 
 from tests.utils import set_random_seeds
+
+rng = np.random.default_rng(0)
 
 # TODO: rework this whole files
 
@@ -316,6 +321,9 @@ def mlp_resnet_forward(dim, hidden_dim, num_blocks, num_classes, norm, drop_prob
     return output_tensor.numpy()
 
 
+# TODO: mark tests needing datasets
+# TODO: if not necessary, use ndarray random dataset
+# TODO: Test speed of epoch
 def train_epoch_1(hidden_dim, batch_size, optimizer, **kwargs):
     set_random_seeds(1)
     train_dataset = ndl.data.MNISTDataset(
@@ -1792,3 +1800,115 @@ def test_mlp_train_mnist_1():
     assert test_acc >= target_test_acc
     assert train_loss <= target_train_loss
     assert test_loss <= target_test_loss
+
+
+def test_nn_backprop_random_data():
+    set_random_seeds(0)
+
+    X = np.random.randn(50, 5).astype(np.float32)
+    y = np.random.randint(3, size=(50,)).astype(np.uint8)
+
+    W1 = np.random.randn(5, 10).astype(np.float32) / np.sqrt(10)
+    W2 = np.random.randn(10, 3).astype(np.float32) / np.sqrt(3)
+    W1_0, W2_0 = W1.copy(), W2.copy()
+
+    W1 = ndl.Tensor(W1)
+    W2 = ndl.Tensor(W2)
+
+    X_ = ndl.Tensor(X)
+    y_one_hot = np.zeros((y.shape[0], 3))
+    y_one_hot[np.arange(y.size), y] = 1
+    y_ = ndl.Tensor(y_one_hot)
+
+    dW1 = nd.Gradient(
+        lambda W1_: softmax_loss(
+            ndl.relu(X_ @ ndl.Tensor(W1_).reshape((5, 10))) @ W2, y_
+        ).numpy()[0]
+    )(W1.numpy())
+    dW2 = nd.Gradient(
+        lambda W2_: softmax_loss(
+            ndl.relu(X_ @ W1) @ ndl.Tensor(W2_).reshape((10, 3)), y_
+        ).numpy()[0]
+    )(W2.numpy())
+    W1, W2 = nn_epoch(X, y, W1, W2, lr=1.0, batch_size=50)
+    np.testing.assert_allclose(
+        dW1.reshape(5, 10), W1_0 - W1.numpy(), rtol=1e-4, atol=1e-4
+    )
+    np.testing.assert_allclose(
+        dW2.reshape(10, 3), W2_0 - W2.numpy(), rtol=1e-4, atol=1e-4
+    )
+
+
+@pytest.mark.slow
+def test_nn_full_epoch_mnist_simple_network():
+    # Load MNIST dataset
+    X, y = MNISTDataset.parse_mnist(MNISTPaths.TRAIN_IMAGES, MNISTPaths.TRAIN_LABELS)
+
+    # Define network architecture
+    input_dim = X.shape[1]  # 784 features
+    hidden_dim = 100
+    output_dim = 10  # 10 classes for digits 0-9
+
+    W1 = ndl.Tensor(
+        rng.standard_normal((input_dim, hidden_dim), dtype=np.float32)
+        / np.sqrt(hidden_dim)
+    )
+    W2 = ndl.Tensor(
+        rng.standard_normal((hidden_dim, output_dim), dtype=np.float32)
+        / np.sqrt(output_dim)
+    )
+
+    # Train for one epoch
+    W1, W2 = nn_epoch(X, y, W1, W2, lr=0.2, batch_size=100)
+
+    # Verify weight matrix norms after training
+    np.testing.assert_allclose(
+        np.linalg.norm(W1.numpy()),
+        28.425438,
+        rtol=1e-5,
+        atol=1e-5,
+        err_msg="W1 norm after training doesn't match expected value",
+    )
+    np.testing.assert_allclose(
+        np.linalg.norm(W2.numpy()),
+        10.939328,
+        rtol=1e-5,
+        atol=1e-5,
+        err_msg="W2 norm after training doesn't match expected value",
+    )
+
+    # Evaluate model performance on training data
+    model_output = ndl.relu(ndl.Tensor(X) @ W1) @ W2
+    loss, error_rate = loss_err(model_output, y)
+
+    # Verify loss and error rate match expected values
+    np.testing.assert_array_less(
+        loss, 0.19770025, err_msg="Loss is too high after training"
+    )
+    np.testing.assert_array_less(
+        error_rate, 0.06006667, err_msg="Error rate is too high after training"
+    )
+
+
+def test_softmax_loss_ndl_random_array():
+    import torch.nn.functional as F
+
+    Z_np = np.random.randn(16, 10).astype(np.float32)
+    y_np = np.zeros((16, 10))
+    y_np[np.arange(16), np.random.randint(0, 10, 16)] = 1
+
+    # Needle implementation
+    Z_ndl = ndl.Tensor(Z_np)
+    y_ndl = ndl.Tensor(y_np)
+    loss_ndl = softmax_loss(Z_ndl, y_ndl)
+    loss_ndl.backward()
+
+    # PyTorch implementation
+    Z_torch = torch.tensor(Z_np, requires_grad=True)
+    y_torch = torch.tensor(np.argmax(y_np, axis=1))
+    loss_torch = F.cross_entropy(Z_torch, y_torch)
+    loss_torch.backward()
+
+    # Compare results
+    np.testing.assert_allclose(loss_ndl.numpy(), loss_torch.detach().numpy(), rtol=1e-5)
+    np.testing.assert_allclose(Z_ndl.grad.numpy(), Z_torch.grad.numpy(), rtol=1e-5)
