@@ -64,7 +64,7 @@ def test_matmul_simple_backward(a, b) -> None:
         "non-batched @ batched",
     ],
 )
-def test_matmul_batched_backward(batch_shapes):
+def test_matmul_batched_backward(batch_shapes) -> None:
     A_shape, B_shape = batch_shapes
     A = ndl.Tensor(rng.standard_normal(A_shape))
     B = ndl.Tensor(rng.standard_normal(B_shape))
@@ -173,8 +173,8 @@ def test_summation_backward(shape, axes) -> None:
     )
 
 
-##############################################################################
-# TESTS for find_topo_sort
+# ##############################################################################
+# # TESTS for find_topo_sort
 
 
 @pytest.mark.parametrize(
@@ -201,8 +201,8 @@ def test_summation_backward(shape, axes) -> None:
         ),
         pytest.param(
             [
-                ndl.Tensor(np.asarray([[0.20914675], [0.65264178]])),
-                ndl.Tensor(np.asarray([[0.65394286, 0.08218317]])),
+                np.asarray([[0.20914675], [0.65264178]]),
+                np.asarray([[0.65394286, 0.08218317]]),
             ],
             lambda a, b: 3 * ((b @ a) + (2.3412 * b) @ a) + 1.5,
             [
@@ -251,8 +251,8 @@ def test_topo_sort(input_tensors, expr_fn, expected_topo_order) -> None:
         np.testing.assert_allclose(actual, expected, rtol=1e-06, atol=1e-06)
 
 
-##############################################################################
-# TESTS for compute_gradient_of_variables
+# ##############################################################################
+# # TESTS for compute_gradient_of_variables
 
 
 @given(
