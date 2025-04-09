@@ -10,7 +10,7 @@ from needle.backend_selection import NDArray
 from needle.data.dataset import Dataset
 
 if TYPE_CHECKING:
-    from needle.typing import np_ndarray
+    from needle.typing import IndexType, np_ndarray
 
 
 class MNISTPaths:
@@ -56,7 +56,7 @@ class MNISTDataset(Dataset):
         )
         # self.y = NDArray(self.y)
 
-    def __getitem__(self, index: int | slice) -> tuple[NDArray, np_ndarray]:
+    def __getitem__(self, index: IndexType) -> tuple[NDArray, np_ndarray]:
         (x, y) = self.X[index], self.y[index]
         return self.apply_transforms(x), y
 

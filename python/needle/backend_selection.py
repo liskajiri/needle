@@ -28,11 +28,13 @@ def set_backend(backend_name: str) -> BACKENDS:
     Parameters:
     -----------
     backend_name : str
-        Name of the backend to use. Options: "needle", "numpy"
+        Name of the backend to use.
+        Options: "needle", "numpy", "cuda"
 
     Returns:
     --------
-    None
+    BACKENDS
+        The backend that was set.
     """
     global \
         BACKEND, \
@@ -51,12 +53,14 @@ def set_backend(backend_name: str) -> BACKENDS:
         BACKEND = BACKENDS.NUMPY
     else:
         raise ValueError(
-            f"Unknown backend: {backend_name}. Supported backends: 'needle', 'numpy'"
+            f"Unknown backend: {backend_name}.\
+            Supported backends: 'needle', 'numpy', 'cuda'"
         )
 
     # Only reload if backend has changed
     if _loaded_backend != BACKEND:
-        if BACKEND == BACKENDS.NEEDLE:
+        # TODO: this is temporary to avoid type checking issues
+        if True:
             logging.info("Using needle backend")
             from needle import backend_ndarray as array_api
             from needle.backend_ndarray.ndarray import BackendDevice as Device
