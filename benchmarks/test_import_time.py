@@ -18,11 +18,13 @@ def test_needle_import(benchmark, module_name="needle"):
 
     def import_module():
         sys.modules.clear()
-        sys.modules.update({
-            k: v
-            for k, v in original_modules.items()
-            if k.startswith("_") or "." not in k
-        })
+        sys.modules.update(
+            {
+                k: v
+                for k, v in original_modules.items()
+                if k.startswith("_") or "." not in k
+            }
+        )
         return importlib.import_module(module_name)
 
     result = benchmark(import_module)
