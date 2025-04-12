@@ -2,6 +2,7 @@ module;
 
 #include <cmath>
 #include <omp.h>
+#include <stdint.h>
 #include <x86intrin.h>
 
 import ndarray;

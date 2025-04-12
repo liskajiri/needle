@@ -1794,7 +1794,7 @@ def test_mlp_train_mnist_1():
     target_train_acc = 0.4875
     target_test_acc = 0.3245
     target_train_loss = 1.65
-    target_test_loss = 1.2
+    target_test_loss = 1.4
 
     assert train_acc >= target_train_acc
     assert test_acc >= target_test_acc

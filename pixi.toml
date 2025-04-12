@@ -9,41 +9,52 @@ version = "0.1.0"
 [tasks]
 clean = "rm -rf .build/ cmake-build-debug/ python/needle/backend_ndarray/ndarray_backend*.so .pytest_cache/ .coverage"
 print_backend = { cmd = "echo Using backend=$NEEDLE_BACKEND" }
-
-download_mnist = { cmd = [
-    # create directory
-    "mkdir", "-p", "data/mnist", "&&",
-    "curl",
-    "-o", "data/mnist/train-images-idx3-ubyte.gz", "https://storage.googleapis.com/cvdf-datasets/mnist/train-images-idx3-ubyte.gz",
-    "-o", "data/mnist/train-labels-idx1-ubyte.gz", "https://storage.googleapis.com/cvdf-datasets/mnist/train-labels-idx1-ubyte.gz",
-    "-o", "data/mnist/t10k-images-idx3-ubyte.gz", "https://storage.googleapis.com/cvdf-datasets/mnist/t10k-images-idx3-ubyte.gz",
-    "-o", "data/mnist/t10k-labels-idx1-ubyte.gz", "https://storage.googleapis.com/cvdf-datasets/mnist/t10k-labels-idx1-ubyte.gz"
-    ], outputs = [
-        "data/mnist/train-images-idx3-ubyte.gz",
-        "data/mnist/train-labels-idx1-ubyte.gz",
-        "data/mnist/t10k-images-idx3-ubyte.gz",
-        "data/mnist/t10k-labels-idx1-ubyte.gz",
-    ]}
-
-download_tree_bank = { cmd = [
-    "mkdir", "-p", "data/tree_bank/", "&&",
-    "curl",
-    "-o", "data/tree_bank/test.txt", "https://raw.githubusercontent.com/wojzaremba/lstm/master/data/ptb.test.txt",
-    "-o" ,"data/tree_bank/train.txt", "https://raw.githubusercontent.com/wojzaremba/lstm/master/data/ptb.train.txt",
-    "-o", "data/tree_bank/valid.txt", "https://raw.githubusercontent.com/wojzaremba/lstm/master/data/ptb.valid.txt",
-], outputs = ["data/tree_bank/test.txt", "data/tree_bank/train.txt", "data/tree_bank/valid.txt"]}
-
-# TODO: refactor to use env variables for paths - new version of pixi should support this
-download_cifar = { cmd = [
-    "mkdir", "-p", "data/cifar-10/", "&&",
-    "curl", "-o", "data/cifar-10/cifar-10-python.tar.gz",
-    "\"https://www.cs.toronto.edu/~kriz/cifar-10-python.tar.gz\"",
-], outputs = ["data/cifar-10/cifar-10-python.tar.gz"]}
-unpack_cifar = {cmd = "tar -xvzf data/cifar-10/cifar-10-python.tar.gz -C data/cifar-10/", inputs = ["data/cifar-10/cifar-10-python.tar.gz"], outputs = ["data/cifar-10/cifar-10-batches-py/"], depends-on = ["download_cifar"]}
-
 download_datasets ={ cmd = ["echo", "All datasets downloaded!"], depends-on = ["download_mnist", "download_tree_bank", "unpack_cifar"]}
-
 see_updated_deps = "pixi update --no-install --json | pixi exec pixi-diff-to-markdown > diff.md"
+
+[tasks.download_mnist]
+args = [
+  { "arg" = "save_dir", "default" = "data/mnist" },
+  { "arg" = "download_path", "default" = "https://storage.googleapis.com/cvdf-datasets/mnist/" },
+]
+cmd = """
+mkdir -p {{ save_dir }} &&
+curl -o {{ save_dir }}/train-images-idx3-ubyte.gz {{ download_path }}train-images-idx3-ubyte.gz &&
+curl -o {{ save_dir }}/train-labels-idx1-ubyte.gz {{ download_path }}train-labels-idx1-ubyte.gz &&
+curl -o {{ save_dir }}/t10k-images-idx3-ubyte.gz {{ download_path }}t10k-images-idx3-ubyte.gz &&
+curl -o {{ save_dir }}/t10k-labels-idx1-ubyte.gz {{ download_path }}t10k-labels-idx1-ubyte.gz
+"""
+
+[tasks.download_tree_bank]
+args = [
+  { "arg" = "save_dir", "default" = "data/tree_bank" },
+  { "arg" = "download_path", "default" = "\"https://raw.githubusercontent.com/wojzaremba/lstm/master/data/ptb.\"" },
+]
+cmd = """
+mkdir -p {{ save_dir }} &&
+curl -o {{ save_dir }}/train.txt {{ download_path }}train.txt &&
+curl -o {{ save_dir }}/test.txt {{ download_path }}test.txt &&
+curl -o {{ save_dir }}/valid.txt {{ download_path }}valid.txt
+"""
+outputs = ["data/tree_bank/test.txt", "data/tree_bank/train.txt",  "data/tree_bank/valid.txt"]
+
+[tasks.download_cifar]
+args = [
+  { "arg" = "save_dir", "default" = "data/cifar-10" },
+  { "arg" = "download_path", "default" = "\"https://www.cs.toronto.edu/~kriz/cifar-10-python.tar.gz\"" },
+  { "arg" = "unpack_path", "default" = "data/cifar-10/cifar-10-python.tar.gz" },
+]
+cmd = "mkdir -p {{ save_dir }} && curl -o {{ unpack_path }}, {{ download_path }}"
+
+[tasks.unpack_cifar]
+args = [
+  { "arg" = "save_dir", "default" = "data/cifar-10" },
+  { "arg" = "unpack_path", "default" = "data/cifar-10/cifar-10-python.tar.gz" },
+]
+cmd = "tar -xvzf {{ unpack_path }} -C {{ save_dir }}"
+inputs = ["data/cifar-10/cifar-10-python.tar.gz"]
+outputs = ["data/cifar-10/cifar-10-batches-py/"]
+depends-on = [{"task" = "download_cifar"}]
 
 # TODO: gpu test/bench environment
 [environments]
@@ -101,16 +112,48 @@ hypothesis = ">=6.124.0,<7"
 pytest-randomly = ">=3.15.0,<4"
 pytorch = ">=2.5.1,<3"
 
+
 [feature.test.tasks]
 test = {cmd = "pytest -n 8 -m 'not slow' -k 'not dataset'", depends-on = ["build", "print_backend"]}
 test_datasets = {cmd = "pytest -n 4 tests/datasets", depends-on = ["build", "download_datasets"]}
 test_doctests = {cmd = "pytest -n 0 --doctest-modules python/needle", depends-on = ["build", "print_backend"]}
 test_hypothesis = {cmd = "pytest -n 8 -m 'hypothesis' --hypothesis-profile=dev", depends-on = ["build", "print_backend"]}
+# TODO: codecov is not working
 test_all = {cmd = """pytest -n auto
 --junitxml=$TEST_REPORT_PATH.xml -o junit_family=legacy
 --cov --cov-report=xml --cov-report=html
 --cov-context=test
 """, depends-on = ["build", "print_backend", "download_datasets"]}
+
+# [feature.test.tasks.test]
+# args = [
+#   { "arg" = "n_threads", "default" = "8" },
+#   { "arg" = "path", "default" = "''" },
+#   { "arg" = "modules", "default" = "'not slow and not benchmark'" },
+#   { "arg" = "names", "default" = "'not dataset'" },
+#   { "arg" = "other", "default" = "''" },
+# ]
+# cmd = "pytest {{ path }} -n {{ n_threads }} -m {{ modules }} -k {{ names }} {{ other }}"
+# depends-on = ["build", "print_backend"]
+
+# [feature.test.tasks.test_datasets]
+# depends-on = [{"task" = "test", "args" = ["4", "tests/datasets", "''", "'dataset'"]}]
+
+# [feature.test.tasks.test_doctests]
+# depends-on = [{"task" = "test", "args" = ["0", "python/needle", " ", " ", "--doctest-modules"]}]
+
+# [feature.test.tasks.test_hypothesis]
+# depends-on = [{"task" = "test", "args" = ["8", " ", "'hypothesis'", "''", "--hypothesis-profile=dev"]}]
+
+# [feature.test.tasks.test_all]
+# depends-on = [{"task" = "test", "args" = ["auto", " ", "''", "''",
+# """
+# --junitxml=$TEST_REPORT_PATH.xml -o junit_family=legacy
+# --cov --cov-report=xml --cov-report=html
+# --cov-context=test
+# """
+# ]}]
+
 
 [feature.test.activation.env]
 # Save results of test to html
