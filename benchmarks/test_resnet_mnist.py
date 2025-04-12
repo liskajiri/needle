@@ -39,8 +39,7 @@ except FileNotFoundError:
 @pytest.mark.benchmark(
     min_rounds=2,
     disable_gc=True,
-    warmup=True,
-    warmup_iterations=1,
+    warmup=False,
 )
 def test_mnist_epoch(benchmark, dataloader, mode, optimizer) -> None:
     model = MLPResNet(INPUT_DIM, HIDDEN_DIM)

@@ -4,6 +4,7 @@ description = "Library for deep learning & neural networks"
 name = "needle"
 platforms = ["linux-64"]
 version = "0.1.0"
+requires-pixi = ">=0.45.0" # introduced advanced tasks
 
 channels = [
   # "https://prefix.dev/pixi-build-backends",
@@ -131,12 +132,12 @@ test = {cmd = "pytest -n 8 -m 'not slow' -k 'not dataset'", depends-on = ["build
 test_datasets = {cmd = "pytest -n 4 tests/datasets", depends-on = ["build", "download_datasets"]}
 test_doctests = {cmd = "pytest -n 0 --doctest-modules python/needle", depends-on = ["build", "print_backend"]}
 test_hypothesis = {cmd = "pytest -n 8 -m 'hypothesis' --hypothesis-profile=dev", depends-on = ["build", "print_backend"]}
-# TODO: codecov is not working
 test_all = {cmd = """pytest -n auto
 --junitxml=$TEST_REPORT_PATH.xml -o junit_family=legacy
 --cov --cov-report=xml --cov-report=html
 --cov-context=test
-""", depends-on = ["build", "print_backend", "download_datasets"]}
+""", depends-on = ["build", "print_backend", "download_datasets"], env = {  COVERAGE_CORE="sysmon" }}
+# low impact monitoring https://github.com/nedbat/coveragepy/issues/1746
 
 # [feature.test.tasks.test]
 # args = [
@@ -175,6 +176,7 @@ TEST_REPORT_PATH = "reports/test_report"
 [feature.benchmark.dependencies]
 pytest = ">=8.3.4,<9"
 pytest-codspeed = ">=3.1.2,<4"
+pytest-split = ">=0.10.0,<0.11"
 # scalene = ">=1.5.41,<2"
 
 [feature.benchmark.tasks]
