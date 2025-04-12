@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: prefix-dev/setup-pixi@v0.8.3
+      - uses: prefix-dev/setup-pixi@v0.8.5
       # the codspeed runner is slow, so do everything possible before
       - run: pixi install -e benchmark
       - run: pixi run build
