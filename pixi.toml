@@ -121,7 +121,7 @@ test_hypothesis = {cmd = "pytest -n 8 -m 'hypothesis' --hypothesis-profile=dev",
 # TODO: codecov is not working
 test_all = {cmd = """pytest -n auto
 --junitxml=$TEST_REPORT_PATH.xml -o junit_family=legacy
---cov --cov-report=xml --cov-report=html
+--cov=reports/ --cov-report=xml --cov-report=html
 --cov-context=test
 """, depends-on = ["build", "print_backend", "download_datasets"]}
 
