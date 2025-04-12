@@ -1,10 +1,21 @@
-[project]
+[workspace]
 authors = ["Jiří Liška <70215056+liskajiri@users.noreply.github.com>"]
-channels = ["https://prefix.dev/conda-forge"]
 description = "Library for deep learning & neural networks"
 name = "needle"
 platforms = ["linux-64"]
 version = "0.1.0"
+
+channels = [
+  # "https://prefix.dev/pixi-build-backends",
+  "https://prefix.dev/conda-forge",
+]
+# preview = ["pixi-build"]
+
+# [package.build]
+# backend = { name = "pixi-build-python", version = "0.1.*" }
+
+# [package.host-dependencies]
+# hatchling = "==1.26.3"
 
 [tasks]
 clean = "rm -rf .build/ cmake-build-debug/ python/needle/backend_ndarray/ndarray_backend*.so .pytest_cache/ .coverage"
@@ -67,6 +78,8 @@ benchmark = {features = ["benchmark"], solve-group = "test"}
 [dependencies]
 numpy = ">=2.2.2,<3"
 python = ">=3.12.8,<3.13"
+# needle = { path = "."}
+# ndarray_backend_cpu = { path = "backends/"}
 
 [feature.notebooks.dependencies]
 jupyter = ">=1.1.1,<2"
