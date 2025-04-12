@@ -16,15 +16,12 @@ on:
       configs_changed:
         required: true
         type: boolean
+    secrets:
+      CODECOV_TOKEN:
+        required: true
 
 jobs:
   test:
-    if: inputs.python_changed == true ||
-        inputs.cpp_changed == true ||
-        inputs.cuda_changed == true ||
-        inputs.configs_changed == true
-
-    timeout-minutes: 20
 
     # test report needs write permissions
     permissions:
@@ -32,6 +29,14 @@ jobs:
       issues: read
       checks: write
       pull-requests: write
+
+    if: inputs.python_changed == true ||
+        inputs.cpp_changed == true ||
+        inputs.cuda_changed == true ||
+        inputs.configs_changed == true
+
+    timeout-minutes: 20
+
 
     strategy:
       matrix:
@@ -54,8 +59,6 @@ jobs:
         run: echo "NEEDLE_BACKEND=${{ matrix.backend }}" >> "$GITHUB_ENV"
       - name: Test
         uses: prefix-dev/setup-pixi@v0.8.3
-        with:
-          cache: true
       - run: pixi run test_all
 
       - name: Publish Test Results

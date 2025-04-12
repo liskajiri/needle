@@ -9,6 +9,7 @@ license-files = ["LICENSE"]
 classifiers = [
   "Programming Language :: Python"
 ]
+urls ={ repository = "https://github.com/liskajiri/needle"}
 dependencies = [
     # [AUTOGEN] by pydependence resolver 'needle' **DO NOT EDIT** [AUTOGEN]
     "numpy",
@@ -19,8 +20,6 @@ dependencies = [
     #     ← needle.typing.types
 ]
 
-[project.urls]
-Repository = "https://github.com/liskajiri/needle"
 
 [project.optional-dependencies]
 all = [
@@ -33,6 +32,10 @@ all = [
     #     ← needle.data.datasets.mnist
     #     ← needle.typing.types
 ]
+
+# [build-system]
+# build-backend = "hatchling.build"
+# requires = ["hatchling"]
 
 [tool.pytest.ini_options]
 pythonpath = "python/needle"
