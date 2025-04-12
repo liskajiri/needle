@@ -48,6 +48,8 @@ jobs:
     name: Test
     needs: check-files
     uses: ./.github/workflows/test.yml
+    secrets:
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
     with:
       python_changed:
         ${{ needs.check-files.outputs.python_changed == 'true' }}
