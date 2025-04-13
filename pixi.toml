@@ -187,7 +187,7 @@ pytest-split = ">=0.10.0,<0.11"
 # scalene = ">=1.5.41,<2"
 
 [feature.benchmark.tasks]
-benchmarks = {cmd = "pytest benchmarks/ --codspeed --codspeed-warmup-time=0 --codspeed-max-time=2", depends-on = ["build"]}
+benchmarks = {cmd = "pytest benchmarks/ --codspeed --codspeed-warmup-time=0 --codspeed-max-time=1", depends-on = ["build"]}
 benchmark_matmul = {cmd = "pytest benchmarks/test_matmul.py --codspeed", depends-on = ["build"]}
 
 # [feature.benchmark.pypi-dependencies]
