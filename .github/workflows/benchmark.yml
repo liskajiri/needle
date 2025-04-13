@@ -31,5 +31,6 @@ jobs:
       - name: Run benchmarks
         uses: CodSpeedHQ/action@v3
         with:
-          run: pixi run benchmarks --splits 4 --group ${{ matrix.shard }}
+          run: pixi run benchmarks
+               --test-group=${{ matrix.shard }} --test-group-count=4
           token: ${{ secrets.CODSPEED_TOKEN }}

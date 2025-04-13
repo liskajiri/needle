@@ -3,6 +3,8 @@ environments:
   benchmark:
     channels:
     - url: https://prefix.dev/conda-forge/
+    indexes:
+    - https://pypi.org/simple
     packages:
       linux-64:
       - conda: https://prefix.dev/conda-forge/linux-64/_libgcc_mutex-0.1-conda_forge.tar.bz2
@@ -47,7 +49,6 @@ environments:
       - conda: https://prefix.dev/conda-forge/noarch/pygments-2.19.1-pyhd8ed1ab_0.conda
       - conda: https://prefix.dev/conda-forge/noarch/pytest-8.3.5-pyhd8ed1ab_0.conda
       - conda: https://prefix.dev/conda-forge/linux-64/pytest-codspeed-3.1.2-py312h66e93f0_0.conda
-      - conda: https://prefix.dev/conda-forge/noarch/pytest-split-0.10.0-pyhff2d567_0.conda
       - conda: https://prefix.dev/conda-forge/linux-64/python-3.12.9-h9e4cc4f_0_cpython.conda
       - conda: https://prefix.dev/conda-forge/linux-64/python_abi-3.12-5_cp312.conda
       - conda: https://prefix.dev/conda-forge/linux-64/readline-8.2-h8c095d6_2.conda
@@ -59,6 +60,7 @@ environments:
       - conda: https://prefix.dev/conda-forge/noarch/typing_extensions-4.12.2-pyha770c72_1.conda
       - conda: https://prefix.dev/conda-forge/noarch/tzdata-2025a-h78e105d_0.conda
       - conda: https://prefix.dev/conda-forge/noarch/zipp-3.21.0-pyhd8ed1ab_1.conda
+      - pypi: https://files.pythonhosted.org/packages/7c/3f/544a9b56ad1ddca0bf40c412b5c631739e994617a84a4361020341a13822/pytest_test_groups-1.2.0-py3-none-any.whl
   default:
     channels:
     - url: https://prefix.dev/conda-forge/
@@ -3051,16 +3053,6 @@ packages:
   - pkg:pypi/pytest-randomly?source=hash-mapping
   size: 14133
   timestamp: 1692131735622
-- conda: https://prefix.dev/conda-forge/noarch/pytest-split-0.10.0-pyhff2d567_0.conda
-  sha256: 2de536333c132df88358d3373a0cebc0280b958c59d4f54a1d56740f3aadae09
-  md5: 3bd32c44526b455aa146d8fdb27a65b3
-  depends:
-  - pytest >=5.0.0,<9.0.0
-  - python >=3.9
-  license: MIT
-  license_family: MIT
-  size: 16922
-  timestamp: 1732030924464
 - conda: https://prefix.dev/conda-forge/noarch/pytest-sugar-1.0.0-pyhd8ed1ab_1.conda
   sha256: 2fb6b6f227ff3b38d86d1dbb269cfa835bfb1bf5e0e9220dbe1bb722719e663d
   md5: 868af4e583dde57a1a41c368de90a448
@@ -3075,6 +3067,13 @@ packages:
   - pkg:pypi/pytest-sugar?source=hash-mapping
   size: 16019
   timestamp: 1734344268462
+- pypi: https://files.pythonhosted.org/packages/7c/3f/544a9b56ad1ddca0bf40c412b5c631739e994617a84a4361020341a13822/pytest_test_groups-1.2.0-py3-none-any.whl
+  name: pytest-test-groups
+  version: 1.2.0
+  sha256: 9e8c27e180ffc963da5fcbfa10a283851c6f90ae608d6bc3f11739d5b27c93ee
+  requires_dist:
+  - pytest>=7.0.0
+  requires_python: '>=3.8'
 - conda: https://prefix.dev/conda-forge/noarch/pytest-xdist-3.6.1-pyhd8ed1ab_1.conda
   sha256: fb35da93084d653b86918c200abb2f0b88aceb3b0526c6aaa21b844f565ae237
   md5: 59aad4fb37cabc0bacc73cf344612ddd
