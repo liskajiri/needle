@@ -76,7 +76,6 @@ jobs:
           slug: liskajiri/needle
           files: reports/coverage.xml
           fail_ci_if_error: true
-          verbose: true
 
       - name: Upload test results to Codecov
         if: matrix.backend == 'nd' && always()
