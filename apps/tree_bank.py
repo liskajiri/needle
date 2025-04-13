@@ -175,6 +175,11 @@ def evaluate_ptb(
 
 
 if __name__ == "__main__":
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s - %(levelname)s - %(message)s",
+        force=True,
+    )
     corpus = Corpus()
     train_data = corpus.train
     test_data = corpus.test
@@ -199,8 +204,9 @@ if __name__ == "__main__":
     )
     # Train model
     n_epochs = 1
-    optimizer = ndl.optim.SGD
+    optimizer = ndl.optim.Adam
     loss_fn = nn.SoftmaxLoss
+    logging.info("Starting training...")
     train_acc, train_loss = train_ptb(
         model=model,
         data=train_batches,

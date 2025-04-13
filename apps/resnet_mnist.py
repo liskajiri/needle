@@ -3,6 +3,7 @@ import logging
 from typing import NewType
 
 import needle as ndl
+import numpy as np
 from models.resnet9 import MLPResNet
 from needle import nn
 from needle.data.datasets.mnist import MNISTPaths
@@ -47,7 +48,7 @@ def epoch(
         loss = softmax_loss(preds, y)
 
         predictions = preds.numpy().argmax(axis=1)
-        batch_correct = (predictions == y.numpy()).sum().item()
+        batch_correct = np.count_nonzero(predictions == y.numpy())
         batch_size = y.shape[0]
 
         total_correct += batch_correct

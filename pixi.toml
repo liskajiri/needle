@@ -188,7 +188,7 @@ pytest-codspeed = ">=3.1.2,<4"
 
 [feature.benchmark.tasks]
 benchmarks = {cmd = "pytest benchmarks/ --codspeed", depends-on = ["build"]}
-benchmark_matmul = {cmd = "pytest benchmarks/test_matmul.py", depends-on = ["build"]}
+benchmark_matmul = {cmd = "pytest benchmarks/test_matmul.py --codspeed", depends-on = ["build"]}
 
 [feature.benchmark.pypi-dependencies]
 pytest-test-groups = ">=1.2.0, <2"

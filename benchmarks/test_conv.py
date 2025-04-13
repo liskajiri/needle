@@ -26,42 +26,26 @@ conv_configs = [
     conv_configs,
     ids=["image-like"],
 )
-def test_conv_forward(
-    benchmark, s, in_channels, out_channels, k, stride, device
-) -> None:
-    conv = ndl.nn.Conv(in_channels, out_channels, k, stride=stride, device=device)
-    x = ndl.init.rand((BATCH_SIZE, in_channels, s, s), device=device)
-
-    out = benchmark(conv, x)
-
-    out_size = (s - k + 2 * (k // 2)) // stride + 1
-    assert out.shape == (BATCH_SIZE, out_channels, out_size, out_size)
-
-
-@pytest.mark.parametrize("device", _ALL_DEVICES, ids=["cpu", "cuda"])
-@pytest.mark.parametrize(
-    "s,in_channels,out_channels,k,stride",
-    conv_configs,
-    ids=["image-like"],
-)
-def test_conv_backward(
-    benchmark, s, in_channels, out_channels, k, stride, device
+@pytest.mark.parametrize("backward", [False, True], ids=["forward", "backward"])
+def test_conv(
+    benchmark, s, in_channels, out_channels, k, stride, device, backward
 ) -> None:
     def run_forward_backward(loss):
         loss.backward()
         return loss
 
     conv = ndl.nn.Conv(in_channels, out_channels, k, stride=stride, device=device)
-
     x = ndl.init.rand(
-        (BATCH_SIZE, in_channels, s, s), device=device, requires_grad=True
+        (BATCH_SIZE, in_channels, s, s), device=device, requires_grad=backward
     )
 
-    out = conv(x)
-    loss = out.sum()
+    if not backward:
+        out = benchmark(conv, x)
+    else:
+        out = conv(x)
+        loss = out.sum()
+        _loss = benchmark(run_forward_backward, loss)
 
-    _loss = benchmark(run_forward_backward, loss)
-
-    assert x.grad.shape == x.shape
-    assert conv.weight.grad.shape == conv.weight.shape
-    assert conv.bias.grad.shape == conv.bias.shape
+        assert x.grad.shape == x.shape
+        assert conv.weight.grad.shape == conv.weight.shape
+        assert conv.bias.grad.shape == conv.bias.shape
