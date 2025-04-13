@@ -68,17 +68,23 @@ class MNISTDataset(Dataset):
         images_file: Path, labels_file: Path
     ) -> tuple[np_ndarray, np_ndarray]:
         # Read the images file
-        with gzip.open(images_file, "rb") as image_file:
-            image_file.read(16)  # Skip the header
-            buffer = image_file.read()
-            num_images = len(buffer) // MNISTDataset.IMAGE_SIZE
-            # normalize to [0.0, 1.0]
-            X = np.frombuffer(buffer, dtype=np.uint8).astype(np.float32) / 255.0
-            X = X.reshape(num_images, MNISTDataset.IMAGE_SIZE)
+        try:
+            with gzip.open(images_file, "rb") as image_file:
+                image_file.read(16)  # Skip the header
+                buffer = image_file.read()
+                num_images = len(buffer) // MNISTDataset.IMAGE_SIZE
+                # normalize to [0.0, 1.0]
+                X = np.frombuffer(buffer, dtype=np.uint8).astype(np.float32) / 255.0
+                X = X.reshape(num_images, MNISTDataset.IMAGE_SIZE)
 
-        # Read the labels file
-        with gzip.open(labels_file, "rb") as label_file:
-            label_file.read(8)  # Skip the header
-            buffer = label_file.read()
-            y = np.frombuffer(buffer, dtype=np.uint8)
-        return (X, y)
+            # Read the labels file
+            with gzip.open(labels_file, "rb") as label_file:
+                label_file.read(8)  # Skip the header
+                buffer = label_file.read()
+                y = np.frombuffer(buffer, dtype=np.uint8)
+            return (X, y)
+        except FileNotFoundError as e:
+            raise FileNotFoundError(
+                f"MNIST files not found."
+                f"Please download and place them in {images_file.parent}"
+            ) from e

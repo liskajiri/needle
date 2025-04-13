@@ -11,11 +11,17 @@ on:
   # performance analysis in order to generate initial data.
   workflow_dispatch:
 
+# TODO: pytest-split
+# https://github.com/jerry-git/pytest-split/issues/20
+
 jobs:
   benchmark:
-    timeout-minutes: 30
+    strategy:
+      matrix:
+        shard: [1, 2, 3, 4, 5]
+    timeout-minutes: 60
 
-    name: Run benchmarks
+    name: "Run benchmarks (Shard #${{ matrix.shard }})"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -23,9 +29,10 @@ jobs:
       # the codspeed runner is slow, so do everything possible before
       - run: pixi install -e benchmark
       - run: pixi run build
+      # - run: pixi run download_mnist # for the mnist benchmarks
 
       - name: Run benchmarks
         uses: CodSpeedHQ/action@v3
         with:
-          run: pixi run benchmarks
+          run: pixi run benchmarks --splits 5 --group ${{ matrix.shard }}
           token: ${{ secrets.CODSPEED_TOKEN }}

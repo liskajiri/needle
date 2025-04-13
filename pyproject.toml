@@ -16,6 +16,7 @@ dependencies = [
     #     ← needle.backend_ndarray.array_api
     #     ← needle.backend_ndarray.ndarray
     #     ← needle.backend_numpy
+    #     ← needle.data.datasets.artificial_mnist
     #     ← needle.data.datasets.mnist
     #     ← needle.typing.types
 ]
@@ -29,6 +30,7 @@ all = [
     #     ← needle.backend_ndarray.ndarray
     #     ← needle.backend_numpy
     #     ← [L] needle.backend_selection
+    #     ← needle.data.datasets.artificial_mnist
     #     ← needle.data.datasets.mnist
     #     ← needle.typing.types
 ]
@@ -49,6 +51,7 @@ addopts = [
     "--strict-config",
     "--import-mode=importlib",
     "--doctest-modules",
+    # "--testmon",
 ]
 markers = [
     "slow: marks tests as slow",
@@ -105,6 +108,13 @@ exclude_also = [
     'if __name__ == .__main__.:',
     'if TYPE_CHECKING:',
     '@(abc\.)?abstractmethod',
+    'pass',  # Often used in abstract classes
+    'def __repr__',  # Representation methods
+    'except .*:',  # Exception handling branches
+    'raise ImportError',
+    'if.*?platform',  # Platform-specific code
+    'if.*?sys.version_info',  # Version-specific code
+    'if.*?DEBUG:',  # Debug-only code
 ]
 
 [tool.coverage.xml]

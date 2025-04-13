@@ -10,7 +10,15 @@ from needle.backend_selection import (
 )
 
 # Provides array_api.functions
-from needle.init import *  # noqa: F403
+from needle.init import (
+    one_hot,
+    ones,
+    ones_like,
+    rand,
+    randn,
+    zeros,
+    zeros_like,
+)
 from needle.ops import *  # noqa: F403
 from needle.tensor import Tensor, TensorTuple
 
@@ -28,6 +36,13 @@ __all__ = [
     "default_device",
     "init",
     "nn",
+    "one_hot",
+    "ones",
+    "ones_like",
     "ops",
     "optim",
+    "rand",
+    "randn",
+    "zeros",
+    "zeros_like",
 ]

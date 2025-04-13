@@ -352,6 +352,8 @@ def eval_epoch_1(hidden_dim, batch_size):
     return acc, loss
 
 
+# TODO: substitute for artificial dataset and move this to test_datasets
+# it currently fails if the datasets are not downloaded
 def train_mnist_1(
     batch_size, epochs: int, optimizer, lr, weight_decay, hidden_dim
 ) -> tuple[float, float, float, float]:
@@ -1786,15 +1788,18 @@ def test_mlp_eval_epoch_1():
 
 
 @pytest.mark.slow
-def test_mlp_train_mnist_1():
+@pytest.mark.parametrize("optimizer", [ndl.optim.SGD, ndl.optim.Adam])
+def test_mlp_train_mnist(
+    optimizer, batch_size=128, epochs=1, lr=1e-2, weight_decay=0.1, hidden_dim=32
+) -> None:
     train_acc, train_loss, test_acc, test_loss = train_mnist_1(
-        250, 2, ndl.optim.SGD, 0.001, 0.01, 100
+        batch_size, epochs, optimizer, lr, weight_decay, hidden_dim
     )
 
-    target_train_acc = 0.4875
-    target_test_acc = 0.3245
-    target_train_loss = 1.65
-    target_test_loss = 1.4
+    target_train_acc = 0.6
+    target_test_acc = 0.6
+    target_train_loss = 1.3
+    target_test_loss = 1.0
 
     assert train_acc >= target_train_acc
     assert test_acc >= target_test_acc
