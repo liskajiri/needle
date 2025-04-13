@@ -1,7 +1,9 @@
 module;
 
+#include <algorithm>
 #include <cmath>
 #include <omp.h>
+
 import ndarray;
 
 export module reductions;
