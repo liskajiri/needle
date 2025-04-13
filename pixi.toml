@@ -113,7 +113,7 @@ clangxx = ">=19.1.7,<20"
 libcxx = ">=19.1.7,<20"
 libcxx-devel = ">=19.1.7,<20"
 libcxxabi = ">=19.1.7,<20"
-clang-tools = ">=19.1.7,<20"
+clang-tools = ">=20.1.2,<21"
 tqdm = ">=4.67.1,<5"
 
 [feature.dev.tasks]
