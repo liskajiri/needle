@@ -11,6 +11,9 @@ on:
   # performance analysis in order to generate initial data.
   workflow_dispatch:
 
+# TODO: pytest-split
+# https://github.com/jerry-git/pytest-split/issues/20
+
 jobs:
   benchmark:
     strategy:
@@ -31,6 +34,5 @@ jobs:
       - name: Run benchmarks
         uses: CodSpeedHQ/action@v3
         with:
-          run: pixi run benchmarks
-               --test-group=${{ matrix.shard }} --test-group-count=4
+          run: pixi run benchmarks --splits 4 --group ${{ matrix.shard }}
           token: ${{ secrets.CODSPEED_TOKEN }}

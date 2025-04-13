@@ -108,7 +108,7 @@ cmake = ">=3.31.4,<4"
 ninja = ">=1.12.1,<2"
 nanobind = ">=2.4.0,<3"
 clang = ">=19.1.7,<20"
-llvm-openmp = ">=19.1.7,<20"
+openmp = ">=8.0.1,<9"
 clangxx = ">=19.1.7,<20"
 libcxx = ">=19.1.7,<20"
 libcxx-devel = ">=19.1.7,<20"
@@ -183,15 +183,15 @@ TEST_REPORT_PATH = "reports/test_report"
 [feature.benchmark.dependencies]
 pytest = ">=8.3.4,<9"
 pytest-codspeed = ">=3.1.2,<4"
-# pytest-split = ">=0.10.0,<0.11"
+pytest-split = ">=0.10.0,<0.11"
 # scalene = ">=1.5.41,<2"
 
 [feature.benchmark.tasks]
 benchmarks = {cmd = "pytest benchmarks/ --codspeed --codspeed-warmup-time=0 --codspeed-max-time=2", depends-on = ["build"]}
 benchmark_matmul = {cmd = "pytest benchmarks/test_matmul.py --codspeed", depends-on = ["build"]}
 
-[feature.benchmark.pypi-dependencies]
-pytest-test-groups = ">=1.2.0, <2"
+# [feature.benchmark.pypi-dependencies]
+# pytest-test-groups = ">=1.2.0, <2"
 
 [activation.env]
 PYTHONPATH = "./python:./apps:."
