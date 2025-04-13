@@ -2,240 +2,15 @@
 
 from __future__ import annotations
 
-import logging
 from typing import TYPE_CHECKING
 
 from needle.backend_selection import array_api
 from needle.ops.op import TensorOp
+from needle.ops.shape import broadcast_to, broadcast_to_new_axis
 
 if TYPE_CHECKING:
     from needle.backend_selection import NDArray
     from needle.tensor import Tensor
-    from needle.typing import Scalar, Shape
-
-logger = logging.getLogger(__name__)
-
-# TODO: split ops:
-# - ewise / scalar
-# - transformations
-# pure math
-# specialized
-
-
-class EWiseAdd(TensorOp):
-    def compute(self, a: NDArray, b: NDArray) -> NDArray:
-        return a + b
-
-    def gradient(self, out_grad: Tensor, node: Tensor) -> tuple[Tensor, Tensor]:
-        return out_grad, out_grad
-
-
-def add(a: Tensor, b: Tensor) -> Tensor:
-    return EWiseAdd()(a, b)
-
-
-class AddScalar(TensorOp):
-    def __init__(self, scalar: Scalar) -> None:
-        self.scalar = scalar
-
-    def compute(self, a: NDArray) -> NDArray:
-        return a + self.scalar
-
-    def gradient(self, out_grad: Tensor, node: Tensor) -> Tensor:
-        return out_grad
-
-
-def add_scalar(a: Tensor, scalar: Scalar) -> Tensor:
-    return AddScalar(scalar)(a)
-
-
-class EWiseMul(TensorOp):
-    def compute(self, a: NDArray, b: NDArray) -> NDArray:
-        return a * b
-
-    def gradient(self, out_grad: Tensor, node: Tensor) -> tuple[Tensor, Tensor]:
-        lhs, rhs = node.inputs
-        return out_grad * rhs, out_grad * lhs
-
-
-def multiply(a: Tensor, b: Tensor) -> Tensor:
-    return EWiseMul()(a, b)
-
-
-class MulScalar(TensorOp):
-    def __init__(self, scalar: Scalar) -> None:
-        self.scalar = scalar
-
-    def compute(self, a: NDArray) -> NDArray:
-        return a * self.scalar
-
-    def gradient(self, out_grad: Tensor, node: Tensor) -> Tensor:
-        return out_grad * self.scalar
-
-
-def mul_scalar(a: Tensor, scalar: Scalar) -> Tensor:
-    return MulScalar(scalar)(a)
-
-
-class EWisePow(TensorOp):
-    """Op to element-wise raise a tensor to a power."""
-
-    def compute(self, a: NDArray, b: NDArray) -> NDArray:
-        return a**b
-
-    def gradient(self, out_grad, node):
-        a, b = node.inputs
-        grad_a = out_grad * b * (a ** (b - 1))
-        grad_b = out_grad * (a**b) * a.log()
-        return grad_a, grad_b
-
-
-def power(a: Tensor, b: Tensor) -> Tensor:
-    return EWisePow()(a, b)
-
-
-class PowerScalar(TensorOp):
-    """Op raise a tensor to an (integer) power."""
-
-    def __init__(self, scalar: Scalar) -> None:
-        self.scalar = scalar
-
-    def compute(self, a: NDArray) -> NDArray:
-        return a**self.scalar
-
-    def gradient(self, out_grad: Tensor, node: Tensor) -> Tensor:
-        child = node.inputs[0]
-        return self.scalar * out_grad * child ** (self.scalar - 1)
-
-
-def power_scalar(a: Tensor, scalar: Scalar) -> Tensor:
-    return PowerScalar(scalar)(a)
-
-
-class EWiseDiv(TensorOp):
-    """Op to element-wise divide two nodes."""
-
-    def compute(self, a: NDArray, b: NDArray) -> NDArray:
-        return a / b
-
-    def gradient(self, out_grad: Tensor, node: Tensor) -> tuple[Tensor, Tensor]:
-        lhs, rhs = node.inputs
-        return (
-            divide(out_grad, rhs),
-            divide(-out_grad * lhs, rhs**2),
-        )
-
-
-def divide(a: Tensor, b: Tensor) -> Tensor:
-    return EWiseDiv()(a, b)
-
-
-class DivScalar(TensorOp):
-    """
-    Divide a tensor by a scalar.
-    """
-
-    def __init__(self, scalar: float) -> None:
-        if scalar == 0:
-            raise ValueError("Cannot divide by 0")
-        if isinstance(scalar, int):
-            scalar = float(scalar)
-
-        self.scalar = float(scalar)
-
-    def compute(self, a: NDArray) -> NDArray:
-        return a / self.scalar
-
-    def gradient(self, out_grad: Tensor, node: Tensor) -> Tensor:
-        return out_grad / self.scalar
-
-
-def divide_scalar(a: Tensor, scalar: float) -> Tensor:
-    return DivScalar(scalar)(a)
-
-
-class Transpose(TensorOp):
-    def __init__(self, axes: tuple = (-1, -2)) -> None:
-        self.axes = axes if axes else (-1, -2)
-
-    def compute(self, a: NDArray) -> NDArray:
-        axes = tuple(ax if ax >= 0 else a.ndim + ax for ax in self.axes)
-        if not all(0 <= ax < a.ndim for ax in axes):
-            raise ValueError(f"Axes out of range for array of dimension {a.ndim}")
-        if len(self.axes) == a.ndim:
-            return array_api.transpose(a, self.axes)
-        if len(self.axes) == 2:
-            # swap two axes
-            permutation = list(range(len(a.shape)))
-            lhs, rhs = self.axes
-            permutation[lhs], permutation[rhs] = (
-                rhs,
-                lhs,
-            )
-            return array_api.transpose(a, tuple(permutation))
-        raise ValueError(f"Invalid axes: {self.axes}")
-
-    def gradient(self, out_grad: Tensor, _node: Tensor) -> Tensor:
-        """
-        Apply the inverse transpose to the gradient.
-        """
-        if len(self.axes) == 2 or not self.axes:
-            return transpose(out_grad, self.axes)
-
-        # Compute the inverse permutation
-        inverse_axes = tuple(self.axes.index(i) for i in range(len(self.axes)))
-        return transpose(out_grad, inverse_axes)
-
-
-def transpose(a: Tensor, axes: tuple = ()) -> Tensor:
-    return Transpose(axes)(a)
-
-
-class Reshape(TensorOp):
-    def __init__(self, shape: Shape) -> None:
-        self.shape = shape
-
-    def compute(self, a: NDArray) -> NDArray:
-        return array_api.reshape(a.compact(), self.shape)
-
-    def gradient(self, out_grad: Tensor, node: Tensor) -> Tensor:
-        return reshape(out_grad, node.inputs[0].shape)
-
-
-def reshape(a: Tensor, shape: Shape) -> Tensor:
-    return Reshape(shape)(a)
-
-
-class BroadcastTo(TensorOp):
-    def __init__(self, shape: Shape) -> None:
-        self.shape = shape
-
-    def compute(self, a: NDArray) -> NDArray:
-        return array_api.broadcast_to(a, self.shape)
-
-    def gradient(self, out_grad: Tensor, node: Tensor) -> Tensor:
-        # [7, 7, 7] -> [1, 7]
-        input_shape = node.inputs[0].shape
-        output_shape = out_grad.shape
-
-        if len(input_shape) != out_grad.ndim:
-            # expand curr out_grad
-            # [1, 7] -> [1, 1, 7]
-            new_axes = (1,) * (out_grad.ndim - len(input_shape)) + input_shape
-        else:
-            new_axes = input_shape
-
-        axes_to_reduce = tuple(i for i, ax in enumerate(new_axes) if ax == 1)
-        if axes_to_reduce:
-            out_grad = summation(out_grad, axes=axes_to_reduce, keepdims=True)
-
-        if output_shape != input_shape:
-            return reshape(out_grad, input_shape)
-        return out_grad
-
-
-def broadcast_to(a: Tensor, shape: Shape) -> Tensor:
-    return BroadcastTo(shape)(a)
 
 
 class Summation(TensorOp):
@@ -341,25 +116,16 @@ def relu(a: Tensor) -> Tensor:
     return ReLU()(a)
 
 
-def broadcast_to_new_axis(x: Tensor, new_axis: tuple, new_shape: tuple) -> Tensor:
-    new_axes = tuple(1 if i in new_axis else ax for i, ax in enumerate(new_shape))
-    return broadcast_to(reshape(x, new_axes), new_shape)
-
-
 class SquareRoot(TensorOp):
     def compute(self, a: NDArray) -> NDArray:
         return a**0.5
 
     def gradient(self, out_grad: Tensor, node: Tensor) -> Tensor:
-        return out_grad / (2 * node.inputs[0])
+        return out_grad / (2 * node.inputs[0] ** 0.5)
 
 
 def sqrt(x: Tensor) -> Tensor:
-    return x**0.5
-
-
-def mean(a: Tensor, axes: int = 0) -> Tensor:
-    return summation(a, axes=axes) / a.shape[axes]
+    return SquareRoot()(x)
 
 
 class Tanh(TensorOp):
@@ -386,3 +152,7 @@ class Sigmoid(TensorOp):
 
 def sigmoid(a: Tensor) -> Tensor:
     return Sigmoid()(a)
+
+
+def mean(a: Tensor, axes: int = 0) -> Tensor:
+    return summation(a, axes=axes) / a.shape[axes]

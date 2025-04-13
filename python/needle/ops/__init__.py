@@ -1,52 +1,38 @@
-from needle.ops import logarithmic, mathematic, ops_tuple
 from needle.ops.conv import conv
-from needle.ops.logarithmic import LogSumExp, logsoftmax, logsumexp
-
-# TODO: don't expose Classes, they should be called through the corresponding functions
-from needle.ops.mathematic import (
-    AddScalar,
-    BroadcastTo,
-    DivScalar,
-    EWiseAdd,
-    EWiseDiv,
-    EWiseMul,
-    EWisePow,
-    Exp,
-    Log,
-    MatMul,
-    MulScalar,
-    Negate,
-    PowerScalar,
-    ReLU,
-    Reshape,
-    SquareRoot,
-    Summation,
-    Transpose,
+from needle.ops.elementwise import (
     add,
-    add_scalar,
-    broadcast_to,
-    broadcast_to_new_axis,
     divide,
-    divide_scalar,
+    multiply,
+    power,
+)
+from needle.ops.logarithmic import logsoftmax, logsumexp
+from needle.ops.mathematic import (
     exp,
     log,
     matmul,
     mean,
-    mul_scalar,
-    multiply,
     negate,
-    power,
-    power_scalar,
     relu,
-    reshape,
     sigmoid,
     sqrt,
     summation,
     tanh,
-    transpose,
 )
 from needle.ops.op import Op, TensorOp, TensorTupleOp
 from needle.ops.ops_tuple import fused_add_scalars, make_tuple, tuple_get_item
+from needle.ops.scalar import (
+    add_scalar,
+    divide_scalar,
+    mul_scalar,
+    neg_scalar,
+    power_scalar,
+)
+from needle.ops.shape import (
+    broadcast_to,
+    broadcast_to_new_axis,
+    reshape,
+    transpose,
+)
 from needle.ops.view import (
     GetItem,
     dilate,
@@ -57,29 +43,10 @@ from needle.ops.view import (
 )
 
 __all__ = [
-    "AddScalar",
-    "BroadcastTo",
-    "DivScalar",
-    "EWiseAdd",
-    "EWiseDiv",
-    "EWiseMul",
-    "EWisePow",
-    "Exp",
     "GetItem",
-    "Log",
-    "LogSumExp",
-    "MatMul",
-    "MulScalar",
-    "Negate",
     "Op",
-    "PowerScalar",
-    "ReLU",
-    "Reshape",
-    "SquareRoot",
-    "Summation",
     "TensorOp",
     "TensorTupleOp",
-    "Transpose",
     "add",
     "add_scalar",
     "broadcast_to",
@@ -92,17 +59,15 @@ __all__ = [
     "flip",
     "fused_add_scalars",
     "log",
-    "logarithmic",
     "logsoftmax",
     "logsumexp",
     "make_tuple",
-    "mathematic",
     "matmul",
     "mean",
     "mul_scalar",
     "multiply",
+    "neg_scalar",
     "negate",
-    "ops_tuple",
     "power",
     "power_scalar",
     "relu",

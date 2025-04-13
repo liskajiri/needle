@@ -4,11 +4,11 @@ from typing import TYPE_CHECKING
 
 from needle.backend_selection import array_api
 from needle.ops.mathematic import (
-    broadcast_to_new_axis,
     exp,
     summation,
 )
 from needle.ops.op import TensorOp
+from needle.ops.shape import broadcast_to_new_axis
 
 if TYPE_CHECKING:
     from needle.backend_selection import NDArray
