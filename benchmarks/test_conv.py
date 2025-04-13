@@ -26,12 +26,6 @@ conv_configs = [
     conv_configs,
     ids=["image-like"],
 )
-@pytest.mark.benchmark(
-    min_rounds=10,
-    disable_gc=True,
-    warmup=True,
-    warmup_iterations=1,
-)
 def test_conv_forward(
     benchmark, s, in_channels, out_channels, k, stride, device
 ) -> None:
@@ -49,12 +43,6 @@ def test_conv_forward(
     "s,in_channels,out_channels,k,stride",
     conv_configs,
     ids=["image-like"],
-)
-@pytest.mark.benchmark(
-    min_rounds=10,
-    disable_gc=True,
-    warmup=True,
-    warmup_iterations=1,
 )
 def test_conv_backward(
     benchmark, s, in_channels, out_channels, k, stride, device

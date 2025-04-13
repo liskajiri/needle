@@ -36,17 +36,8 @@ except FileNotFoundError:
     ids=["train", "test"],
 )
 @pytest.mark.parametrize("optimizer", [ndl.optim.Adam, ndl.optim.SGD])
-@pytest.mark.benchmark(
-    min_rounds=2,
-    disable_gc=True,
-    warmup=False,
-)
 def test_mnist_epoch(benchmark, dataloader, mode, optimizer) -> None:
     model = MLPResNet(INPUT_DIM, HIDDEN_DIM)
     optimizer = optimizer(model.parameters(), lr=LR, weight_decay=WEIGHT_DECAY)
 
-    def run_epoch():
-        loss, accuracy = epoch(dataloader, model, optimizer, mode)
-        return loss, accuracy
-
-    benchmark(run_epoch)
+    benchmark(epoch, dataloader, model, optimizer, mode)

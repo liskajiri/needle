@@ -2,12 +2,6 @@ import needle as ndl
 import numpy as np
 import pytest
 
-BATCH_SIZE = 16
-INPUT_SIZE = 32
-HIDDEN_SIZE = 32
-
-rng = np.random.default_rng(3)
-
 DEVICES = [
     ndl.cpu(),
     pytest.param(
@@ -16,15 +10,16 @@ DEVICES = [
 ]
 
 
+BATCH_SIZE = 16
+INPUT_SIZE = 32
+HIDDEN_SIZE = 32
+
+rng = np.random.default_rng(0)
+
+
 @pytest.mark.parametrize("device", DEVICES, ids=["cpu", "cuda"])
 @pytest.mark.parametrize("cell_type", ["rnn", "lstm"])
 @pytest.mark.parametrize("backward", [False, True], ids=["forward", "backward"])
-@pytest.mark.benchmark(
-    min_rounds=2,
-    disable_gc=True,
-    warmup=True,
-    warmup_iterations=1,
-)
 def test_sequence_cell(benchmark, device, cell_type, backward) -> None:
     """Benchmark RNN/LSTM cell operations
 
