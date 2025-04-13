@@ -104,7 +104,7 @@ type_check = "pyright"
 
 [feature.dev.dependencies]
 # TODO: reduce dependencies
-cmake = ">=3.31.4,<4"
+cmake = ">=4.0.1,<5"
 ninja = ">=1.12.1,<2"
 nanobind = ">=2.4.0,<3"
 clang = ">=19.1.7,<20"
