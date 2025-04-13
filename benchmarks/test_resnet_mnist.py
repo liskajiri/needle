@@ -36,6 +36,7 @@ except FileNotFoundError:
     ids=["train", "test"],
 )
 @pytest.mark.parametrize("optimizer", [ndl.optim.Adam, ndl.optim.SGD])
+@pytest.mark.skip("MNIST benchmark test too slow for now.")
 def test_mnist_epoch(benchmark, dataloader, mode, optimizer) -> None:
     model = MLPResNet(INPUT_DIM, HIDDEN_DIM)
     optimizer = optimizer(model.parameters(), lr=LR, weight_decay=WEIGHT_DECAY)

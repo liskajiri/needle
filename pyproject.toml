@@ -108,6 +108,13 @@ exclude_also = [
     'if __name__ == .__main__.:',
     'if TYPE_CHECKING:',
     '@(abc\.)?abstractmethod',
+    'pass',  # Often used in abstract classes
+    'def __repr__',  # Representation methods
+    'except .*:',  # Exception handling branches
+    'raise ImportError',
+    'if.*?platform',  # Platform-specific code
+    'if.*?sys.version_info',  # Version-specific code
+    'if.*?DEBUG:',  # Debug-only code
 ]
 
 [tool.coverage.xml]

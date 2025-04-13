@@ -5,7 +5,7 @@ from needle.data.datasets.artificial_mnist import ArtificialMNIST
 
 from apps.resnet_mnist import epoch
 
-DIMENSIONS = [28]
+IMAGE_DIMENSION = 28
 HIDDEN_DIM = 10
 NUM_CLASSES = 10
 BATCH_SIZE = 128
@@ -29,14 +29,15 @@ def create_datasets(image_dim: int):
     )
 
 
-@pytest.mark.parametrize("image_dim", DIMENSIONS)
 @pytest.mark.parametrize(
     "dataset_type",
     ["train", "test"],
     ids=["train", "test"],
 )
 @pytest.mark.parametrize("optimizer", [ndl.optim.Adam, ndl.optim.SGD])
-def test_artificial_mnist_epoch(benchmark, image_dim, dataset_type, optimizer) -> None:
+def test_artificial_mnist_epoch(
+    benchmark, dataset_type, optimizer, image_dim=IMAGE_DIMENSION
+) -> None:
     """Benchmark training loop on artificial MNIST-like dataset.
 
     This test measures performance using datasets of different dimensions, where
