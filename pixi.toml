@@ -83,7 +83,7 @@ benchmark = {features = ["benchmark"], solve-group = "test"}
 
 [dependencies]
 numpy = ">=2.2.2,<3"
-python = ">=3.12.8,<3.13"
+python = ">=3.13.3,<3.14"
 # needle = { path = "."}
 # ndarray_backend_cpu = { path = "backends/"}
 
