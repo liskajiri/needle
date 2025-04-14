@@ -116,51 +116,50 @@ class Tensor(Value):
     def __setitem__(self, index: IndexType, value: NDArray | Scalar) -> None:
         self.realize_cached_data()[index] = value
 
-    # Arithmetic operations
-
+    # ============= Arithmetic operations
     def __add__(self, other: Tensor | Scalar) -> Tensor:
         if isinstance(other, Tensor):
-            return ndl.ops.EWiseAdd()(self, other)
-        return ndl.ops.AddScalar(other)(self)
+            return ndl.ops.add(self, other)
+        return ndl.ops.add_scalar(self, other)
 
     def __mul__(self, other: Tensor | Scalar) -> Tensor:
         if isinstance(other, Tensor):
-            return ndl.ops.EWiseMul()(self, other)
-        return ndl.ops.MulScalar(other)(self)
+            return ndl.ops.multiply(self, other)
+        return ndl.ops.mul_scalar(self, other)
 
     def __pow__(self, other: Scalar) -> Tensor:
-        return ndl.ops.PowerScalar(other)(self)
+        return ndl.ops.power_scalar(self, other)
 
     def __sub__(self, other: Tensor | Scalar) -> Tensor:
         if isinstance(other, Tensor):
-            return ndl.ops.EWiseAdd()(self, ndl.ops.Negate()(other))
-        return ndl.ops.AddScalar(-other)(self)
+            return ndl.ops.add(self, ndl.ops.negate(other))
+        return ndl.ops.add_scalar(self, -other)
 
     def __truediv__(self, other: Tensor | Scalar) -> Tensor:
         if isinstance(other, Tensor):
-            return ndl.ops.EWiseDiv()(self, other)
-        return ndl.ops.DivScalar(other)(self)
+            return ndl.ops.divide(self, other)
+        return ndl.ops.divide_scalar(self, other)
 
     def __matmul__(self, other: Tensor) -> Tensor:
-        return ndl.ops.MatMul()(self, other)
+        return ndl.ops.matmul(self, other)
 
     def matmul(self, other: Tensor) -> Tensor:
-        return ndl.ops.MatMul()(self, other)
+        return ndl.ops.matmul(self, other)
 
-    def sum(self, axes=None) -> Tensor:
-        return ndl.ops.Summation(axes)(self)
+    def sum(self, axes=None, keepdims=False) -> Tensor:
+        return ndl.ops.summation(self, axes, keepdims)
 
     def broadcast_to(self, shape: Shape) -> Tensor:
-        return ndl.ops.BroadcastTo(shape)(self)
+        return ndl.ops.broadcast_to(self, shape)
 
     def reshape(self, shape: Shape) -> Tensor:
-        return ndl.ops.Reshape(shape)(self)
+        return ndl.ops.reshape(self, shape)
 
     def __neg__(self) -> Tensor:
-        return ndl.ops.Negate()(self)
+        return ndl.ops.negate(self)
 
     def transpose(self, axes: tuple[int, ...] = ()) -> Tensor:
-        return ndl.ops.Transpose(axes)(self)
+        return ndl.ops.transpose(self, axes)
 
     def flip(self, axes: tuple[int, ...]) -> Tensor:
         return ndl.ops.flip(self, axes)
