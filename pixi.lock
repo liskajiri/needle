@@ -326,7 +326,7 @@ environments:
       - conda: https://prefix.dev/conda-forge/linux-64/libxml2-2.13.6-h8d12d68_0.conda
       - conda: https://prefix.dev/conda-forge/linux-64/libzlib-1.3.1-hb9d3cd8_2.conda
       - conda: https://prefix.dev/conda-forge/linux-64/llvm-openmp-19.1.7-h024ca30_0.conda
-      - conda: https://prefix.dev/conda-forge/linux-64/marimo-0.10.19-py312h76ec4c3_0.conda
+      - conda: https://prefix.dev/conda-forge/linux-64/marimo-0.12.8-py312h5936eb9_0.conda
       - conda: https://prefix.dev/conda-forge/noarch/markdown-3.6-pyhd8ed1ab_0.conda
       - conda: https://prefix.dev/conda-forge/linux-64/markupsafe-3.0.2-py312h178313f_1.conda
       - conda: https://prefix.dev/conda-forge/noarch/matplotlib-inline-0.1.7-pyhd8ed1ab_1.conda
@@ -2297,9 +2297,9 @@ packages:
   license: NCSA
   size: 449441
   timestamp: 1566244924699
-- conda: https://prefix.dev/conda-forge/linux-64/marimo-0.10.19-py312h76ec4c3_0.conda
-  sha256: afcdcab065f76bd8498bd854dbe2be49c1e6b1eb28da21be688d5ae3bb4bcd33
-  md5: 1658b87e8937320312d2c0c9ceb99e1f
+- conda: https://prefix.dev/conda-forge/linux-64/marimo-0.12.8-py312h5936eb9_0.conda
+  sha256: 38700aaab842ba5fbc78217d696aeed93d1d83afc358bd9b00077e62424e194b
+  md5: 9c067ca93a19f827546ef7622bef4672
   depends:
   - python
   - click >=8.0,<9
@@ -2322,8 +2322,8 @@ packages:
   - python_abi 3.12.* *_cp312
   license: Apache-2.0
   license_family: APACHE
-  size: 7025146
-  timestamp: 1738359819289
+  size: 7296344
+  timestamp: 1744329365651
 - conda: https://prefix.dev/conda-forge/noarch/markdown-3.6-pyhd8ed1ab_0.conda
   sha256: fce1fde00359696983989699c00f9891194c4ebafea647a8d21b7e2e3329b56e
   md5: 06e9bebf748a0dea03ecbe1f0e27e909
