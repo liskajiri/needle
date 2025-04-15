@@ -4,8 +4,6 @@ import itertools
 import logging
 from typing import TYPE_CHECKING
 
-import numpy as np
-
 from needle.backend_ndarray.ndarray import NDArray, default_device
 
 if TYPE_CHECKING:
@@ -24,11 +22,10 @@ def array(
     """Convenience methods to match numpy a bit more closely."""
     if dtype != "float32":
         logging.warning(f"Only support float32 for now, got {dtype}")
-        a = np.array(a, dtype="float32")
-        dtype = a.dtype
         logging.warning(f"Converting to numpy array with dtype {dtype}")
+        dtype = "float32"
     assert dtype == "float32"
-    return NDArray(a, device=device)
+    return NDArray(a, dtype=dtype, device=device)
 
 
 def empty(
@@ -91,7 +88,101 @@ def sum(a: NDArray, axis: tuple = (), keepdims: bool = False) -> NDArray:
 
 
 def flip(a: NDArray, axis: tuple[int, ...] | int) -> NDArray:
-    return a.flip(axis)
+    """
+    Flip this ndarray along the specified axes.
+    Note: compacts the array before returning.
+
+    Args:
+        axes: Tuple or int specifying the axes to flip
+
+    Returns:
+        NDArray: New array with flipped axes
+    """
+    # Handle single axis case
+    if isinstance(axis, int):
+        axis = (axis,)
+
+    # Validate axes
+    for ax in axis:
+        if ax < -a.ndim or ax >= a.ndim:
+            raise ValueError(
+                f"Axis {ax} is out of bounds for array of dimension {a.ndim}"
+            )
+
+    # Normalize negative axes
+    # TODO: this will be common in array ops, make it a function
+    # (convert neg to pos  idx)
+    axis = tuple(ax if ax >= 0 else a.ndim + ax for ax in axis)
+
+    # Create new view with modified strides and offset
+    new_strides = list(a._strides)
+    offset = a._offset
+
+    # For each axis to flip:
+    # 1. Make stride negative to traverse in reverse order
+    # 2. Adjust offset to start from end of axis
+    for ax in axis:
+        new_strides[ax] = -a._strides[ax]
+        offset += a._strides[ax] * (a._shape[ax] - 1)
+
+    out = NDArray.make(
+        a._shape,
+        strides=tuple(new_strides),
+        device=a.device,
+        handle=a._handle,
+        offset=offset,
+    )
+    # Return compacted array to ensure standard memory layout
+    # TODO: Copies memory, if negative strides are supported, this can be avoided
+    return out.compact()
+
+
+def pad(a, axes: tuple[tuple[int, int], ...]) -> NDArray:
+    """
+    Pad this ndarray by zeros by the specified amount in `axes`,
+    which lists for _all_ axes the left and right padding amount, e.g.,
+
+    axes = ( (0, 0), (1, 1), (0, 0) )
+    pads the middle axis with a 0 on the left and right side.
+
+    Note: This has to create a new array and copy the data over.
+
+    Args:
+        axes: Tuple of tuples specifying padding amount for each axis
+
+    Returns:
+        NDArray: New array with padding added
+
+    Raises:
+        ValueError: If padding axes do not match array dimensions
+
+    >>> import needle as ndl
+    >>> import numpy as np
+    >>> a = NDArray(np.array([[1, 2], [3, 4]]))
+    >>> print(ndl.array_api.pad(a, ((1, 1), (1, 1))))
+    [[0. 0. 0. 0.]
+     [0. 1. 2. 0.]
+     [0. 3. 4. 0.]
+     [0. 0. 0. 0.]]
+    """
+    if len(axes) != a.ndim:
+        raise ValueError(f"Padding axes {axes} must match array dimensions {a.ndim}")
+
+    # Calculate new shape after padding
+    new_shape = tuple(
+        dim + left + right for dim, (left, right) in zip(a.shape, axes, strict=False)
+    )
+
+    # Create output array filled with zeros
+    out = a.device.zeros(new_shape, dtype=a.dtype)
+
+    # Create slices to insert original data
+    slices = tuple(
+        slice(left, left + dim) for dim, (left, _) in zip(a.shape, axes, strict=False)
+    )
+    # Copy data into padded array
+    out[slices] = a
+    return out
 
 
 def stack(arrays: tuple[NDArray] | list[NDArray], axis: int = 0) -> NDArray:

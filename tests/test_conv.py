@@ -127,7 +127,7 @@ def test_pad_forward(params, device):
     a = ndl.NDArray(np_a, device=device)
 
     np_b = np.pad(np_a, padding)
-    b = a.pad(padding)
+    b = ndl.array_api.pad(a, padding)
 
     np.testing.assert_allclose(b.numpy(), np_b, rtol=1e-6)
 
