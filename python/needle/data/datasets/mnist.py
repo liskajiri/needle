@@ -1,10 +1,10 @@
 from __future__ import annotations
 
+import array
 import gzip
+import struct
 from pathlib import Path
 from typing import TYPE_CHECKING
-
-import numpy as np
 
 from needle.backend_selection import NDArray
 from needle.data.dataset import Dataset
@@ -64,27 +64,46 @@ class MNISTDataset(Dataset):
         return self.X.shape[0]
 
     @staticmethod
-    def parse_mnist(
-        images_file: Path, labels_file: Path
-    ) -> tuple[np_ndarray, np_ndarray]:
-        # Read the images file
-        try:
-            with gzip.open(images_file, "rb") as image_file:
-                image_file.read(16)  # Skip the header
-                buffer = image_file.read()
-                num_images = len(buffer) // MNISTDataset.IMAGE_SIZE
-                # normalize to [0.0, 1.0]
-                X = np.frombuffer(buffer, dtype=np.uint8).astype(np.float32) / 255.0
-                X = X.reshape(num_images, MNISTDataset.IMAGE_SIZE)
+    def parse_mnist(images_file: Path, labels_file: Path) -> tuple[NDArray, np_ndarray]:
+        """Parse MNIST data without using numpy."""
 
-            # Read the labels file
-            with gzip.open(labels_file, "rb") as label_file:
-                label_file.read(8)  # Skip the header
-                buffer = label_file.read()
-                y = np.frombuffer(buffer, dtype=np.uint8)
-            return (X, y)
+        def parse_images(file: Path) -> NDArray:
+            with gzip.open(file, "rb") as f:
+                # Read header: magic number (4 bytes), number of images,
+                # number of rows, number of columns
+                magic, num_images, _rows, _cols = struct.unpack(">IIII", f.read(16))
+                if magic != 2051:  # Magic number for images file
+                    raise ValueError("Invalid magic number in images file")
+
+                # Read image data
+                image_data = array.array("B")
+                image_data.frombytes(f.read())
+
+                # Convert to float and normalize to [0.0, 1.0]
+                X = NDArray(image_data) / 255.0
+                return X.reshape((num_images, MNISTDataset.IMAGE_SIZE))
+
+        def read_labels(file: Path) -> np_ndarray:
+            import numpy as np
+
+            with gzip.open(file, "rb") as f:
+                # Read header: magic number (4 bytes), number of items
+                magic, _num_labels = struct.unpack(">II", f.read(8))
+                if magic != 2049:  # Magic number for labels file
+                    raise ValueError("Invalid magic number in labels file")
+
+                # Read label data
+                label_data = array.array("B")
+                label_data.frombytes(f.read())
+                y = np.array(label_data, dtype=np.uint8)
+                # y = NDArray(label_data)
+                return y
+
+        try:
+            return parse_images(images_file), read_labels(labels_file)
+
         except FileNotFoundError as e:
             raise FileNotFoundError(
-                f"MNIST files not found."
+                f"MNIST files not found. "
                 f"Please download and place them in {images_file.parent}"
             ) from e

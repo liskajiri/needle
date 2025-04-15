@@ -15,6 +15,7 @@ from needle.typing import AbstractBackend
 if TYPE_CHECKING:
     from needle.typing import (
         DType,
+        IndexType,
         Scalar,
         Shape,
     )
@@ -51,7 +52,7 @@ class NumpyBackend(AbstractBackend):
     def rand(self, shape: Shape, dtype: DType = "float32") -> NDArray:
         return np.random.rand(*shape)
 
-    def one_hot(self, n: int, i: int, dtype: DType) -> NDArray:
+    def one_hot(self, n: int, i: IndexType, dtype: DType) -> NDArray:
         """Create a one-hot vector.
 
         Args:

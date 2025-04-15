@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING
 
-import numpy as np
+from numpy.typing import ArrayLike
 
 if TYPE_CHECKING:
     from numpy import ndarray
@@ -14,6 +14,7 @@ type Scalar = float | int
 type Shape = tuple[int, ...]
 type Strides = Shape
 
+# TODO: proper type, this clashes with certain things, get something like nd.float32
 float32: DType = "float32"
 
 type BatchType = tuple[Tensor, ...]
@@ -21,4 +22,4 @@ type BatchType = tuple[Tensor, ...]
 type IndexType = int | slice | tuple[int | slice, ...] | list[int] | NDArray | ndarray
 # TODO: Type for axes
 
-type np_ndarray = np.ndarray
+type np_ndarray = ArrayLike
