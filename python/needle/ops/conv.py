@@ -24,13 +24,14 @@ class Conv(TensorOp):
         kernel_height, kernel_width, _W, out_channels = kernel.shape
 
         if self.padding > 0:
-            img = img.pad(
+            img = array_api.pad(
+                img,
                 (
                     (0, 0),
                     (self.padding, self.padding),
                     (self.padding, self.padding),
                     (0, 0),
-                )
+                ),
             )
             height += 2 * self.padding
             width += 2 * self.padding
@@ -87,13 +88,14 @@ class Conv(TensorOp):
 
         X_padded = X.realize_cached_data()
         if self.padding > 0:
-            X_padded = X_padded.pad(
+            X_padded = array_api.pad(
+                X_padded,
                 (
                     (0, 0),
                     (self.padding, self.padding),
                     (self.padding, self.padding),
                     (0, 0),
-                )
+                ),
             )
 
         # TODO: Convert this to a convolution operation
