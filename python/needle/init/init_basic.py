@@ -170,6 +170,7 @@ def one_hot(
     Returns:
         One-hot encoded tensor
     """
+    assert isinstance(i, Tensor), "Input must be a Tensor"
     return Tensor(
         device.one_hot(n, i.numpy().astype("int32"), dtype=dtype),
         device=device,

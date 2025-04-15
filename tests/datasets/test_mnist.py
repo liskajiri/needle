@@ -1,7 +1,6 @@
 import needle as ndl
 import numpy as np
 import pytest
-from mnist_needle import softmax_loss
 from needle.backend_selection import NDArray
 from needle.data.datasets.mnist import MNISTDataset, MNISTPaths
 
@@ -279,16 +278,17 @@ def test_softmax_loss_ndl():
     _X, y = MNISTDataset.parse_mnist(MNISTPaths.TRAIN_IMAGES, MNISTPaths.TRAIN_LABELS)
     np.random.seed(0)
     Z = ndl.Tensor(np.zeros((y.shape[0], 10)).astype(np.float32))
-    y_one_hot = np.zeros((y.shape[0], 10))
-    y_one_hot[np.arange(y.size), y] = 1
-    y = ndl.Tensor(y_one_hot)
+    y = ndl.Tensor(y)
+    softmax = ndl.nn.SoftmaxLoss()
+
     np.testing.assert_allclose(
-        softmax_loss(Z, y).numpy(), 2.3025850, rtol=1e-6, atol=1e-6
+        softmax(Z, y).numpy(),
+        2.3025850,
+        rtol=1e-6,
+        atol=1e-6,
     )
     Z = ndl.Tensor(np.random.randn(y.shape[0], 10).astype(np.float32))
-    np.testing.assert_allclose(
-        softmax_loss(Z, y).numpy(), 2.7291998, rtol=1e-6, atol=1e-6
-    )
+    np.testing.assert_allclose(softmax(Z, y).numpy(), 2.7291998, rtol=1e-6, atol=1e-6)
 
     # TODO:
     # # test softmax loss backward

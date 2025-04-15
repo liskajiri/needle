@@ -3,7 +3,6 @@ import numdifftools as nd
 import numpy as np
 import pytest
 import torch
-from mnist_needle import loss_err, nn_epoch, softmax_loss
 from models.resnet9 import MLPResNet, ResidualBlock
 from needle import nn
 from needle.data.datasets.mnist import MNISTDataset, MNISTPaths
@@ -13,7 +12,58 @@ from tests.utils import set_random_seeds
 
 rng = np.random.default_rng(0)
 
+
 # TODO: rework this whole files
+def simple_nn_epoch(
+    X: np.ndarray,
+    y: np.ndarray,
+    W1: ndl.Tensor,
+    W2: ndl.Tensor,
+    lr: float = 0.1,
+    batch_size: int = 100,
+) -> tuple[ndl.Tensor, ndl.Tensor]:
+    """Run a single epoch of SGD for a two-layer neural network defined by the
+    weights W1 and W2 (with no bias terms):
+        logits = ReLU(X * W1) * W1
+    The function should use the step size lr, and the specified batch size (and
+    again, without randomizing the order of X).
+
+    Args:
+        X (np.ndarray[np.float32]): 2D input array of size
+            (num_examples x input_dim).
+        y (np.ndarray[np.uint8]): 1D class label array of size (num_examples,)
+        W1 (Tensor[np.float32]): 2D array of first layer weights, of shape
+            (input_dim, hidden_dim)
+        W2 (Tensor[np.float32]): 2D array of second layer weights, of shape
+            (hidden_dim, num_classes)
+        lr (float): step size (learning rate) for SGD
+        batch (int): size of SGD mini-batch
+
+    Returns
+    -------
+        Tuple: (W1, W2)
+            W1: Tensor[np.float32]
+            W2: Tensor[np.float32]
+
+    """
+    n_batches = X.shape[0] // batch_size
+
+    for n in range(n_batches):
+        X_batch = ndl.Tensor(X[n * batch_size : (n + 1) * batch_size])
+        y_batch = y[n * batch_size : (n + 1) * batch_size]
+
+        # forward pass
+        Z = ndl.relu(X_batch @ W1)
+        logits = Z @ W2
+        loss = ndl.nn.SoftmaxLoss()(logits, ndl.Tensor(y_batch))
+        # loss = softmax_loss(logits, y_batch)
+
+        loss.backward()
+
+        W1.data -= lr * W1.grad
+        W2.data -= lr * W2.grad
+
+    return W1, W2
 
 
 # TODO: replace with hypothesis tests
@@ -1777,6 +1827,7 @@ def test_mlp_train_epoch_1():
     assert loss <= target_loss
 
 
+@pytest.mark.slow
 def test_mlp_eval_epoch_1():
     acc, loss = eval_epoch_1(10, 150)
 
@@ -1807,6 +1858,7 @@ def test_mlp_train_mnist(
     assert test_loss <= target_test_loss
 
 
+@pytest.mark.slow
 def test_nn_backprop_random_data():
     set_random_seeds(0)
 
@@ -1821,21 +1873,20 @@ def test_nn_backprop_random_data():
     W2 = ndl.Tensor(W2)
 
     X_ = ndl.Tensor(X)
-    y_one_hot = np.zeros((y.shape[0], 3))
-    y_one_hot[np.arange(y.size), y] = 1
-    y_ = ndl.Tensor(y_one_hot)
+    y_ = ndl.Tensor(y)
 
     dW1 = nd.Gradient(
-        lambda W1_: softmax_loss(
-            ndl.relu(X_ @ ndl.Tensor(W1_).reshape((5, 10))) @ W2, y_
+        lambda W1_: ndl.nn.SoftmaxLoss()(
+            ndl.relu(X_ @ ndl.Tensor(W1_).reshape((5, 10))) @ W2,
+            y_,
         ).numpy()[0]
     )(W1.numpy())
     dW2 = nd.Gradient(
-        lambda W2_: softmax_loss(
+        lambda W2_: ndl.nn.SoftmaxLoss()(
             ndl.relu(X_ @ W1) @ ndl.Tensor(W2_).reshape((10, 3)), y_
         ).numpy()[0]
     )(W2.numpy())
-    W1, W2 = nn_epoch(X, y, W1, W2, lr=1.0, batch_size=50)
+    W1, W2 = simple_nn_epoch(X, y, W1, W2, lr=1.0, batch_size=50)
     np.testing.assert_allclose(
         dW1.reshape(5, 10), W1_0 - W1.numpy(), rtol=1e-4, atol=1e-4
     )
@@ -1864,7 +1915,7 @@ def test_nn_full_epoch_mnist_simple_network():
     )
 
     # Train for one epoch
-    W1, W2 = nn_epoch(X, y, W1, W2, lr=0.2, batch_size=100)
+    W1, W2 = simple_nn_epoch(X, y, W1, W2, lr=0.2, batch_size=100)
 
     # Verify weight matrix norms after training
     np.testing.assert_allclose(
@@ -1884,7 +1935,11 @@ def test_nn_full_epoch_mnist_simple_network():
 
     # Evaluate model performance on training data
     model_output = ndl.relu(ndl.Tensor(X) @ W1) @ W2
-    loss, error_rate = loss_err(model_output, y)
+
+    loss = ndl.nn.SoftmaxLoss()(model_output, ndl.Tensor(y))
+    loss = loss.numpy()[0]
+
+    error_rate = np.mean(model_output.numpy().argmax(axis=1) != y)
 
     # Verify loss and error rate match expected values
     np.testing.assert_array_less(
@@ -1904,8 +1959,9 @@ def test_softmax_loss_ndl_random_array():
 
     # Needle implementation
     Z_ndl = ndl.Tensor(Z_np)
-    y_ndl = ndl.Tensor(y_np)
-    loss_ndl = softmax_loss(Z_ndl, y_ndl)
+
+    y_indices = ndl.Tensor(np.argmax(y_np, axis=1))
+    loss_ndl = ndl.nn.SoftmaxLoss()(Z_ndl, y_indices)
     loss_ndl.backward()
 
     # PyTorch implementation

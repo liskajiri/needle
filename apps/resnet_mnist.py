@@ -158,7 +158,7 @@ if __name__ == "__main__":
     logging.info("Starting training...")
 
     training_bar = (
-        tqdm(range(epochs), desc="Epochs ") if TQDM_AVAILABLE else range(epochs)
+        tqdm(range(epochs), desc="Epochs ") if TQDM_AVAILABLE else range(epochs)  # type: ignore
     )
     for _epoch_idx in training_bar:
         train_acc, train_loss = epoch(train_loader, model, opt, mode="train")

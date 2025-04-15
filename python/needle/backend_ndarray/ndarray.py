@@ -19,9 +19,6 @@ logger = logging.getLogger(__name__)
 # TODO: reference hw3.ipynb for future optimizations
 # TODO: investigate usage of __slots__, Python's array.array for NDArray class
 
-if TYPE_CHECKING:
-    from needle.typing import DType, IndexType, Scalar, Shape
-
 
 class BackendDevice(AbstractBackend):
     # note: numpy doesn't support types within standard random routines, and
@@ -29,7 +26,9 @@ class BackendDevice(AbstractBackend):
 
     # TODO: move to c++ backend
     def randn(self, shape: Shape, dtype: DType = "float32") -> NDArray:
-        # random_values = [random.gauss(0, 1) for _ in range(math.prod(shape))]
+        # import random
+
+        # random_values = [random.random() for _ in range(math.prod(shape))]
 
         # arr = NDArray.make(shape, device=self)
         # for i, value in enumerate(random_values):
@@ -313,6 +312,8 @@ class NDArray:
         Returns:
             int: The size of the first dimension.
         """
+        if len(self.shape) == 0:
+            return 1
         return self.shape[0]
 
     # Basic array manipulation
@@ -832,7 +833,7 @@ class NDArray:
     # Binary operators all return (0.0, 1.0) floating point values
     # TODO: could of course be optimized
 
-    def __eq__(self, other: NDArray) -> bool:
+    def __eq__(self, other: object) -> bool:
         """Support == comparison with numpy arrays and scalars"""
         if isinstance(other, np.ndarray):
             return np.array_equal(self.numpy(), other)
@@ -1041,104 +1042,4 @@ class NDArray:
     def max(self, axis: tuple | None = None, keepdims: bool = False) -> NDArray:
         view, out = self.reduce_view_out(axis, keepdims=keepdims)
         self.device.reduce_max(view.compact()._handle, out._handle, view.shape[-1])
-        return out
-
-    # Other functions
-
-    def flip(self, axes: tuple[int, ...] | int) -> NDArray:
-        """
-        Flip this ndarray along the specified axes.
-        Note: compacts the array before returning.
-
-        Args:
-            axes: Tuple or int specifying the axes to flip
-
-        Returns:
-            NDArray: New array with flipped axes
-        """
-        # Handle single axis case
-        if isinstance(axes, int):
-            axes = (axes,)
-
-        # Validate axes
-        for ax in axes:
-            if ax < -self.ndim or ax >= self.ndim:
-                raise ValueError(
-                    f"Axis {ax} is out of bounds for array of dimension {self.ndim}"
-                )
-
-        # Normalize negative axes
-        # TODO: this will be common in array ops, make it a function
-        # (convert neg to pos  idx)
-        axes = tuple(ax if ax >= 0 else self.ndim + ax for ax in axes)
-
-        # Create new view with modified strides and offset
-        new_strides = list(self._strides)
-        offset = self._offset
-
-        # For each axis to flip:
-        # 1. Make stride negative to traverse in reverse order
-        # 2. Adjust offset to start from end of axis
-        for ax in axes:
-            new_strides[ax] = -self._strides[ax]
-            offset += self._strides[ax] * (self._shape[ax] - 1)
-
-        out = NDArray.make(
-            self._shape,
-            strides=tuple(new_strides),
-            device=self.device,
-            handle=self._handle,
-            offset=offset,
-        )
-        # Return compacted array to ensure standard memory layout
-        # TODO: Copies memory, if negative strides are supported, this can be avoided
-        return out.compact()
-
-    def pad(self, axes: tuple[tuple[int, int], ...]) -> NDArray:
-        """
-        Pad this ndarray by zeros by the specified amount in `axes`,
-        which lists for _all_ axes the left and right padding amount, e.g.,
-
-        axes = ( (0, 0), (1, 1), (0, 0) )
-        pads the middle axis with a 0 on the left and right side.
-
-        Note: This has to create a new array and copy the data over.
-
-        Args:
-            axes: Tuple of tuples specifying padding amount for each axis
-
-        Returns:
-            NDArray: New array with padding added
-
-        Raises:
-            ValueError: If padding axes do not match array dimensions
-
-        >>> a = NDArray(np.array([[1, 2], [3, 4]]))
-        >>> print(a.pad(((1, 1), (1, 1))))
-        [[0. 0. 0. 0.]
-         [0. 1. 2. 0.]
-         [0. 3. 4. 0.]
-         [0. 0. 0. 0.]]
-        """
-        if len(axes) != self.ndim:
-            raise ValueError(
-                f"Padding axes {axes} must match array dimensions {self.ndim}"
-            )
-
-        # Calculate new shape after padding
-        new_shape = tuple(
-            dim + left + right
-            for dim, (left, right) in zip(self.shape, axes, strict=False)
-        )
-
-        # Create output array filled with zeros
-        out = self.device.zeros(new_shape, dtype=self.dtype)
-
-        # Create slices to insert original data
-        slices = tuple(
-            slice(left, left + dim)
-            for dim, (left, _) in zip(self.shape, axes, strict=False)
-        )
-        # Copy data into padded array
-        out[slices] = self
         return out

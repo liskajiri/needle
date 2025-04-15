@@ -90,7 +90,7 @@ def epoch_general_cifar10(
     avg_loss = total_loss / total_samples
     avg_acc = total_correct / total_samples
 
-    return avg_acc, avg_loss
+    return Accuracy(avg_acc), Loss(avg_loss)
 
 
 def train_cifar10(
