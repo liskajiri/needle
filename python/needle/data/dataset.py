@@ -14,6 +14,7 @@ if TYPE_CHECKING:
 # TODO: track device in dataset too and not only in dataloader?
 
 
+# TODO: figure out typing of generics
 class Dataset[T](Sequence, ABC):
     """
     An abstract class representing a `Dataset`.
@@ -61,7 +62,7 @@ class Dataset[T](Sequence, ABC):
         self._transforms = tuple(transforms) if transforms else ()
 
     @abstractmethod
-    def __getitem__(self, index: IndexType) -> Sequence[T]:
+    def __getitem__(self, index: IndexType) -> Sequence[T] | tuple[Sequence[T], int]:
         raise NotImplementedError
 
     @abstractmethod
