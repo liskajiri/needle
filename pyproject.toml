@@ -13,11 +13,8 @@ urls ={ repository = "https://github.com/liskajiri/needle"}
 dependencies = [
     # [AUTOGEN] by pydependence resolver 'needle' **DO NOT EDIT** [AUTOGEN]
     "numpy",
-    #     ← needle.backend_ndarray.array_api
     #     ← needle.backend_ndarray.ndarray
     #     ← needle.backend_numpy
-    #     ← needle.data.datasets.artificial_mnist
-    #     ← needle.data.datasets.mnist
     #     ← needle.typing.types
 ]
 
@@ -26,12 +23,10 @@ dependencies = [
 all = [
     # [AUTOGEN] by pydependence resolver 'all' **DO NOT EDIT** [AUTOGEN]
     "numpy",
-    #     ← needle.backend_ndarray.array_api
     #     ← needle.backend_ndarray.ndarray
     #     ← needle.backend_numpy
     #     ← [L] needle.backend_selection
-    #     ← needle.data.datasets.artificial_mnist
-    #     ← needle.data.datasets.mnist
+    #     ← [L] needle.data.datasets.mnist
     #     ← needle.typing.types
 ]
 
@@ -126,17 +121,16 @@ directory = "reports/coverage-html"
 show_contexts = true
 
 [tool.pyright]
-include = ["python/needle"]
+include = ["python/needle", "apps/"]
 exclude = [
     "python/needle/ops",
     "python/needle/backend_ndarray/",
-    "python/needle/backend_numpy.py"
 ]
 
 reportMissingImports = false
 reportMissingTypeStubs = false
 
-pythonVersion = "3.12"
+pythonVersion = "3.13"
 pythonPlatform = "Linux"
 
 [tool.pydependence]
