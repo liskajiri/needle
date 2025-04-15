@@ -23,8 +23,8 @@ jobs:
     uses: ./.github/workflows/check-changed-files.yml
 
   style:
-    name: Style
-    uses: ./.github/workflows/style.yml
+    name: Lint
+    uses: ./.github/workflows/lint.yml
 
   pyright:
     name: Pyright

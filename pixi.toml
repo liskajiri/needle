@@ -97,9 +97,11 @@ pre-commit-hooks = ">=5.0.0,<6"
 pyright = ">=1.1.399,<2"
 
 [feature.lint.tasks]
-style = "pre-commit run --all-files --color=always --show-diff-on-failure"
+lint = "pre-commit run --all-files --color=always --show-diff-on-failure"
 type_check = "pyright"
 
+# TODO: Train environment?
+# TODO: add train tasks
 [feature.dev.dependencies]
 cmake = ">=4.0.1,<5"
 ninja = ">=1.12.1,<2"
