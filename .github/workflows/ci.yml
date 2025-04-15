@@ -22,7 +22,7 @@ jobs:
     name: Check changed files
     uses: ./.github/workflows/check-changed-files.yml
 
-  style:
+  lint:
     name: Lint
     uses: ./.github/workflows/lint.yml
 
