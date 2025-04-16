@@ -18,7 +18,7 @@ jobs:
   benchmark:
     strategy:
       matrix:
-        shard: [1, 2, 3, 4, 5]
+        shard: [1, 2, 3, 4]
     timeout-minutes: 60
 
     name: "Run benchmarks (Shard #${{ matrix.shard }})"
@@ -29,10 +29,10 @@ jobs:
       # the codspeed runner is slow, so do everything possible before
       - run: pixi install -e benchmark
       - run: pixi run build
-      # - run: pixi run download_mnist # for the mnist benchmarks
+      - run: pixi run download_mnist # for the mnist benchmarks
 
       - name: Run benchmarks
         uses: CodSpeedHQ/action@v3
         with:
-          run: pixi run benchmarks --splits 5 --group ${{ matrix.shard }}
+          run: pixi run benchmarks --splits 4 --group ${{ matrix.shard }}
           token: ${{ secrets.CODSPEED_TOKEN }}
