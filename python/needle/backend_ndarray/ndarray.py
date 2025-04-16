@@ -272,6 +272,7 @@ class NDArray:
         return tuple(res[::-1])
 
         # Properties and string representations
+
     @property
     def shape(self) -> Shape:
         return self._shape
