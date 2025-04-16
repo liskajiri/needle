@@ -29,6 +29,7 @@ from needle.backend_ndarray.ndarray import (
     cpu_numpy,
     cuda,
     default_device,
+    make,
 )
 
 __all__ = [
@@ -49,6 +50,7 @@ __all__ = [
     "from_numpy",
     "full",
     "log",
+    "make",
     "max",
     "maximum",
     "ones",

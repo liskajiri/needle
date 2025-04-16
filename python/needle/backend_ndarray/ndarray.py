@@ -19,78 +19,148 @@ logger = logging.getLogger(__name__)
 # TODO: reference hw3.ipynb for future optimizations
 # TODO: investigate usage of __slots__, Python's array.array for NDArray class
 
+if True:
 
-class BackendDevice(AbstractBackend):
-    # note: numpy doesn't support types within standard random routines, and
-    # .astype("float32") does work if we're generating a singleton
+    class BackendDevice(AbstractBackend):
+        # note: numpy doesn't support types within standard random routines, and
+        # .astype("float32") does work if we're generating a singleton
 
-    # TODO: move to c++ backend
-    def randn(self, shape: Shape, dtype: DType = "float32") -> NDArray:
-        # import random
+        # TODO: move to c++ backend
+        def randn(self, shape: Shape, dtype: DType = "float32") -> NDArray:
+            # import random
 
-        # random_values = [random.random() for _ in range(math.prod(shape))]
+            # random_values = [random.random() for _ in range(math.prod(shape))]
 
-        # arr = NDArray.make(shape, device=self)
-        # for i, value in enumerate(random_values):
-        #     arr[i] = value
+            # arr = make(shape, device=self)
+            # for i, value in enumerate(random_values):
+            #     arr[i] = value
 
-        # return arr
-        if isinstance(shape, int):
-            shape = (shape,)
-        return NDArray(np.random.randn(*shape).astype(dtype), device=self)
+            # return arr
+            if isinstance(shape, int):
+                shape = (shape,)
+            return NDArray(np.random.randn(*shape).astype(dtype), device=self)
 
-    def rand(self, shape: Shape, dtype: DType = "float32") -> NDArray:
-        # random_values = [random.uniform(0, 1) for _ in range(math.prod(shape))]
+        def rand(self, shape: Shape, dtype: DType = "float32") -> NDArray:
+            # random_values = [random.uniform(0, 1) for _ in range(math.prod(shape))]
 
-        # arr = NDArray.make(shape, device=self)
-        # for i, value in enumerate(random_values):
-        #     arr._handle[i] = value
+            # arr = make(shape, device=self)
+            # for i, value in enumerate(random_values):
+            #     arr._handle[i] = value
 
-        # return arr
-        if isinstance(shape, int):
-            shape = (shape,)
-        return NDArray(np.random.rand(*shape).astype(dtype), device=self)
+            # return arr
+            if isinstance(shape, int):
+                shape = (shape,)
+            return NDArray(np.random.rand(*shape).astype(dtype), device=self)
 
-    def one_hot(self, n: int, i: IndexType, dtype: DType) -> NDArray:
-        """Create a one-hot vector.
+        def one_hot(self, n: int, i: IndexType, dtype: DType) -> NDArray:
+            """Create a one-hot vector.
 
-        Args:
-            n (int): Length of the vector.
-            i (int): Index of the one-hot element.
-            dtype (_type_, optional):
+            Args:
+                n (int): Length of the vector.
+                i (int): Index of the one-hot element.
+                dtype (_type_, optional):
 
-        Raises:
-            NotImplementedError: If the method is not implemented.
+            Raises:
+                NotImplementedError: If the method is not implemented.
 
-        Returns:
-            NDArray: A one-hot vector.
-        """
-        return NDArray(np.eye(n, dtype=dtype)[i], device=self)
+            Returns:
+                NDArray: A one-hot vector.
+            """
+            return NDArray(np.eye(n, dtype=dtype)[i], device=self)
 
-    def zeros(self, shape: Shape, dtype: DType) -> NDArray:
-        arr = self.empty(shape, dtype=dtype)
-        arr.fill(0.0)
-        return arr
+        def zeros(self, shape: Shape, dtype: DType) -> NDArray:
+            arr = self.empty(shape, dtype=dtype)
+            arr.fill(0.0)
+            return arr
 
-    def ones(self, shape: Shape, dtype: DType) -> NDArray:
-        arr = self.empty(shape, dtype=dtype)
-        arr.fill(1.0)
-        return arr
+        def ones(self, shape: Shape, dtype: DType) -> NDArray:
+            arr = self.empty(shape, dtype=dtype)
+            arr.fill(1.0)
+            return arr
 
-    def constant(self, shape: Shape, value: Scalar, dtype: DType) -> NDArray:
-        arr = self.empty(shape, dtype=dtype)
-        arr.fill(value)
-        return arr
+        def constant(self, shape: Shape, value: Scalar, dtype: DType) -> NDArray:
+            arr = self.empty(shape, dtype=dtype)
+            arr.fill(value)
+            return arr
 
-    def empty(self, shape: Shape, dtype: DType = "float32") -> NDArray:
-        return NDArray.make(shape, device=self)
+        def empty(self, shape: Shape, dtype: DType = "float32") -> NDArray:
+            return make(shape, device=self)
 
-    def full(
-        self, shape: Shape, fill_value: Scalar, dtype: DType = "float32"
-    ) -> NDArray:
-        arr = self.empty(shape, dtype=dtype)
-        arr.fill(fill_value)
-        return arr
+        def full(
+            self, shape: Shape, fill_value: Scalar, dtype: DType = "float32"
+        ) -> NDArray:
+            arr = self.empty(shape, dtype=dtype)
+            arr.fill(fill_value)
+            return arr
+
+else:
+    import random
+
+    class BackendDevice(AbstractBackend):
+        # TODO: dtype?
+        def randn(self, shape: Shape, dtype: DType = "float32") -> NDArray:
+            """
+            Generate random array from standard normal distribution
+            """
+            random.seed(0)
+
+            size = (math.prod(shape),)
+            arr = self.empty(size, dtype=dtype)
+            for i in range(arr.size):
+                arr[i] = random.gauss(0.0, 1.0)
+            return arr.reshape(shape)
+
+        def rand(self, shape: Shape, dtype: DType = "float32") -> NDArray:
+            """
+            Generate random samples from uniform distribution [0,1).
+            """
+            random.seed(0)
+
+            size = (math.prod(shape),)
+            arr = self.empty(size, dtype=dtype)
+            for i in range(arr.size):
+                arr[i] = random.uniform(0.0, 1.0)
+            return arr.reshape(shape)
+
+        def one_hot(self, n: int, i: IndexType, dtype: DType) -> NDArray:
+            """Create a one-hot vector.
+
+            Args:
+                n (int): Length of the vector.
+                i (int): Index of the one-hot element.
+                dtype (DType): Data type of the array.
+
+            Returns:
+                NDArray: A one-hot vector.
+            """
+            arr = self.zeros((n,), dtype)
+            arr[i] = 1.0
+            return arr
+
+        def zeros(self, shape: Shape, dtype: DType) -> NDArray:
+            arr = self.empty(shape, dtype=dtype)
+            arr.fill(0.0)
+            return arr
+
+        def ones(self, shape: Shape, dtype: DType) -> NDArray:
+            arr = self.empty(shape, dtype=dtype)
+            arr.fill(1.0)
+            return arr
+
+        def constant(self, shape: Shape, value: Scalar, dtype: DType) -> NDArray:
+            arr = self.empty(shape, dtype=dtype)
+            arr.fill(value)
+            return arr
+
+        def empty(self, shape: Shape, dtype: DType = "float32") -> NDArray:
+            return make(shape, device=self)
+
+        def full(
+            self, shape: Shape, fill_value: Scalar, dtype: DType = "float32"
+        ) -> NDArray:
+            arr = self.empty(shape, dtype=dtype)
+            arr.fill(fill_value)
+            return arr
 
 
 def cuda() -> AbstractBackend:
