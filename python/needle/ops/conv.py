@@ -10,6 +10,7 @@ from needle.tensor import Tensor
 
 if TYPE_CHECKING:
     from needle.backend_selection import NDArray
+    from needle.typing.types import Shape
 
 
 class Conv(TensorOp):
@@ -17,11 +18,64 @@ class Conv(TensorOp):
         self.stride = stride
         self.padding = padding
 
+    @staticmethod
+    def _im2col(
+        img: NDArray,
+        kernel_shape: Shape,
+        out_height: int,
+        out_width: int,
+        stride: int = 1,
+    ) -> NDArray:
+        """
+        Convert image to column format for convolution.
+
+        Args:
+            img: Input tensor of shape (N, H, W, C_in)
+            kernel: Weight tensor of shape (kH, kW, C_in, C_out)
+
+        Returns:
+            NDArray: Column format of the input tensor
+        """
+        n, _in_height, _in_width, in_channels = img.shape
+        kernel_height, kernel_width, _in_c, _out_channels = kernel_shape
+
+        patches = array_api.empty((
+            n * out_height * out_width,
+            kernel_height * kernel_width * in_channels,
+        ))
+
+        # im2col transformation
+        for y in range(out_height):
+            y_pos = y * stride
+            for x in range(out_width):
+                x_pos = x * stride
+                # Extract patches and flatten
+                patch = (
+                    img[
+                        :,
+                        y_pos : y_pos + kernel_height,
+                        x_pos : x_pos + kernel_width,
+                        :,
+                    ]
+                    .compact()
+                    .flatten()
+                )
+                idx = y * out_width + x
+                patches[idx :: out_height * out_width] = patch
+
+        return patches
+
     def compute(self, img: NDArray, kernel: NDArray) -> NDArray:
-        # Input format: NHWC (batch-height-width-channel)
-        # Kernel format: HWIO (height-width-in_channel-out_channel)
-        n, height, width, _in_channels = img.shape
-        kernel_height, kernel_width, _W, out_channels = kernel.shape
+        """
+        Args:
+            img: Input tensor of shape (N, H, W, C_in)
+            kernel: Weight tensor of shape (kH, kW, C_in, C_out)
+        """
+        n, in_height, in_width, _in_channels = img.shape
+        kernel_height, kernel_width, _in_c, out_channels = kernel.shape
+
+        out_height = (in_height + 2 * self.padding - kernel_height) // self.stride + 1
+        out_width = (in_width + 2 * self.padding - kernel_width) // self.stride + 1
 
         if self.padding > 0:
             img = array_api.pad(
@@ -33,25 +87,15 @@ class Conv(TensorOp):
                     (0, 0),
                 ),
             )
-            height += 2 * self.padding
-            width += 2 * self.padding
 
-        # kernel reduces size
-        final_H = (height - kernel_height) // self.stride + 1
-        final_W = (width - kernel_width) // self.stride + 1
+        patches = self._im2col(img, kernel.shape, out_height, out_width, self.stride)
+        reshaped_kernel = kernel.compact().reshape((-1, out_channels))
 
-        out = array_api.zeros((n, final_H, final_W, out_channels))
-        for i in range(kernel_height):
-            for j in range(kernel_width):
-                curr_img = img[
-                    :,
-                    i : i + final_H * self.stride : self.stride,
-                    j : j + final_W * self.stride : self.stride,
-                    :,
-                ]
-                out += curr_img @ kernel[i, j]
+        # Compute convolution as matrix multiplication
+        output = patches @ reshaped_kernel
 
-        return out
+        # Reshape output to proper dimensions (N, H', W', C_out)
+        return output.reshape((n, out_height, out_width, out_channels))
 
     def gradient(self, out_grad: Tensor, node: Tensor) -> tuple[Tensor, Tensor]:
         """Compute gradients for the convolution operation.
@@ -67,14 +111,16 @@ class Conv(TensorOp):
             tuple[Value]: Gradients with respect to inputs (dX, dW)
         """
         X, W = node.inputs
-        K_H, K_W, C_in, C_out = W.shape
+        K_H, _K_W, _C_in, C_out = W.shape
         _, out_H, out_W, _ = out_grad.shape
 
         # Flip kernel spatially and swap input/output channels for transpose convolution
-        W_flipped = W.flip(axes=(0, 1))
-        W_flipped = W_flipped.transpose((3, 2))
+        W_flipped = W.flip(axes=(0, 1)).transpose((3, 2))
 
-        out_grad_orig = out_grad.realize_cached_data().compact()
+        # Reshape output gradients to (N*H'*W', C_out)
+        out_grad_reshaped = (
+            out_grad.realize_cached_data().compact().reshape((-1, C_out))
+        )
 
         if self.stride > 1:
             out_grad = dilate(out_grad, axes=(1, 2), dilation=self.stride - 1)
@@ -97,30 +143,15 @@ class Conv(TensorOp):
                     (0, 0),
                 ),
             )
+        patches = self._im2col(X_padded, W.shape, out_H, out_W, self.stride)
 
-        # TODO: Convert this to a convolution operation
-        W_grad = array_api.zeros((K_H, K_W, C_in, C_out))
-        for i in range(K_H):
-            for j in range(K_W):
-                # Extract windows from X with proper stride
-                X_windows = X_padded[
-                    :,  # N
-                    i : i + out_H * self.stride : self.stride,  # H
-                    j : j + out_W * self.stride : self.stride,  # W
-                    :,  # C_in
-                ]
-
-                # Reshape X_windows to (C_in, N*H'*W')
-                X_windows = (
-                    array_api.transpose(X_windows, (3, 0, 1, 2))
-                    .compact()
-                    .reshape((C_in, -1))
-                )
-
-                # Reshape out_grad to (N*H'*W', C_out)
-                out_grad_ = out_grad_orig.reshape((-1, C_out))
-
-                W_grad[i, j] = X_windows @ out_grad_
+        # Compute weight gradients
+        # patches: (N*H'*W', K_H*K_W*C_in)
+        # out_grad_reshaped: (N*H'*W', C_out)
+        # W_grad needs to be: (K_H, K_W, C_in, C_out)
+        W_grad = (array_api.transpose(patches, (1, 0)) @ out_grad_reshaped).reshape(
+            W.shape
+        )
 
         return X_grad, Tensor(W_grad)
 
