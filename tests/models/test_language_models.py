@@ -5,16 +5,9 @@ from needle.typing import AbstractBackend
 from tree_bank import evaluate_ptb, train_ptb
 
 from apps.models.language_model import LanguageModel
+from tests.devices import all_devices
 
 rng = np.random.default_rng(3)
-
-_DEVICES: list[AbstractBackend] = [
-    ndl.cpu(),
-    pytest.param(
-        ndl.cuda(), marks=pytest.mark.skipif(not ndl.cuda().enabled(), reason="No GPU")
-    ),
-]
-
 
 BATCH_SIZES = [1, 15]
 INPUT_SIZES = [1, 11]
@@ -37,7 +30,7 @@ NUM_LAYERS = [1, 2]
 @pytest.mark.parametrize("init_hidden", INIT_HIDDEN)
 @pytest.mark.parametrize("output_size", OUTPUT_SIZES)
 @pytest.mark.parametrize("seq_model", SEQ_MODEL)
-@pytest.mark.parametrize("device", _DEVICES, ids=["cpu", "cuda"])
+@all_devices()
 @pytest.mark.slow
 def test_language_model_implementation(
     seq_length,
@@ -95,7 +88,7 @@ def test_language_model_implementation(
     #     assert p.grad is not None
 
 
-@pytest.mark.parametrize("device", _DEVICES, ids=["cpu", "cuda"])
+@all_devices()
 def test_language_model_training(device: AbstractBackend) -> None:
     seq_len = 10
     num_examples = 100

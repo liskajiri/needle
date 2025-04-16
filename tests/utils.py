@@ -10,6 +10,8 @@ try:
 except ImportError:
     _TORCH_AVAILABLE = False
 
+__all__ = ["set_random_seeds"]
+
 
 def set_random_seeds(seed: int = 0):
     np.random.seed(seed)

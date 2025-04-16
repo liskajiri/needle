@@ -3,12 +3,8 @@ import numpy as np
 import pytest
 from needle import backend_ndarray as nd
 
-_DEVICES = [
-    ndl.cpu(),
-    pytest.param(
-        ndl.cuda(), marks=pytest.mark.skipif(not ndl.cuda().enabled(), reason="No GPU")
-    ),
-]
+from tests.devices import all_devices
+
 TRAIN = [True, False]
 BATCH_SIZES = [1, 15]
 BPTT = [3, 32]
@@ -17,7 +13,7 @@ BPTT = [3, 32]
 @pytest.mark.parametrize("batch_size", BATCH_SIZES)
 @pytest.mark.parametrize("bptt", BPTT)
 @pytest.mark.parametrize("train", TRAIN)
-@pytest.mark.parametrize("device", _DEVICES, ids=["cpu", "cuda"])
+@all_devices()
 def test_ptb_dataset(batch_size, bptt, train, device):
     corpus = ndl.data.nlp.Corpus()
     if train:

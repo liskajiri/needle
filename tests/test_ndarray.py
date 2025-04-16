@@ -4,14 +4,9 @@ import numpy as np
 import pytest
 from needle import backend_ndarray as ndl
 
-rng = np.random.default_rng()
+from tests.devices import all_devices
 
-_DEVICES = [
-    ndl.cpu(),
-    pytest.param(
-        ndl.cuda(), marks=pytest.mark.skipif(not ndl.cuda().enabled(), reason="No GPU")
-    ),
-]
+rng = np.random.default_rng()
 
 
 def compare_strides(a_np, a_nd) -> None:
@@ -82,7 +77,7 @@ def check_same_memory(original, view) -> None:
         "transposegetitem",
     ],
 )
-@pytest.mark.parametrize("device", _DEVICES, ids=["cpu", "cuda"])
+@all_devices()
 def test_compact(params, device):
     shape, np_fn, nd_fn = params["shape"], params["np_fn"], params["nd_fn"]
     _a = np.random.randint(low=0, high=10, size=shape)
@@ -95,7 +90,7 @@ def test_compact(params, device):
     np.testing.assert_allclose(lhs.numpy(), rhs, atol=1e-5, rtol=1e-5)
 
 
-### ====
+# ====
 
 
 # Permute, broadcast_to, reshape, getitem, and combinations thereof.
@@ -165,7 +160,7 @@ def test_compact(params, device):
         "permute_getitem",
     ],
 )
-@pytest.mark.parametrize("device", _DEVICES, ids=["cpu", "cuda"])
+@all_devices()
 def test_operations(params, device):
     shape, np_fn, nd_fn = params["shape"], params["np_fn"], params["nd_fn"]
     _a = np.random.randint(low=0, high=10, size=shape)
@@ -179,7 +174,7 @@ def test_operations(params, device):
     np.testing.assert_allclose(lhs.numpy(), rhs, atol=1e-5, rtol=1e-5)
 
 
-### ====
+# ====
 
 
 reduce_params = [
@@ -190,7 +185,7 @@ reduce_params = [
 ]
 
 
-@pytest.mark.parametrize("device", _DEVICES, ids=["cpu", "cuda"])
+@all_devices()
 @pytest.mark.parametrize("params", reduce_params)
 def test_reduce_sum(params, device):
     dims, axis = params["dims"], params["axis"]
@@ -204,7 +199,7 @@ def test_reduce_sum(params, device):
     )
 
 
-@pytest.mark.parametrize("device", _DEVICES, ids=["cpu", "cuda"])
+@all_devices()
 @pytest.mark.parametrize("params", reduce_params)
 def test_reduce_max(params, device):
     dims, axis = params["dims"], params["axis"]
@@ -254,7 +249,7 @@ def shapes_and_slices(*shape):
         },
     ],
 )
-@pytest.mark.parametrize("device", _DEVICES, ids=["cpu", "cuda"])
+@all_devices()
 def test_setitem_ewise(params, device):
     lhs_shape, lhs_slices = params["lhs"]
     rhs_shape, rhs_slices = params["rhs"]
@@ -281,7 +276,7 @@ def test_setitem_ewise(params, device):
         shapes_and_slices(4, 5, 6)[1::2, 2:5, ::2],
     ],
 )
-@pytest.mark.parametrize("device", _DEVICES, ids=["cpu", "cuda"])
+@all_devices()
 def test_setitem_scalar(params, device):
     shape, slices = params
     _a = np.random.randn(*shape)
@@ -306,7 +301,7 @@ def test_matmul_tiled(m, n, p):
     t = device.__tile_size__
     a = ndl.array(np.random.randn(m, n, t, t), device=ndl.cpu())
     b = ndl.array(np.random.randn(n, p, t, t), device=ndl.cpu())
-    c = ndl.NDArray.make((m, p, t, t), device=ndl.cpu())
+    c = ndl.make((m, p, t, t), device=ndl.cpu())
     device.matmul_tiled(a._handle, b._handle, c._handle, m * t, n * t, p * t)  # noqa: SLF001
 
     lhs = a.numpy().transpose(0, 2, 1, 3).flatten().reshape(
@@ -333,7 +328,7 @@ ewise_shapes = [(1, 1, 1), (4, 5, 6)]
 
 @pytest.mark.parametrize("fn", OP_FNS, ids=OP_NAMES)
 @pytest.mark.parametrize("shape", ewise_shapes)
-@pytest.mark.parametrize("device", _DEVICES, ids=["cpu", "cuda"])
+@all_devices()
 def test_ewise_fn(fn, shape, device):
     _a = np.random.randn(*shape)
     _b = np.random.randn(*shape)
@@ -343,7 +338,7 @@ def test_ewise_fn(fn, shape, device):
 
 
 @pytest.mark.parametrize("shape", ewise_shapes)
-@pytest.mark.parametrize("device", _DEVICES, ids=["cpu", "cuda"])
+@all_devices()
 def test_ewise_max(shape, device):
     _a = np.random.randn(*shape)
     _b = np.random.randn(*shape)
@@ -362,7 +357,7 @@ permute_params = [
 
 
 @pytest.mark.parametrize("params", permute_params)
-@pytest.mark.parametrize("device", _DEVICES, ids=["cpu", "cuda"])
+@all_devices()
 def test_permute(device, params):
     dims = params["dims"]
     axes = params["axes"]
@@ -382,7 +377,7 @@ reshape_params = [
 
 
 @pytest.mark.parametrize("params", reshape_params)
-@pytest.mark.parametrize("device", _DEVICES, ids=["cpu", "cuda"])
+@all_devices()
 def test_reshape(device, params):
     shape = params["shape"]
     new_shape = params["new_shape"]
@@ -409,7 +404,7 @@ def test_reshape(device, params):
         {"shape": (1, 1, 1), "new_shape": (-1, 1), "expected_shape": (1, 1)},
     ],
 )
-@pytest.mark.parametrize("device", _DEVICES, ids=["cpu", "cuda"])
+@all_devices()
 def test_reshape_with_inference(device, params):
     shape, new_shape = params["shape"], params["new_shape"]
     expected_shape = params["expected_shape"]
@@ -434,7 +429,7 @@ def test_reshape_with_inference(device, params):
         {"shape": (24,), "new_shape": (-1, 7)},  # Size not divisible evenly
     ],
 )
-@pytest.mark.parametrize("device", _DEVICES, ids=["cpu", "cuda"])
+@all_devices()
 def test_reshape_errors(device, params):
     shape, new_shape = params["shape"], params["new_shape"]
     _a = np.random.randn(*shape)
@@ -461,7 +456,7 @@ def test_reshape_errors(device, params):
         {"shape": (1, 1), "broadcast_shape": (4, 4)},
     ],
 )
-@pytest.mark.parametrize("device", _DEVICES, ids=["cpu", "cuda"])
+@all_devices()
 def test_broadcast_to_2(device, params):
     shape = params["shape"]
     to_shape = params["broadcast_shape"]
@@ -489,7 +484,7 @@ def test_broadcast_to_2(device, params):
         {"shape": (2, 2, 2), "broadcast_shape": (2, 2)},
     ],
 )
-@pytest.mark.parametrize("device", _DEVICES, ids=["cpu", "cuda"])
+@all_devices()
 def test_broadcast_to_errors(device, params):
     shape = params["shape"]
     broadcast_shape = params["broadcast_shape"]
@@ -510,7 +505,7 @@ getitem_params = [
 
 
 @pytest.mark.parametrize("params", getitem_params)
-@pytest.mark.parametrize("device", _DEVICES, ids=["cpu", "cuda"])
+@all_devices()
 def test_getitem(device, params):
     fn = params["fn"]
     _a = np.random.randn(5, 5)
@@ -531,7 +526,7 @@ list_index_params = [
 
 
 @pytest.mark.parametrize("params", list_index_params)
-@pytest.mark.parametrize("device", _DEVICES, ids=["cpu", "cuda"])
+@all_devices()
 def test_getitem_list(device, params):
     fn = params["fn"]
     _a = rng.standard_normal((5, 5, 5, 5))
@@ -542,7 +537,7 @@ def test_getitem_list(device, params):
     compare_strides(lhs, rhs)
 
 
-@pytest.mark.parametrize("device", _DEVICES, ids=["cpu", "cuda"])
+@all_devices()
 def test_getitem_more_indexes_than_axis(device):
     def over_indexing(X):
         return X[1, 2, 3, 4, 5]
@@ -562,7 +557,7 @@ multi_index_getitem_params = [
 
 
 @pytest.mark.parametrize("params", multi_index_getitem_params)
-@pytest.mark.parametrize("device", _DEVICES, ids=["cpu", "cuda"])
+@all_devices()
 def test_getitem_multi_index(device, params):
     fn = params["fn"]
     _a = rng.standard_normal((5, 5))
@@ -579,7 +574,7 @@ broadcast_params = [
 
 
 @pytest.mark.parametrize("params", broadcast_params)
-@pytest.mark.parametrize("device", _DEVICES, ids=["cpu", "cuda"])
+@all_devices()
 def test_broadcast_to(device, params):
     from_shape, to_shape = params["from_shape"], params["to_shape"]
     _a = np.random.randn(*from_shape)
@@ -606,7 +601,7 @@ matmul_dims = [
 ]
 
 
-@pytest.mark.parametrize("device", _DEVICES, ids=["cpu", "cuda"])
+@all_devices()
 @pytest.mark.parametrize(("m", "n", "p"), matmul_dims)
 def test_matmul(m, n, p, device):
     _a = np.random.randn(m, n)
@@ -616,7 +611,7 @@ def test_matmul(m, n, p, device):
     np.testing.assert_allclose((a @ b).numpy(), _a @ _b, rtol=1e-5, atol=1e-5)
 
 
-@pytest.mark.parametrize("device", _DEVICES, ids=["cpu", "cuda"])
+@all_devices()
 def test_scalar_mul(device):
     a = np.random.randn(5, 5)
     b = ndl.array(a, device=device)
@@ -635,7 +630,7 @@ BATCHED_MATMUL_DIMS = [
 
 
 @pytest.mark.parametrize(("shape1", "shape2"), BATCHED_MATMUL_DIMS, ids=str)
-@pytest.mark.parametrize("device", _DEVICES, ids=["cpu", "cuda"])
+@all_devices()
 def test_matmul_batched(shape1, shape2, device):
     _a = rng.standard_normal(shape1)
     _b = rng.standard_normal(shape2)
@@ -645,14 +640,14 @@ def test_matmul_batched(shape1, shape2, device):
     np.testing.assert_allclose(_a @ _b, c.numpy(), atol=1e-5, rtol=1e-5)
 
 
-@pytest.mark.parametrize("device", _DEVICES, ids=["cpu", "cuda"])
+@all_devices()
 def test_scalar_div(device):
     a = np.random.randn(5, 5)
     b = ndl.array(a, device=device)
     np.testing.assert_allclose(a / 5.0, (b / 5.0).numpy(), atol=1e-5, rtol=1e-5)
 
 
-@pytest.mark.parametrize("device", _DEVICES, ids=["cpu", "cuda"])
+@all_devices()
 def test_scalar_power(device):
     a = np.random.randn(5, 5)
     a = np.abs(a)
@@ -661,7 +656,7 @@ def test_scalar_power(device):
     np.testing.assert_allclose(np.power(a, 0.5), (b**0.5).numpy(), atol=1e-5, rtol=1e-5)
 
 
-@pytest.mark.parametrize("device", _DEVICES, ids=["cpu", "cuda"])
+@all_devices()
 def test_scalar_maximum(device):
     a = np.random.randn(5, 5)
     b = ndl.array(a, device=device)
@@ -675,7 +670,7 @@ def test_scalar_maximum(device):
     )
 
 
-@pytest.mark.parametrize("device", _DEVICES, ids=["cpu", "cuda"])
+@all_devices()
 def test_scalar_eq(device):
     a = np.random.randn(5, 5)
     b = ndl.array(a, device=device)
@@ -683,7 +678,7 @@ def test_scalar_eq(device):
     np.testing.assert_allclose(a == c, (b == c).numpy(), atol=1e-5, rtol=1e-5)
 
 
-@pytest.mark.parametrize("device", _DEVICES, ids=["cpu", "cuda"])
+@all_devices()
 def test_scalar_ge(device):
     a = np.random.randn(5, 5)
     b = ndl.array(a, device=device)
@@ -691,21 +686,21 @@ def test_scalar_ge(device):
     np.testing.assert_allclose(a >= c, (b >= c).numpy(), atol=1e-5, rtol=1e-5)
 
 
-@pytest.mark.parametrize("device", _DEVICES, ids=["cpu", "cuda"])
+@all_devices()
 def test_ewise_log(device):
     a = np.abs(np.random.randn(5, 5))
     b = ndl.array(a, device=device)
     np.testing.assert_allclose(np.log(a), (b.log()).numpy(), atol=1e-5, rtol=1e-5)
 
 
-@pytest.mark.parametrize("device", _DEVICES, ids=["cpu", "cuda"])
+@all_devices()
 def test_ewise_exp(device):
     a = np.random.randn(5, 5)
     b = ndl.array(a, device=device)
     np.testing.assert_allclose(np.exp(a), (b.exp()).numpy(), atol=1e-5, rtol=1e-5)
 
 
-@pytest.mark.parametrize("device", _DEVICES, ids=["cpu", "cuda"])
+@all_devices()
 def test_ewise_tanh(device):
     a = np.random.randn(5, 5)
     b = ndl.array(a, device=device)
@@ -717,7 +712,7 @@ SPLIT_SHAPES = [(np.arange(8.0), 3), (np.arange(9), 4)]
 
 
 @pytest.mark.parametrize(("x", "indices"), SPLIT_SHAPES)
-@pytest.mark.parametrize("device", _DEVICES, ids=["cpu", "cuda"])
+@all_devices()
 def test_array_split(x, indices, device):
     ndl_x = ndl.array(x, device=device)
     split_numpy = np.array_split(x, indices)

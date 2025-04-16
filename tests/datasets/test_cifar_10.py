@@ -5,12 +5,7 @@ from needle import backend_ndarray as nd
 from needle.backend_selection import NDArray
 from needle.data.datasets import CIFAR10Dataset, CIFARPath
 
-_DEVICES = [
-    ndl.cpu(),
-    pytest.param(
-        ndl.cuda(), marks=pytest.mark.skipif(not ndl.cuda().enabled(), reason="No GPU")
-    ),
-]
+from tests.devices import all_devices
 
 TRAIN = [True, False]
 
@@ -34,7 +29,7 @@ BATCH_SIZES = [1, 15]
 
 @pytest.mark.parametrize("batch_size", BATCH_SIZES)
 @pytest.mark.parametrize("train", TRAIN)
-@pytest.mark.parametrize("device", _DEVICES, ids=["cpu", "cuda"])
+@all_devices()
 def test_cifar10_loader(batch_size, train, device):
     cifar10_train_dataset = CIFAR10Dataset(CIFARPath, train=train)
     train_loader = ndl.data.DataLoader(cifar10_train_dataset, batch_size, device=device)

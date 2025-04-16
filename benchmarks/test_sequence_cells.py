@@ -2,13 +2,7 @@ import needle as ndl
 import numpy as np
 import pytest
 
-DEVICES = [
-    ndl.cpu(),
-    pytest.param(
-        ndl.cuda(), marks=pytest.mark.skipif(not ndl.cuda().enabled(), reason="No GPU")
-    ),
-]
-
+from tests.devices import all_devices
 
 BATCH_SIZE = 16
 INPUT_SIZE = 32
@@ -17,9 +11,9 @@ HIDDEN_SIZE = 32
 rng = np.random.default_rng(0)
 
 
-@pytest.mark.parametrize("device", DEVICES, ids=["cpu", "cuda"])
 @pytest.mark.parametrize("cell_type", ["rnn", "lstm"])
 @pytest.mark.parametrize("backward", [False, True], ids=["forward", "backward"])
+@all_devices()
 def test_sequence_cell(benchmark, device, cell_type, backward) -> None:
     """Benchmark RNN/LSTM cell operations
 
