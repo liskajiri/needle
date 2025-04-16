@@ -2,16 +2,11 @@ import needle as ndl
 import numpy as np
 import pytest
 
+from tests.devices import all_devices
+
 rng = np.random.default_rng(0)
 
 BATCH_SIZE = 32
-
-_ALL_DEVICES = [
-    ndl.cpu(),
-    pytest.param(
-        ndl.cuda(), marks=pytest.mark.skipif(not ndl.cuda().enabled(), reason="No GPU")
-    ),
-]
 
 conv_configs = [
     # (spatial_size, in_channels, out_channels, kernel_size, stride)
@@ -20,13 +15,17 @@ conv_configs = [
 ]
 
 
-@pytest.mark.parametrize("device", _ALL_DEVICES, ids=["cpu", "cuda"])
+def backward_forward():
+    return pytest.mark.parametrize(
+        "backward", [True, False], ids=["backward", "forward"]
+    )
+
+
 @pytest.mark.parametrize(
-    "s,in_channels,out_channels,k,stride",
-    conv_configs,
-    ids=["image-like"],
+    "s,in_channels,out_channels,k,stride", conv_configs, ids=["image-like"]
 )
-@pytest.mark.parametrize("backward", [False, True], ids=["forward", "backward"])
+@backward_forward()
+@all_devices()
 def test_conv(
     benchmark, s, in_channels, out_channels, k, stride, device, backward
 ) -> None:

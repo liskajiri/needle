@@ -3,14 +3,9 @@ import pytest
 from needle import backend_ndarray as ndl
 from needle.backend_selection import NDArray
 
-rng = np.random.default_rng(0)
+from tests.devices import all_devices
 
-_ALL_DEVICES = [
-    ndl.cpu(),
-    pytest.param(
-        ndl.cuda(), marks=pytest.mark.skipif(not ndl.cuda().enabled(), reason="No GPU")
-    ),
-]
+rng = np.random.default_rng(0)
 
 # CPU: vs Numpy, Torch, Torch.compile
 
@@ -23,8 +18,8 @@ matmul_dims = [
 ]
 
 
-@pytest.mark.parametrize("device", _ALL_DEVICES, ids=["cpu", "cuda"])
 @pytest.mark.parametrize(("m", "n", "p"), matmul_dims)
+@all_devices()
 def test_matmul(benchmark, m, n, p, device) -> None:
     def matmul(A: NDArray, B: NDArray) -> NDArray:
         return A @ B

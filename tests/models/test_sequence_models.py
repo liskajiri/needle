@@ -4,14 +4,9 @@ import numpy as np
 import pytest
 import torch
 
-rng = np.random.default_rng(3)
+from tests.devices import all_devices
 
-_DEVICES = [
-    ndl.cpu(),
-    pytest.param(
-        ndl.cuda(), marks=pytest.mark.skipif(not ndl.cuda().enabled(), reason="No GPU")
-    ),
-]
+rng = np.random.default_rng(3)
 
 
 BATCH_SIZES = [1, 15]
@@ -30,7 +25,7 @@ NUM_LAYERS = [1, 2]
 @pytest.mark.parametrize("bias", BIAS)
 @pytest.mark.parametrize("init_hidden", INIT_HIDDEN)
 @pytest.mark.parametrize("nonlinearity", NONLINEARITIES)
-@pytest.mark.parametrize("device", _DEVICES, ids=["cpu", "cuda"])
+@all_devices()
 def test_rnn_cell(
     batch_size, input_size, hidden_size, bias, init_hidden, nonlinearity, device
 ) -> None:
@@ -79,7 +74,7 @@ def test_rnn_cell(
 @pytest.mark.parametrize("hidden_size", HIDDEN_SIZES)
 @pytest.mark.parametrize("bias", BIAS)
 @pytest.mark.parametrize("init_hidden", INIT_HIDDEN)
-@pytest.mark.parametrize("device", _DEVICES, ids=["cpu", "cuda"])
+@all_devices()
 def test_lstm_cell(
     batch_size, input_size, hidden_size, bias, init_hidden, device
 ) -> None:
@@ -135,7 +130,7 @@ def test_lstm_cell(
 @pytest.mark.parametrize("bias", BIAS)
 @pytest.mark.parametrize("init_hidden", INIT_HIDDEN)
 @pytest.mark.parametrize("nonlinearity", NONLINEARITIES)
-@pytest.mark.parametrize("device", _DEVICES, ids=["cpu", "cuda"])
+@all_devices()
 @pytest.mark.slow
 def test_rnn(
     seq_length,
@@ -217,7 +212,7 @@ def test_rnn(
 @pytest.mark.parametrize("hidden_size", HIDDEN_SIZES)
 @pytest.mark.parametrize("bias", BIAS)
 @pytest.mark.parametrize("init_hidden", INIT_HIDDEN)
-@pytest.mark.parametrize("device", _DEVICES, ids=["cpu", "cuda"])
+@all_devices()
 @pytest.mark.slow
 def test_lstm(
     seq_length,
@@ -286,7 +281,7 @@ def test_lstm(
 @pytest.mark.parametrize("batch_size", BATCH_SIZES)
 @pytest.mark.parametrize("num_embeddings", [10, 100])
 @pytest.mark.parametrize("embedding_dim", [8, 32])
-@pytest.mark.parametrize("device", _DEVICES, ids=["cpu", "cuda"])
+@all_devices()
 def test_embedding(
     seq_length, batch_size, num_embeddings, embedding_dim, device
 ) -> None:

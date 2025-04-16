@@ -9,14 +9,8 @@ import torch.nn.functional as F
 from cifar import train_cifar10
 from models.resnet9 import ResNet9
 
+from tests.devices import all_devices
 from tests.utils import set_random_seeds
-
-_DEVICES = [
-    ndl.cpu(),
-    pytest.param(
-        ndl.cuda(), marks=pytest.mark.skipif(not ndl.cuda().enabled(), reason="No GPU")
-    ),
-]
 
 rng = np.random.default_rng(0)
 
@@ -113,7 +107,7 @@ class PytorchResNet9(nn.Module):
         return self.fc2(x)
 
 
-@pytest.mark.parametrize("device", _DEVICES, ids=["cpu", "cuda"])
+@all_devices()
 def test_resnet9_number_of_parameters(device):
     def num_params(model):
         return sum(math.prod(x.shape) for x in model.parameters())
@@ -124,7 +118,7 @@ def test_resnet9_number_of_parameters(device):
 
 
 @pytest.mark.skip(reason="This test does not work yet")
-@pytest.mark.parametrize("device", _DEVICES, ids=["cpu", "cuda"])
+@all_devices()
 def test_resnet9_first_epoch(device):
     set_random_seeds(0)
 
@@ -147,8 +141,8 @@ def test_resnet9_first_epoch(device):
 
 
 @pytest.mark.skip(reason="This test is extremely slow so far")
-@pytest.mark.parametrize("device", _DEVICES, ids=["cpu", "cuda"])
 @pytest.mark.slow
+@all_devices()
 def test_train_cifar10(device, atol=1e-2):
     set_random_seeds(0)
 
