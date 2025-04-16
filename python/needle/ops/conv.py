@@ -39,10 +39,12 @@ class Conv(TensorOp):
         n, _in_height, _in_width, in_channels = img.shape
         kernel_height, kernel_width, _in_c, _out_channels = kernel_shape
 
-        patches = array_api.empty((
-            n * out_height * out_width,
-            kernel_height * kernel_width * in_channels,
-        ))
+        patches = array_api.empty(
+            (
+                n * out_height * out_width,
+                kernel_height * kernel_width * in_channels,
+            )
+        )
 
         # im2col transformation
         for y in range(out_height):
@@ -108,7 +110,7 @@ class Conv(TensorOp):
                     - W: (K_H, K_W, C_in, C_out)
 
         Returns:
-            tuple[Value]: Gradients with respect to inputs (dX, dW)
+            tuple[Tensor, Tensor]: Gradients with respect to inputs (dX, dW)
         """
         X, W = node.inputs
         K_H, _K_W, _C_in, C_out = W.shape
