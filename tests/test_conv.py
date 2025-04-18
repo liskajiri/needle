@@ -2,192 +2,22 @@ import needle as ndl
 import numpy as np
 import pytest
 import torch
+from hypothesis import assume, given
+from hypothesis import strategies as st
 
+from tests.devices import all_devices
 from tests.gradient_check import backward_check
-
-_DEVICES = [
-    ndl.cpu(),
-    pytest.param(
-        ndl.cuda(), marks=pytest.mark.skipif(not ndl.cuda().enabled(), reason="No GPU")
-    ),
-]
 
 rng = np.random.default_rng()
 
 
-def get_tensor(shape, device):
-    return ndl.Tensor(rng.standard_normal(shape) * 5, device=device)
-
-
-@pytest.mark.parametrize(
-    "shape,n,axis",
-    [
-        ((3, 4), 3, 0),
-        ((3, 4), 3, 1),
-        ((3, 4), 3, 2),
-        ((3, 4), 5, 2),
-        ((3, 4), 1, 2),
-    ],
-)
-@pytest.mark.parametrize("device", _DEVICES, ids=["cpu", "cuda"])
-def test_stack_backward(shape, n, axis, device):
-    tensors = [get_tensor(shape, device=device) for _ in range(n)]
-    backward_check(ndl.stack, tensors, axis=axis)
-
-
-@pytest.mark.parametrize(
-    "shape,n,axis",
-    [
-        ((10, 3), 4, 0),
-        ((4, 5, 6), 5, 0),
-        ((4, 5, 6), 3, 1),
-        ((4, 5, 6), 2, 2),
-    ],
-)
-@pytest.mark.parametrize("device", _DEVICES, ids=["cpu", "cuda"])
-def test_stack_forward(shape, n, axis, device):
-    to_stack_ndl = []
-    to_stack_npy = []
-    for i in range(n):
-        a = rng.standard_normal(shape)
-        to_stack_ndl += [ndl.Tensor(a, device=device)]
-        to_stack_npy += [a]
-
-    lhs = np.stack(to_stack_npy, axis=axis)
-    rhs = ndl.stack(to_stack_ndl, axis=axis)
-
-    np.testing.assert_allclose(rhs.numpy(), lhs, rtol=1e-6)
-
-
-def test_stack_vs_pytorch():
-    A = rng.standard_normal((5, 5))
-    B = rng.standard_normal((5, 5))
-    C = rng.standard_normal((5, 5))
-    D = rng.standard_normal((15, 5))
-
-    A_ndl = ndl.Tensor(A, requires_grad=True)
-    B_ndl = ndl.Tensor(B, requires_grad=True)
-    C_ndl = ndl.Tensor(C, requires_grad=True)
-    D_ndl = ndl.Tensor(D, requires_grad=True)
-
-    A_torch = torch.tensor(A, requires_grad=True)
-    B_torch = torch.tensor(B, requires_grad=True)
-    C_torch = torch.tensor(C, requires_grad=True)
-    D_torch = torch.tensor(D, requires_grad=True)
-
-    X_ndl = ndl.stack([A_ndl, C_ndl @ B_ndl, C_ndl], axis=1)
-    X_torch = torch.stack([A_torch, C_torch @ B_torch, C_torch], dim=1)
-
-    assert X_ndl.shape == X_torch.shape
-    np.testing.assert_allclose(
-        X_ndl.numpy(), X_torch.detach().numpy(), rtol=1e-4, atol=1e-4
-    )
-
-    Y_ndl = (D_ndl @ X_ndl.reshape((5, 15)) @ D_ndl).sum()
-    Y_torch = (D_torch @ X_torch.reshape(5, 15) @ D_torch).sum()
-
-    np.testing.assert_allclose(
-        Y_ndl.numpy(), Y_torch.detach().numpy(), rtol=1e-4, atol=1e-4
-    )
-
-    Y_ndl.backward()
-    Y_torch.backward()
-
-    np.testing.assert_allclose(
-        A_ndl.grad.numpy(), A_torch.grad.detach().numpy(), rtol=1e-4, atol=1e-4
-    )
-    np.testing.assert_allclose(
-        B_ndl.grad.numpy(), B_torch.grad.detach().numpy(), rtol=1e-4, atol=1e-4
-    )
-    np.testing.assert_allclose(
-        C_ndl.grad.numpy(), C_torch.grad.detach().numpy(), rtol=1e-4, atol=1e-4
-    )
-    np.testing.assert_allclose(
-        D_ndl.grad.numpy(), D_torch.grad.detach().numpy(), rtol=1e-4, atol=1e-4
+def backward_forward():
+    return pytest.mark.parametrize(
+        "backward", [True, False], ids=["backward", "forward"]
     )
 
 
-pad_params = [
-    {"shape": (10, 32, 32, 8), "padding": ((0, 0), (2, 2), (2, 2), (0, 0))},
-    {"shape": (10, 32, 32, 8), "padding": ((0, 0), (0, 0), (0, 0), (0, 0))},
-    # non-square padding
-    {"shape": (10, 32, 32, 8), "padding": ((0, 1), (2, 0), (2, 1), (0, 0))},
-]
-
-
-@pytest.mark.parametrize("device", [ndl.cpu()], ids=["cpu"])
-@pytest.mark.parametrize(
-    "params",
-    pad_params,
-    ids=[f"{p['shape']}-{p['padding']}" for p in pad_params],
-)
-def test_pad_forward(params, device):
-    shape, padding = params["shape"], params["padding"]
-    np_a = rng.standard_normal(shape)
-    a = ndl.NDArray(np_a, device=device)
-
-    np_b = np.pad(np_a, padding)
-    b = ndl.array_api.pad(a, padding)
-
-    np.testing.assert_allclose(b.numpy(), np_b, rtol=1e-6)
-
-
-flip_forward_params = [
-    {"shape": (10, 5), "axes": (0,)},
-    {"shape": (10, 5), "axes": (1,)},
-    {"shape": (10, 5), "axes": (0, 1)},
-    {"shape": (10, 32, 32, 8), "axes": (0, 1)},
-    {"shape": (3, 3, 6, 8), "axes": (0, 1)},
-    {"shape": (10, 32, 32, 8), "axes": (1, 2)},
-    {"shape": (3, 3, 6, 8), "axes": (1, 2)},
-    {"shape": (10, 32, 32, 8), "axes": (2, 3)},
-    {"shape": (3, 3, 6, 8), "axes": (2, 3)},
-    {"shape": (10, 32, 32, 8), "axes": (0, 1, 2, 3)},
-]
-
-
-@pytest.mark.parametrize("device", _DEVICES, ids=["cpu", "cuda"])
-@pytest.mark.parametrize(
-    "params",
-    flip_forward_params,
-    ids=[f"{p['shape']}-{p['axes']}" for p in flip_forward_params],
-)
-def test_flip_forward(params, device):
-    shape, axes = params["shape"], params["axes"]
-    _A = rng.standard_normal(shape)
-    A = ndl.Tensor(_A, device=device)
-
-    _B = np.flip(_A, axes)
-    B = ndl.flip(A, axes=axes)
-
-    np.testing.assert_allclose(B.numpy(), _B, rtol=1e-6)
-
-
-flip_backward_params = [
-    {"shape": (10, 5), "axes": (0,)},
-    {"shape": (10, 5), "axes": (1,)},
-    {"shape": (10, 5), "axes": (0, 1)},
-    {"shape": (2, 3, 3, 8), "axes": (0, 1)},
-    {"shape": (3, 3, 6, 4), "axes": (0, 1)},
-    {"shape": (2, 3, 3, 4), "axes": (1, 2)},
-    {"shape": (3, 3, 6, 4), "axes": (1, 2)},
-    {"shape": (2, 3, 3, 4), "axes": (2, 3)},
-    {"shape": (3, 3, 6, 4), "axes": (2, 3)},
-    {"shape": (2, 3, 3, 4), "axes": (0, 1, 2, 3)},
-]
-
-
-@pytest.mark.parametrize("device", _DEVICES, ids=["cpu", "cuda"])
-@pytest.mark.parametrize(
-    "params",
-    flip_backward_params,
-    ids=[f"{p['shape']}-{p['axes']}" for p in flip_backward_params],
-)
-def test_flip_backward(params, device):
-    shape, axes = params["shape"], params["axes"]
-    backward_check(
-        ndl.flip, ndl.Tensor(rng.standard_normal(shape), device=device), axes=axes
-    )
+# ====================== DILATE ======================
 
 
 @pytest.mark.parametrize(
@@ -285,40 +115,54 @@ def test_flip_backward(params, device):
         ),
     ],
 )
-@pytest.mark.parametrize("device", _DEVICES, ids=["cpu", "cuda"])
+@all_devices()
 def test_dilate_forward(input, dilation, axes, expected, device):
     A = ndl.Tensor(input, device=device)
     result = ndl.dilate(A, dilation=dilation, axes=axes).numpy()
 
     # Values are not changed, so tolerance=0
-    np.testing.assert_allclose(result, expected, rtol=0, atol=0)
+    np.testing.assert_array_equal(result, expected)
 
 
-dilate_backward_params = [
-    {"shape": (2, 5), "d": 1, "axes": (0,)},
-    {"shape": (2, 5), "d": 2, "axes": (1,)},
-    {"shape": (2, 5), "d": 1, "axes": (0, 1)},
-    {"shape": (2, 5), "d": 0, "axes": (0, 1)},
-    {"shape": (2, 3, 3, 4), "d": 2, "axes": (0, 1)},
-    {"shape": (3, 3, 6, 4), "d": 3, "axes": (0, 1)},
-    {"shape": (2, 3, 3, 4), "d": 0, "axes": (1, 2)},
-    {"shape": (2, 3, 3, 4), "d": 1, "axes": (1, 2)},
-    {"shape": (3, 3, 6, 4), "d": 1, "axes": (1, 2)},
-    {"shape": (2, 3, 3, 4), "d": 1, "axes": (2, 3)},
-    {"shape": (3, 3, 6, 4), "d": 1, "axes": (2, 3)},
-    {"shape": (2, 3, 3, 4), "d": 1, "axes": (0, 1, 2, 3)},
-]
+@st.composite
+def dilate_params(draw):
+    """Generate valid parameters for dilate tests.
+
+    Generates:
+    - Shape with 2-4 dimensions
+    - Dilation value (0-3)
+    - Valid unique axes for dilation
+    """
+    # Generate shape with 2-4 dimensions
+    n_dims = draw(st.integers(min_value=2, max_value=4))
+    shape = tuple(draw(st.integers(min_value=2, max_value=8)) for _ in range(n_dims))
+
+    # Generate dilation value (0-3)
+    dilation = draw(st.integers(min_value=0, max_value=3))
+
+    # Generate number of axes to dilate (1 to n_dims)
+    n_axes = draw(st.integers(min_value=1, max_value=n_dims))
+
+    # Generate unique sorted axes
+    axes = tuple(
+        draw(
+            st.lists(
+                st.integers(min_value=0, max_value=n_dims - 1),
+                min_size=n_axes,
+                max_size=n_axes,
+                unique=True,
+            )
+        )
+    )
+
+    return {"shape": shape, "d": dilation, "axes": axes}
 
 
-@pytest.mark.parametrize("device", _DEVICES, ids=["cpu", "cuda"])
-@pytest.mark.parametrize(
-    "params",
-    dilate_backward_params,
-    ids=[f"{p['shape']}-{p['d']}-{p['axes']}" for p in dilate_backward_params],
-)
+@given(params=dilate_params())
+@all_devices()
 def test_dilate_backward(params, device):
+    """Test dilate operation backward pass"""
     shape, d, axes = params["shape"], params["d"], params["axes"]
-    # Values are not changed, so tolerance=0
     backward_check(
         ndl.dilate,
         ndl.Tensor(rng.standard_normal(shape), device=device),
@@ -328,167 +172,298 @@ def test_dilate_backward(params, device):
     )
 
 
-conv_forward_params = [
-    (4, 8, 16, 3, 1),
-    (32, 8, 16, 3, 2),
-    (32, 8, 8, 3, 2),
-    (32, 16, 8, 3, 1),
-    (32, 16, 8, 3, 2),
-]
+# ====================== NN_CONV ======================
 
 
-@pytest.mark.parametrize(
-    "s,in_channels,out_channels,k,stride", conv_forward_params, ids=str
-)
-@pytest.mark.parametrize("device", _DEVICES, ids=["cpu", "cuda"])
-def test_nn_conv_forward(s, in_channels, out_channels, k, stride, device):
-    f = ndl.nn.Conv(in_channels, out_channels, k, stride=stride, device=device)
-    x = ndl.init.rand((10, in_channels, s, s), device=device)
+@st.composite
+def conv_params(draw):
+    """
+    Generate valid parameters for Conv layer testing.
+    """
+    batch_size = draw(st.integers(min_value=1, max_value=2))
+    in_channels = draw(st.integers(min_value=1, max_value=8))
+    height = draw(st.integers(min_value=1, max_value=32))
+    width = draw(st.integers(min_value=1, max_value=32))
 
-    g = torch.nn.Conv2d(in_channels, out_channels, k, stride=stride, padding=k // 2)
-    g.weight.data = torch.tensor(
-        f.weight.realize_cached_data().numpy().transpose(3, 2, 0, 1)
+    out_channels = draw(st.integers(min_value=1, max_value=8))
+    kernel = draw(st.integers(min_value=1, max_value=3))
+    stride = draw(st.integers(min_value=1, max_value=2))
+
+    return {
+        "batch_size": batch_size,
+        "in_channels": in_channels,
+        "height": height,
+        "width": width,
+        "out_channels": out_channels,
+        "kernel": kernel,
+        "stride": stride,
+    }
+
+
+@given(params=conv_params())
+@all_devices()
+@backward_forward()
+def test_nn_conv(params, device, backward):
+    """
+    Test convolution forward and backward passes against PyTorch
+    """
+
+    height = params["height"]
+    width = params["width"]
+    in_channels = params["in_channels"]
+    out_channels = params["out_channels"]
+    kernel = params["kernel"]
+    stride = params["stride"]
+    batch_size = params["batch_size"]
+
+    # Initialize Needle convolution
+    needle_conv = ndl.nn.Conv(
+        in_channels, out_channels, kernel, stride=stride, device=device
     )
-    g.bias.data = torch.tensor(f.bias.realize_cached_data().numpy())
-    z = torch.tensor(x.cached_data.numpy())
+    input_tensor = ndl.init.rand(
+        (batch_size, in_channels, height, width),
+        device=device,
+        requires_grad=backward,  # Only need gradients for backward pass
+    )
 
-    my_out = f(x).realize_cached_data().numpy()
-    torch_out = g(z).data.numpy()
+    # Initialize equivalent PyTorch convolution
+    torch_conv = torch.nn.Conv2d(
+        in_channels, out_channels, kernel, stride=stride, padding=kernel // 2
+    )
+    torch_conv.weight.data = torch.tensor(
+        needle_conv.weight.realize_cached_data().numpy().transpose(3, 2, 0, 1)
+    )
+    torch_conv.bias.data = torch.tensor(needle_conv.bias.realize_cached_data().numpy())
+    torch_input = torch.tensor(input_tensor.cached_data.numpy(), requires_grad=backward)
 
+    # Forward pass
+    needle_output = needle_conv(input_tensor)
+    torch_output = torch_conv(torch_input)
+
+    # Check forward pass
     np.testing.assert_allclose(
-        my_out,
-        torch_out,
+        needle_output.realize_cached_data().numpy(),
+        torch_output.detach().numpy(),
         rtol=1e-4,
         atol=1e-4,
-    )
-    assert np.linalg.norm(my_out - torch_out) < 1e-3
-
-
-conv_back_params = [
-    (4, 1, 1, 3, 1),
-    (14, 8, 16, 3, 1),
-    (14, 8, 16, 3, 2),
-    (14, 8, 8, 3, 1),
-    (14, 8, 8, 3, 2),
-    (14, 16, 8, 3, 1),
-    (14, 16, 8, 3, 2),
-]
-
-
-@pytest.mark.parametrize("s,in_channels,out_channels,k,stride", conv_back_params)
-@pytest.mark.parametrize("device", _DEVICES, ids=["cpu", "cuda"])
-def test_nn_conv_backward(s, in_channels, out_channels, k, stride, device):
-    f = ndl.nn.Conv(in_channels, out_channels, k, stride=stride, device=device)
-    x = ndl.init.rand((1, in_channels, s, s), device=device, requires_grad=True)
-
-    g = torch.nn.Conv2d(in_channels, out_channels, k, stride=stride, padding=k // 2)
-    g.weight.data = torch.tensor(f.weight.cached_data.numpy().transpose(3, 2, 0, 1))
-    g.bias.data = torch.tensor(f.bias.cached_data.numpy())
-    z = torch.tensor(x.cached_data.numpy(), requires_grad=True)
-    z.requires_grad = True
-
-    needle_out = f(x)
-    torch_out = g(z)
-
-    needle_y = needle_out.sum()
-    torch_y = torch_out.sum()
-
-    torch_y.backward()
-    needle_y.backward()
-
-    np.testing.assert_allclose(
-        g.weight.grad.data.numpy(),
-        f.weight.grad.cached_data.numpy().transpose(3, 2, 0, 1),
-        rtol=1e-4,
-        atol=1e-4,
-    )
-    np.testing.assert_allclose(
-        g.bias.grad.data.numpy(), f.bias.grad.cached_data.numpy(), rtol=1e-4, atol=1e-4
-    )
-    np.testing.assert_allclose(
-        z.grad.data.numpy(), x.grad.cached_data.numpy(), rtol=1e-4, atol=1e-4
-    )
-
-
-op_conv_shapes = [
-    ((3, 14, 14, 8), (3, 3, 8, 16), 1, 0),
-    ((3, 14, 14, 8), (3, 3, 8, 16), 1, 1),
-    ((3, 16, 16, 8), (3, 3, 8, 16), 1, 2),
-    ((3, 16, 16, 8), (3, 3, 8, 14), 1, 0),
-    ((3, 16, 16, 2), (3, 3, 2, 14), 1, 0),
-    ((3, 14, 14, 8), (3, 3, 8, 16), 2, 0),
-    ((3, 14, 14, 8), (3, 3, 8, 16), 2, 1),
-    ((3, 16, 16, 8), (3, 3, 8, 16), 2, 2),
-    ((3, 16, 16, 8), (3, 3, 8, 14), 2, 0),
-    ((3, 16, 16, 2), (3, 3, 2, 14), 2, 0),
-    ((3, 16, 16, 24), (3, 3, 24, 14), 1, 0),
-    ((3, 14, 14, 8), (5, 5, 8, 16), 1, 0),
-    ((3, 17, 17, 8), (5, 5, 8, 16), 1, 0),
-    ((3, 17, 17, 1), (5, 5, 1, 16), 1, 0),
-    ((3, 17, 17, 16), (5, 5, 16, 1), 1, 0),
-    ((3, 17, 17, 16), (1, 1, 16, 1), 1, 0),
-    ((1, 14, 14, 2), (3, 3, 2, 2), 1, 0),
-]
-
-
-@pytest.mark.parametrize(
-    "Z_shape, W_shape, stride, padding",
-    op_conv_shapes,
-    ids=str,
-)
-@pytest.mark.parametrize("device", _DEVICES, ids=["cpu", "cuda"])
-@pytest.mark.parametrize("backward", [True, False], ids=["backward", "forward"])
-def test_op_conv(Z_shape, W_shape, stride, padding, backward, device):
-    z = rng.standard_normal(Z_shape, dtype=np.float32)
-    w = rng.standard_normal(W_shape, dtype=np.float32)
-
-    Z = ndl.Tensor(z, device=device)
-    W = ndl.Tensor(w, device=device)
-
-    Z_torch = torch.tensor(z, dtype=torch.float32, requires_grad=True)
-    W_torch = torch.tensor(w, dtype=torch.float32, requires_grad=True)
-
-    y = ndl.conv(Z, W, padding=padding, stride=stride)
-    y2 = y.sum()
-
-    out = torch.nn.functional.conv2d(
-        Z_torch.permute(0, 3, 1, 2),
-        W_torch.permute(3, 2, 0, 1),
-        padding=padding,
-        stride=stride,
-    )
-    out2 = out.sum()
-
-    np.testing.assert_allclose(
-        y.numpy(),
-        out.permute(0, 2, 3, 1).contiguous().detach().numpy(),
-        rtol=1e-4,
-        atol=1e-4,
-    )
-    np.testing.assert_allclose(
-        y2.numpy().item(), out2.detach().numpy().item(), rtol=1e-4, atol=1e-4
     )
 
     if backward:
-        out2.backward()
-        y2.backward()
+        # Backward pass
+        needle_sum = needle_output.sum()
+        torch_sum = torch_output.sum()
+
+        torch_sum.backward()
+        needle_sum.backward()
+
+        # Check gradients
         np.testing.assert_allclose(
-            Z.grad.numpy(),
-            Z_torch.grad.numpy(),
+            needle_conv.weight.grad.cached_data.numpy().transpose(3, 2, 0, 1),
+            torch_conv.weight.grad.data.numpy(),
             rtol=1e-4,
             atol=1e-4,
         )
         np.testing.assert_allclose(
-            W.grad.numpy(),
-            W_torch.grad.numpy(),
+            needle_conv.bias.grad.cached_data.numpy(),
+            torch_conv.bias.grad.data.numpy(),
+            rtol=1e-4,
+            atol=1e-4,
+        )
+        np.testing.assert_allclose(
+            input_tensor.grad.cached_data.numpy(),
+            torch_input.grad.data.numpy(),
+            rtol=1e-4,
+            atol=1e-4,
+        )
+
+
+# ====================== OP_CONV ======================
+
+OP_CONV_PARAMS = [
+    ((3, 14, 14, 8), (3, 3, 8, 16), 1, 0),  # basic case
+    ((3, 14, 14, 8), (3, 3, 8, 16), 1, 1),  # with padding
+    ((3, 16, 16, 8), (3, 3, 8, 16), 1, 2),  # more padding
+    ((3, 16, 16, 8), (3, 3, 8, 14), 1, 0),  # different output channels
+    ((3, 16, 16, 2), (3, 3, 2, 14), 1, 0),  # fewer input channels
+    ((3, 14, 14, 8), (3, 3, 8, 16), 2, 0),  # stride 2
+    ((3, 14, 14, 8), (3, 3, 8, 16), 2, 1),  # stride 2 with padding
+    ((3, 16, 16, 8), (3, 3, 8, 16), 2, 2),  # stride 2 more padding
+    ((3, 16, 16, 8), (3, 3, 8, 14), 2, 0),  # stride 2 different outputs
+    ((3, 16, 16, 2), (3, 3, 2, 14), 2, 0),  # stride 2 fewer channels
+    ((3, 16, 16, 24), (3, 3, 24, 14), 1, 0),  # more channels
+    ((3, 14, 14, 8), (5, 5, 8, 16), 1, 0),  # larger kernel
+    ((3, 17, 17, 8), (5, 5, 8, 16), 1, 0),  # odd size input
+    ((3, 17, 17, 1), (5, 5, 1, 16), 1, 0),  # single input channel
+    ((3, 17, 17, 16), (5, 5, 16, 1), 1, 0),  # single output channel
+    ((3, 17, 17, 16), (1, 1, 16, 1), 1, 0),  # 1x1 conv
+    ((1, 14, 14, 2), (3, 3, 2, 2), 1, 0),  # batch size 1
+]
+
+
+@pytest.mark.parametrize(
+    "input_shape,kernel_shape,stride,padding",
+    OP_CONV_PARAMS,
+    ids=[
+        f"{s}-kernel={k}-stride={stride}-padding={p}"
+        for s, k, stride, p in OP_CONV_PARAMS
+    ],
+)
+@all_devices()
+@backward_forward()
+def test_op_conv(input_shape, kernel_shape, stride, padding, backward, device):
+    """Test convolution operation against PyTorch implementation"""
+    # Initialize input and kernel tensors
+    input_array = rng.standard_normal(input_shape, dtype=np.float32)
+    kernel_array = rng.standard_normal(kernel_shape, dtype=np.float32)
+
+    # Create Needle tensors
+    input_ndl = ndl.Tensor(input_array, device=device)
+    kernel_ndl = ndl.Tensor(kernel_array, device=device)
+
+    # Create PyTorch tensors
+    input_torch = torch.tensor(input_array, dtype=torch.float32, requires_grad=True)
+    kernel_torch = torch.tensor(kernel_array, dtype=torch.float32, requires_grad=True)
+
+    # Forward pass
+    result_ndl = ndl.conv(input_ndl, kernel_ndl, padding=padding, stride=stride)
+    result_sum_ndl = result_ndl.sum()
+
+    # Equivalent PyTorch operation with channel order adjustment
+    result_torch = torch.nn.functional.conv2d(
+        input_torch.permute(0, 3, 1, 2),
+        kernel_torch.permute(3, 2, 0, 1),
+        padding=padding,
+        stride=stride,
+    )
+    result_sum_torch = result_torch.sum()
+
+    # Check forward pass results
+    np.testing.assert_allclose(
+        result_ndl.numpy(),
+        result_torch.permute(0, 2, 3, 1).contiguous().detach().numpy(),
+        rtol=1e-4,
+        atol=1e-4,
+    )
+    np.testing.assert_allclose(
+        result_sum_ndl.numpy().item(),
+        result_sum_torch.detach().numpy().item(),
+        rtol=1e-4,
+        atol=1e-4,
+    )
+
+    if backward:
+        # Backward pass
+        result_sum_torch.backward()
+        result_sum_ndl.backward()
+
+        # Check input gradients
+        np.testing.assert_allclose(
+            input_ndl.grad.numpy(),
+            input_torch.grad.numpy(),
+            rtol=1e-4,
+            atol=1e-4,
+        )
+        # Check kernel gradients
+        np.testing.assert_allclose(
+            kernel_ndl.grad.numpy(),
+            kernel_torch.grad.numpy(),
             rtol=1e-2,
             atol=1e-2,
         )
 
 
-# TODO: as_strided does not match Numpy's
-def test_as_strided():
-    # create an array, make it different using np.stride tricks and do the same
-    # to the needle array
-    # then compare the two arrays
-    pass
+@given(
+    batch_size=st.integers(min_value=1, max_value=4),
+    height=st.integers(min_value=8, max_value=32),
+    width=st.integers(min_value=8, max_value=32),
+    in_channels=st.integers(min_value=1, max_value=16),
+    out_channels=st.integers(min_value=1, max_value=16),
+    kernel_size=st.integers(min_value=1, max_value=5),
+    stride=st.integers(min_value=1, max_value=2),
+    padding=st.integers(min_value=0, max_value=2),
+)
+@all_devices()
+@backward_forward()
+def test_op_conv_proptest(
+    batch_size,
+    height,
+    width,
+    in_channels,
+    out_channels,
+    kernel_size,
+    stride,
+    padding,
+    device,
+    backward,
+):
+    """Property-based test for convolution operation against PyTorch implementation.
+
+    This test generates random but valid combinations of:
+    - Input tensor shape (batch, height, width, channels)
+    - Kernel shape (size, size, in_channels, out_channels)
+    - Stride and padding values
+
+    And verifies that needle's convolution matches PyTorch's implementation
+    for both forward and backward passes.
+    """
+    # Create shapes from generated dimensions
+    input_shape = (batch_size, height, width, in_channels)
+    kernel_shape = (kernel_size, kernel_size, in_channels, out_channels)
+
+    # Compute potential output shape to validate it
+    out_height = (height + 2 * padding - kernel_size) // stride + 1
+    out_width = (width + 2 * padding - kernel_size) // stride + 1
+    assume(out_height > 0)
+    assume(out_width > 0)
+
+    # Initialize input and kernel tensors
+    input_array = rng.standard_normal(input_shape, dtype=np.float32)
+    kernel_array = rng.standard_normal(kernel_shape, dtype=np.float32)
+
+    # Create Needle tensors
+    input_ndl = ndl.Tensor(input_array, device=device)
+    kernel_ndl = ndl.Tensor(kernel_array, device=device)
+
+    # Create PyTorch tensors with gradients enabled
+    input_torch = torch.tensor(input_array, dtype=torch.float32, requires_grad=True)
+    kernel_torch = torch.tensor(kernel_array, dtype=torch.float32, requires_grad=True)
+
+    # Forward pass - wrapped in try since not all combinations might be valid
+    result_ndl = ndl.conv(input_ndl, kernel_ndl, padding=padding, stride=stride)
+    result_sum_ndl = result_ndl.sum()
+
+    # Equivalent PyTorch operation with channel order adjustment
+    result_torch = torch.nn.functional.conv2d(
+        input_torch.permute(0, 3, 1, 2),
+        kernel_torch.permute(3, 2, 0, 1),
+        padding=padding,
+        stride=stride,
+    )
+    result_sum_torch = result_torch.sum()
+
+    # Check forward pass results match
+    np.testing.assert_allclose(
+        result_ndl.numpy(),
+        result_torch.permute(0, 2, 3, 1).contiguous().detach().numpy(),
+        rtol=1e-4,
+        atol=1e-4,
+    )
+
+    if backward:
+        # Backward pass
+        result_sum_torch.backward()
+        result_sum_ndl.backward()
+
+        # Check gradients match
+        np.testing.assert_allclose(
+            input_ndl.grad.numpy(),
+            input_torch.grad.numpy(),
+            rtol=1e-4,
+            atol=1e-4,
+        )
+        np.testing.assert_allclose(
+            kernel_ndl.grad.numpy(),
+            kernel_torch.grad.numpy(),
+            rtol=1e-2,
+            atol=1e-2,
+        )
