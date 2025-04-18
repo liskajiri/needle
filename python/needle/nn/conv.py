@@ -20,22 +20,17 @@ if TYPE_CHECKING:
 class Conv(Module):
     """
     Multi-channel 2D convolutional layer
+
     IMPORTANT: Accepts inputs in NCHW format, outputs also in NCHW format
-    - Only supports padding=same
-    - No grouped convolution or dilation
-    - Only supports square kernels
-    - Pads the input tensor to ensure output has the same shape as the input.
 
     Args:
         in_channels (int): Number of input channels
         out_channels (int): Number of output channels
         kernel_size (int): Size of the convolutional kernel
         stride (int): Stride of the convolution
-        padding (int): Padding of the input
+        padding (int, optional): Padding of the input. If None, uses kernel_size//2.
         bias (bool): Whether to use a bias term
     """
-
-    # TODO: supporting non-square kernels shouldn't be hard
 
     def __init__(
         self,
@@ -43,7 +38,7 @@ class Conv(Module):
         out_channels: int,
         kernel_size: int,
         stride: int = 1,
-        padding: int = 1,
+        padding: int | None = None,
         bias: bool = True,
         device: AbstractBackend = default_device,
         dtype: DType = "float32",
@@ -55,8 +50,8 @@ class Conv(Module):
         self.stride = stride
         self.device = device
         self.dtype = dtype
-        # ensure output has the same shape as the input
-        self.padding = padding if padding else (kernel_size - 1) // 2
+        # Default to kernel_size//2 to maintain input spatial dimensions
+        self.padding = padding if padding is not None else kernel_size // 2
 
         self.weight = Parameter(
             init.kaiming_uniform(
