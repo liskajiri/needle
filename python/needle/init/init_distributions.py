@@ -7,6 +7,8 @@ from needle.init.init_basic import rand, randn
 from needle.nn.activations import ReLU
 
 if TYPE_CHECKING:
+    from typing import Literal
+
     from needle.tensor import Tensor
     from needle.typing import Shape
 
@@ -67,8 +69,11 @@ def kaiming_uniform(
     fan_in: int = 1,
     fan_out: int = 1,
     shape: Shape | None = None,
-    gain: float = math.sqrt(2),
+    gain: float = math.sqrt(2.0),
     nonlinearity: ReLU | None = None,
+    mode: Literal["fan_in", "fan_out"] = "fan_in",
+    # TODO: type generic kwargs - has requires grad, device, dtype,
+    # TODO: probably present in nn.Linear
     **kwargs,
 ) -> Tensor:
     """Initialize weights using He/Kaiming uniform initialization.
@@ -76,7 +81,10 @@ def kaiming_uniform(
     Args:
         fan_in: Number of input features
         fan_out: Number of output features
+        shape: Optional shape override
+        gain: Optional gain factor
         nonlinearity: Type of non-linearity (only 'relu' supported)
+        mode: Either 'fan_in' or 'fan_out'
         device: Device to store the tensor
         dtype: Data type of the tensor
         requires_grad: Whether to track gradients
@@ -92,17 +100,21 @@ def kaiming_uniform(
     if not nonlinearity:
         nonlinearity = ReLU()
 
-    bound = gain * math.sqrt(3 / fan_in)
-    if shape:
-        return rand(shape, low=-bound, high=bound, **kwargs)
-    return rand((fan_in, fan_out), low=-bound, high=bound, **kwargs)
+    fan = fan_in if mode == "fan_in" else fan_out
+
+    bound = gain * math.sqrt(3.0 / fan)
+
+    if not shape:
+        shape = (fan_in, fan_out)
+    return rand(shape, low=-bound, high=bound, **kwargs)
 
 
 def kaiming_normal(
     fan_in: int,
     fan_out: int,
-    gain: float = math.sqrt(2),
+    gain: float = math.sqrt(2.0),
     nonlinearity: ReLU | None = None,
+    mode: str = "fan_in",
     **kwargs,
 ) -> Tensor:
     """Initialize weights using He/Kaiming normal initialization.
@@ -110,7 +122,9 @@ def kaiming_normal(
     Args:
         fan_in: Number of input features
         fan_out: Number of output features
+        gain: Optional gain factor
         nonlinearity: Type of non-linearity (only 'relu' supported)
+        mode: Either 'fan_in' or 'fan_out'
         device: Device to store the tensor
         dtype: Data type of the tensor
         requires_grad: Whether to track gradients
@@ -126,5 +140,7 @@ def kaiming_normal(
     if not nonlinearity:
         nonlinearity = ReLU()
 
-    std = gain / math.sqrt(fan_in)
+    fan = fan_in if mode == "fan_in" else fan_out
+
+    std = gain / math.sqrt(fan)
     return randn((fan_in, fan_out), std=std, **kwargs)
