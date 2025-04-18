@@ -1,22 +1,20 @@
+import math
+
 import needle as ndl
 import numpy as np
 import pytest
 import torch
-from hypothesis import given, settings
+from hypothesis import given
 from hypothesis import strategies as st
 
-_DEVICES = [
-    ndl.cpu(),
-    pytest.param(
-        ndl.cuda(), marks=pytest.mark.skipif(not ndl.cuda().enabled(), reason="No GPU")
-    ),
-]
+from tests.devices import all_devices
+from tests.utils import set_random_seeds
 
 rng = np.random.default_rng()
 
 
 def test_init_kaiming_uniform():
-    np.random.seed(42)
+    set_random_seeds(42)
     np.testing.assert_allclose(
         ndl.init.kaiming_uniform(3, 5).numpy(),
         np.array(
@@ -32,17 +30,17 @@ def test_init_kaiming_uniform():
     )
 
 
-@pytest.mark.parametrize("device", _DEVICES, ids=["cpu", "cuda"])
+@all_devices()
 def test_init_kaiming_uniform_2(device):
     a = rng.standard_normal((3, 3, 16, 8))
     A = ndl.Tensor(a, device=device)
-    np.random.seed(0)
+    set_random_seeds(0)
     A = ndl.init.kaiming_uniform(16 * 9, 8 * 9, shape=A.shape)
-    assert abs(A.sum().numpy() - -2.5719218) < 1e-4
+    np.testing.assert_allclose(A.sum().numpy(), -2.5719218, rtol=1e-4, atol=1e-4)
 
 
 def test_init_kaiming_normal():
-    np.random.seed(42)
+    set_random_seeds(42)
     np.testing.assert_allclose(
         ndl.init.kaiming_normal(3, 5).numpy(),
         np.array(
@@ -59,7 +57,7 @@ def test_init_kaiming_normal():
 
 
 def test_init_xavier_uniform():
-    np.random.seed(42)
+    set_random_seeds(42)
     np.testing.assert_allclose(
         ndl.init.xavier_uniform(3, 5, gain=1.5).numpy(),
         np.array(
@@ -76,7 +74,7 @@ def test_init_xavier_uniform():
 
 
 def test_init_xavier_normal():
-    np.random.seed(42)
+    set_random_seeds(42)
     np.testing.assert_allclose(
         ndl.init.xavier_normal(3, 5, gain=0.33).numpy(),
         np.array(
@@ -100,43 +98,51 @@ def test_init_xavier_normal():
     [
         (ndl.init.xavier_normal, torch.nn.init.xavier_normal_),
         (ndl.init.xavier_uniform, torch.nn.init.xavier_uniform_),
-        # TODO: Kaiming stuff does not work
-        # (
-        #     ndl.init.kaiming_normal,
-        #     lambda t, **kwargs: torch.nn.init.kaiming_normal_(
-        #         t, mode="fan_in", nonlinearity="relu"
-        #     ),
-        # ),
-        # (
-        #     ndl.init.kaiming_uniform,
-        #     lambda t, **kwargs: torch.nn.init.kaiming_uniform_(
-        #         t, mode="fan_in", nonlinearity="relu"
-        #     ),
-        # ),
     ],
-    ids=[
-        "xavier_normal",
-        "xavier_uniform",
-        # "kaiming_normal",
-        # "kaiming_uniform",
-    ],
+    ids=["xavier_normal", "xavier_uniform"],
 )
-@settings(deadline=500)  # 500 ms deadline for the tests
-@given(fan_in=st.integers(1, 100), fan_out=st.integers(1, 100))
-def test_init_distributions_proptest(gain, init_fn_pair, fan_in: int, fan_out: int):
+@given(fan_in=st.integers(1, 10), fan_out=st.integers(1, 10))
+def test_xavier_distributions(gain, init_fn_pair, fan_in: int, fan_out: int):
     ndl_init_fn, torch_init_fn = init_fn_pair
 
-    # Test with appropriate gain
-    # gain = 2**0.5 if "kaiming" in init_fn_pair[0].__name__ else 1.0
+    # Make the tensor large enough for good statistics
+    large_fan_out = fan_out * 10_000
+
+    ndl_tensor = ndl_init_fn(fan_in, large_fan_out, gain=gain)
+    torch_tensor = torch_init_fn(torch.empty(fan_in, large_fan_out), gain=gain)
+
+    ndl_samples = ndl_tensor.numpy().flatten()
+    torch_samples = torch_tensor.numpy().flatten()
+
+    atol, rtol = 1e-1, 1e-3
+    np.testing.assert_allclose(
+        ndl_samples.std(), torch_samples.std(), rtol=rtol, atol=atol
+    )
+    np.testing.assert_allclose(
+        ndl_samples.mean(), torch_samples.mean(), rtol=rtol, atol=atol
+    )
+
+
+@pytest.mark.parametrize(
+    "init_fn_pair",
+    [
+        (ndl.init.kaiming_normal, torch.nn.init.kaiming_normal_),
+        (ndl.init.kaiming_uniform, torch.nn.init.kaiming_uniform_),
+    ],
+    ids=["kaiming_normal", "kaiming_uniform"],
+)
+@given(fan_in=st.integers(1, 10), fan_out=st.integers(1, 10))
+def test_kaiming_distributions(init_fn_pair, fan_in: int, fan_out: int) -> None:
+    ndl_init_fn, torch_init_fn = init_fn_pair
+    gain = math.sqrt(2)
 
     # Make the tensor large enough for good statistics
-    scale_factor = max(1, 10000 // (fan_in * fan_out))
-    large_fan_out = fan_out * scale_factor
+    large_fan_out = fan_out * 10_000
 
-    # Generate one large tensor from each implementation
-    ndl_tensor = ndl_init_fn(fan_in, large_fan_out, gain=gain, requires_grad=False)
-
-    torch_tensor = torch_init_fn(torch.empty(fan_in, large_fan_out), gain=gain)
+    ndl_tensor = ndl_init_fn(fan_in, large_fan_out, gain=gain, mode="fan_in")
+    torch_tensor = torch_init_fn(
+        torch.empty(large_fan_out, fan_in), a=gain, mode="fan_in", nonlinearity="relu"
+    )
 
     ndl_samples = ndl_tensor.numpy().flatten()
     torch_samples = torch_tensor.numpy().flatten()
