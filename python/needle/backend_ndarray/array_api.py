@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 from needle.backend_ndarray.ndarray import NDArray, default_device, make
 
 if TYPE_CHECKING:
-    from needle.typing import AbstractBackend, DType, Shape, np_ndarray
+    from needle.typing import AbstractBackend, DType, Shape, Strides, np_ndarray
 
 
 def from_numpy(a: np_ndarray) -> NDArray:
@@ -340,3 +340,32 @@ def concatenate(arrays: tuple[NDArray], axis: int = 0) -> NDArray:
         offset += size
 
     return out
+
+
+def _as_strided(array: NDArray, shape: Shape, strides: Strides) -> NDArray:
+    """
+    Create a view into the array with the given shape and strides.
+
+    Args:
+        array: Input array
+        shape: The shape of the new array
+        strides: The strides of the new array (in bytes)
+
+    Returns:
+        NDArray: A view into the array with the given shape and strides
+
+    Example:
+        >>> import needle as ndl
+        >>> a = NDArray([[1, 2], [3, 4]])
+        >>> b = _as_strided(a, (2, 2), (8, 4))
+        >>> print(b)
+        [[1. 2.]
+         [3. 4.]]
+
+        >>> b.strides
+        (2, 1)
+        >>> b.shape
+        (2, 2)
+    """
+    elem_strides = tuple(s // array.device.itemsize for s in strides)
+    return array.as_strided(shape, elem_strides)
