@@ -6,10 +6,8 @@ description = "A Python library for deep learning and neural networks"
 readme = "README.md"
 license = "MIT"
 license-files = ["LICENSE"]
-classifiers = [
-  "Programming Language :: Python"
-]
-urls ={ repository = "https://github.com/liskajiri/needle"}
+classifiers = ["Programming Language :: Python"]
+urls = { repository = "https://github.com/liskajiri/needle" }
 dependencies = [
     # [AUTOGEN] by pydependence resolver 'needle' **DO NOT EDIT** [AUTOGEN]
     "numpy",
@@ -37,23 +35,23 @@ all = [
 [tool.pytest.ini_options]
 pythonpath = "python/needle"
 testpaths = [
-    "tests/",
-    "python/needle", # doctests
+  "tests/",
+  "python/needle", # doctests
 ]
 addopts = [
-    "-ra",
-    "--strict-markers",
-    "--strict-config",
-    "--import-mode=importlib",
-    "--doctest-modules",
-    # "--testmon",
+  "-ra",
+  "--strict-markers",
+  "--strict-config",
+  "--import-mode=importlib",
+  "--doctest-modules",
+  # "--testmon",
 ]
 markers = [
-    "slow: marks tests as slow",
-    "hypothesis: marks tests as property (hypothesis-based) tests",
-    "gpu: marks tests as requiring a GPU",
-    "datasets: marks tests as requiring datasets",
-    "benchmark: marks tests as benchmark tests",
+  "slow: marks tests as slow",
+  "hypothesis: marks tests as property (hypothesis-based) tests",
+  "gpu: marks tests as requiring a GPU",
+  "datasets: marks tests as requiring datasets",
+  "benchmark: marks tests as benchmark tests",
 ]
 # log_cli = true
 
@@ -65,17 +63,27 @@ fix = true
 [tool.ruff.lint]
 extend-select = ["UP", "E", "W", "F", "I", "SIM", "TID", "PTH", "PERF", "RUF"]
 # extend-select = ["ALL"]
-ignore = ["D", "ANN", "FIX", "TD", "COM", "ARG", "PLR", "NPY002", "N", "ERA001",
-    "FBT001", # boolean args in functions
-    "S311", # non-crypto random number generation
-    "RUF100" # unused no-qa: Remove after fixing
+ignore = [
+  "D",
+  "ANN",
+  "FIX",
+  "TD",
+  "COM",
+  "ARG",
+  "PLR",
+  "NPY002",
+  "N",
+  "ERA001",
+  "FBT001", # boolean args in functions
+  "S311",   # non-crypto random number generation
+  "RUF100", # unused no-qa: Remove after fixing
 ]
 fixable = ["ALL"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**/*.py" = [
-    "S101", # asserts allowed in tests
-    "EXE", # ignore shebangs
+  "S101", # asserts allowed in tests
+  "EXE",  # ignore shebangs
 ]
 
 [tool.ruff.lint.pydocstyle]
@@ -99,17 +107,17 @@ show_missing = true
 fail_under = 80
 
 exclude_also = [
-    'raise NotImplementedError',
-    'if __name__ == .__main__.:',
-    'if TYPE_CHECKING:',
-    '@(abc\.)?abstractmethod',
-    'pass',  # Often used in abstract classes
-    'def __repr__',  # Representation methods
-    'except .*:',  # Exception handling branches
-    'raise ImportError',
-    'if.*?platform',  # Platform-specific code
-    'if.*?sys.version_info',  # Version-specific code
-    'if.*?DEBUG:',  # Debug-only code
+  'raise NotImplementedError',
+  'if __name__ == .__main__.:',
+  'if TYPE_CHECKING:',
+  '@(abc\.)?abstractmethod',
+  'pass',                       # Often used in abstract classes
+  'def __repr__',               # Representation methods
+  'except .*:',                 # Exception handling branches
+  'raise ImportError',
+  'if.*?platform',              # Platform-specific code
+  'if.*?sys.version_info',      # Version-specific code
+  'if.*?DEBUG:',                # Debug-only code
 ]
 
 [tool.coverage.xml]
@@ -121,11 +129,14 @@ directory = "reports/coverage-html"
 show_contexts = true
 
 [tool.pyright]
-include = ["python/needle", "apps/"]
-exclude = [
-    "python/needle/ops",
-    "python/needle/backend_ndarray/",
-]
+include = ["python/needle"]
+exclude = ["python/needle/backend_ndarray/"]
+extraPaths = ["python/", "apps/"]
+
+reportIncompatibleMethodOverride = false
+# Based pyright
+reportUnannotatedClassAttribute = false
+reportImplicitOverride = false
 
 reportMissingImports = false
 reportMissingTypeStubs = false
@@ -135,8 +146,8 @@ pythonPlatform = "Linux"
 
 [tool.pydependence]
 versions = ["tomlkit>=0.12,<1"]
-scopes = [{name = "needle", pkg_paths = "./python/needle"}]
+scopes = [{ name = "needle", pkg_paths = "./python/needle" }]
 resolvers = [
-    {strict_requirements_map=false, scope='needle', output_mode='dependencies'},
-    {strict_requirements_map=false, scope='needle', output_mode='optional-dependencies', output_name='all', visit_lazy=true},
+  { strict_requirements_map = false, scope = 'needle', output_mode = 'dependencies' },
+  { strict_requirements_map = false, scope = 'needle', output_mode = 'optional-dependencies', output_name = 'all', visit_lazy = true },
 ]

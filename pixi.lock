@@ -172,6 +172,7 @@ environments:
       linux-64:
       - conda: https://prefix.dev/conda-forge/linux-64/_libgcc_mutex-0.1-conda_forge.tar.bz2
       - conda: https://prefix.dev/conda-forge/linux-64/_openmp_mutex-4.5-2_gnu.tar.bz2
+      - conda: https://prefix.dev/conda-forge/noarch/basedpyright-1.28.5-pyh29332c3_0.conda
       - conda: https://prefix.dev/conda-forge/linux-64/bzip2-1.0.8-h4bc722e_7.conda
       - conda: https://prefix.dev/conda-forge/linux-64/ca-certificates-2025.1.31-hbcca054_0.conda
       - conda: https://prefix.dev/conda-forge/linux-64/cffi-1.17.1-py312h06ac9bb_0.conda
@@ -198,6 +199,7 @@ environments:
       - conda: https://prefix.dev/conda-forge/linux-64/ncurses-6.5-h2d0b736_3.conda
       - conda: https://prefix.dev/conda-forge/noarch/nodeenv-1.9.1-pyhd8ed1ab_1.conda
       - conda: https://prefix.dev/conda-forge/linux-64/nodejs-22.13.0-hf235a45_0.conda
+      - conda: https://prefix.dev/conda-forge/noarch/nodejs-wheel-22.14.0-pyhd8ed1ab_0.conda
       - conda: https://prefix.dev/conda-forge/linux-64/openssl-3.5.0-h7b32b05_0.conda
       - conda: https://prefix.dev/conda-forge/noarch/platformdirs-4.3.7-pyh29332c3_0.conda
       - conda: https://prefix.dev/conda-forge/noarch/pre-commit-4.2.0-pyha770c72_0.conda
@@ -469,6 +471,16 @@ packages:
   license_family: MIT
   size: 57181
   timestamp: 1741918625732
+- conda: https://prefix.dev/conda-forge/noarch/basedpyright-1.28.5-pyh29332c3_0.conda
+  sha256: 09de8ee9f346d65b633d750108298cddc4679ee2208abba76662fe1af400b70f
+  md5: c26ea9cf3c43c6e73c6d296bb059c13b
+  depends:
+  - python >=3.9
+  - nodejs-wheel >=20.13.1
+  - python
+  license: MIT AND Apache-2.0
+  size: 8173608
+  timestamp: 1744240313778
 - conda: https://prefix.dev/conda-forge/linux-64/binutils_impl_linux-64-2.43-h4bf12b8_4.conda
   sha256: 194d771be287dc973f6057c0747010ce28adf960f38d6e03ce3e828d7b74833e
   md5: ef67db625ad0d2dce398837102f875ed
@@ -1646,6 +1658,16 @@ packages:
   license_family: MIT
   size: 21691794
   timestamp: 1741809786920
+- conda: https://prefix.dev/conda-forge/noarch/nodejs-wheel-22.14.0-pyhd8ed1ab_0.conda
+  sha256: 68f0ee1513f69776c1fe619b72ff2043a3f3707e778c6023238af5dc6761de16
+  md5: c330ae647ffb20646fb327b6bf55c340
+  depends:
+  - nodejs
+  - python >=3.9
+  license: MIT
+  license_family: MIT
+  size: 11945
+  timestamp: 1739301655520
 - conda: https://prefix.dev/conda-forge/noarch/numdifftools-0.9.41-pyhd8ed1ab_1.conda
   sha256: eecb1fb082fe7b77135b268138f60f1979bb26ddf344c363b363360ae54b1f04
   md5: 49296926cb8756059717b9675cf9d42f
