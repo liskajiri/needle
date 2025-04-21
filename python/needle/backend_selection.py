@@ -14,14 +14,14 @@ class BACKENDS(enum.StrEnum):
 
 
 DEFAULT_BACKEND = BACKENDS.NEEDLE
-BACKEND = os.getenv("NEEDLE_BACKEND", DEFAULT_BACKEND)
+backend = os.getenv("NEEDLE_BACKEND", DEFAULT_BACKEND)
 
 # Store loaded backend modules
 _loaded_backend = None
 default_device = None
 
 
-def set_backend(backend_name: str) -> BACKENDS:
+def set_backend(backend_name: str) -> None:
     """
     Set the backend for needle to use.
 
@@ -37,7 +37,7 @@ def set_backend(backend_name: str) -> BACKENDS:
         The backend that was set.
     """
     global \
-        BACKEND, \
+        backend, \
         _loaded_backend, \
         default_device, \
         array_api, \
@@ -48,9 +48,9 @@ def set_backend(backend_name: str) -> BACKENDS:
         cuda
 
     if backend_name == "needle" or backend_name == BACKENDS.NEEDLE:
-        BACKEND = BACKENDS.NEEDLE
+        backend = BACKENDS.NEEDLE
     elif backend_name == "numpy" or backend_name == BACKENDS.NUMPY:
-        BACKEND = BACKENDS.NUMPY
+        backend = BACKENDS.NUMPY
     else:
         raise ValueError(
             f"Unknown backend: {backend_name}.\
@@ -58,22 +58,17 @@ def set_backend(backend_name: str) -> BACKENDS:
         )
 
     # Only reload if backend has changed
-    if _loaded_backend != BACKEND:
+    if _loaded_backend != backend:
         # TODO: this is temporary to avoid type checking issues
         if True:
             logging.info("Using needle backend")
-            from needle import backend_ndarray as array_api
+            import needle.backend_ndarray.array_api as array_api
             from needle.backend_ndarray.ndarray import BackendDevice as Device
-            from needle.backend_ndarray.ndarray import (
-                NDArray,
-                all_devices,
-                cpu,
-                cuda,
-            )
+            from needle.backend_ndarray.ndarray import NDArray, all_devices, cpu, cuda
 
             default_device = cpu()
 
-        elif BACKEND == BACKENDS.NUMPY:
+        elif backend == BACKENDS.NUMPY:
             logging.info("Using numpy backend")
             import numpy as array_api
 
@@ -82,9 +77,7 @@ def set_backend(backend_name: str) -> BACKENDS:
 
             default_device = cpu()
 
-        _loaded_backend = BACKEND
-
-    return BACKEND
+        _loaded_backend = backend
 
 
-set_backend(BACKEND)
+set_backend(backend)

@@ -8,7 +8,15 @@ from typing import TYPE_CHECKING
 from needle.backend_ndarray.ndarray import NDArray, default_device, make
 
 if TYPE_CHECKING:
-    from needle.typing import AbstractBackend, DType, Shape, Strides, np_ndarray
+    from needle.typing import (
+        AbstractBackend,
+        Axis,
+        DType,
+        NDArrayLike,
+        Shape,
+        Strides,
+        np_ndarray,
+    )
 
 
 def from_numpy(a: np_ndarray) -> NDArray:
@@ -60,7 +68,7 @@ def broadcast_to(array: NDArray, new_shape: Shape) -> NDArray:
     return array.broadcast_to(new_shape)
 
 
-def max(array: NDArray, axis=None, keepdims: bool = False) -> NDArray:
+def max(array: NDArray, axis: Axis | None = None, keepdims: bool = False) -> NDArray:
     return array.max(axis=axis, keepdims=keepdims)
 
 
@@ -68,7 +76,7 @@ def reshape(array: NDArray, new_shape: Shape) -> NDArray:
     return array.reshape(new_shape)
 
 
-def maximum(a: NDArray, b: NDArray) -> NDArray:
+def maximum(a: NDArray, b: NDArrayLike) -> NDArray:
     return a.maximum(b)
 
 
@@ -84,11 +92,11 @@ def tanh(a: NDArray) -> NDArray:
     return a.tanh()
 
 
-def sum(a: NDArray, axis: tuple = (), keepdims: bool = False) -> NDArray:
+def sum(a: NDArray, axis: Axis | None = None, keepdims: bool = False) -> NDArray:
     return a.sum(axis=axis, keepdims=keepdims)
 
 
-def flip(a: NDArray, axis: tuple[int, ...] | int) -> NDArray:
+def flip(a: NDArray, axis: Axis) -> NDArray:
     """
     Flip this ndarray along the specified axes.
     Note: compacts the array before returning.
@@ -138,7 +146,7 @@ def flip(a: NDArray, axis: tuple[int, ...] | int) -> NDArray:
     return out.compact()
 
 
-def pad(a, axes: tuple[tuple[int, int], ...]) -> NDArray:
+def pad(a: NDArray, axes: tuple[tuple[int, int], ...]) -> NDArray:
     """
     Pad this ndarray by zeros by the specified amount in `axes`,
     which lists for _all_ axes the left and right padding amount, e.g.,
@@ -285,7 +293,7 @@ def split(
     return out
 
 
-def transpose(a: NDArray, axes: tuple = ()) -> NDArray:
+def transpose(a: NDArray, axes: tuple[int, ...] = ()) -> NDArray:
     if not axes:
         axes = tuple(range(a.ndim))[::-1]
     return a.permute(axes)

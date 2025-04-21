@@ -20,7 +20,7 @@ class MNISTPaths:
     TEST_LABELS = Path("data/mnist/t10k-labels-idx1-ubyte.gz")
 
 
-class MNISTDataset(Dataset):
+class MNISTDataset(Dataset[NDArray]):
     IMAGE_DIM = 28
     IMAGE_SIZE = IMAGE_DIM * IMAGE_DIM
 
@@ -50,18 +50,18 @@ class MNISTDataset(Dataset):
 
         super().__init__(**kwargs)
 
-        self.X, self.y = MNISTDataset.parse_mnist(images, labels)
-        self.X = (
-            NDArray(self.X).compact().reshape((-1, self.IMAGE_DIM, self.IMAGE_DIM, 1))
+        self.x, self.y = MNISTDataset.parse_mnist(images, labels)
+        self.x = (
+            NDArray(self.x).compact().reshape((-1, self.IMAGE_DIM, self.IMAGE_DIM, 1))
         )
         # self.y = NDArray(self.y)
 
     def __getitem__(self, index: IndexType) -> tuple[NDArray, np_ndarray]:
-        (x, y) = self.X[index], self.y[index]
+        (x, y) = self.x[index], self.y[index]
         return self.apply_transforms(x), y
 
     def __len__(self) -> int:
-        return self.X.shape[0]
+        return self.x.shape[0]
 
     @staticmethod
     def parse_mnist(images_file: Path, labels_file: Path) -> tuple[NDArray, np_ndarray]:
@@ -104,6 +104,6 @@ class MNISTDataset(Dataset):
 
         except FileNotFoundError as e:
             raise FileNotFoundError(
-                f"MNIST files not found. "
-                f"Please download and place them in {images_file.parent}"
+                "MNIST files not found. "
+                + f"Please download and place them in {images_file.parent}"
             ) from e

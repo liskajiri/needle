@@ -12,7 +12,16 @@ from needle.typing import AbstractBackend
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from needle.typing import DType, IndexType, Scalar, Shape, Strides, np_ndarray
+    from needle.typing import (
+        Axis,
+        DType,
+        IndexType,
+        NDArrayLike,
+        Scalar,
+        Shape,
+        Strides,
+        np_ndarray,
+    )
 
 logger = logging.getLogger(__name__)
 
@@ -203,8 +212,8 @@ default_device = cpu()
 
 
 def make(
-    shape: tuple,
-    strides: tuple | None = None,
+    shape: Shape,
+    strides: Strides | None = None,
     device: AbstractBackend = default_device,
     handle: NDArray | None = None,
     offset: int = 0,
@@ -215,7 +224,7 @@ def make(
     otherwise it will use the handle of an existing array.
     """
 
-    def prod(shape: tuple) -> int:
+    def prod(shape: tuple[int, ...]) -> int:
         # TODO: flatten?
         """Calculate product of shape tuple, handling nested tuples."""
         result = 1
@@ -241,7 +250,7 @@ def make(
     return array
 
 
-def broadcast_shapes(*shapes: tuple[Shape, ...]) -> tuple:
+def broadcast_shapes(*shapes: Shape) -> Shape:
     """Return broadcasted shape for multiple input shapes.
 
     Broadcasting rules (numpy-style):
@@ -301,7 +310,7 @@ class NDArray:
 
     def __init__(
         self,
-        other: NDArray | np_ndarray | list,
+        other: NDArrayLike,
         device: AbstractBackend = default_device,
         dtype: DType = "float32",
     ) -> None:
@@ -324,6 +333,7 @@ class NDArray:
             array = NDArray(np.array(other), device=device)
             self._init(array)
 
+    # TODO: why is this not __init__?
     def _init(self, other: NDArray) -> None:
         self._shape = other._shape
         self._strides = other._strides
@@ -370,6 +380,7 @@ class NDArray:
         return int(math.prod(self._shape))
 
     def __repr__(self) -> str:
+        return self.__str__()
         return f"NDArray( shape: {self.shape} | device={self.device}"
 
     def __str__(self) -> str:
@@ -387,7 +398,7 @@ class NDArray:
         return self.shape[0]
 
     # Basic array manipulation
-    def fill(self, value: float) -> None:
+    def fill(self, value: Scalar) -> None:
         """Fill (in place) with a constant value."""
         self._device.fill(self._handle, value)
 
@@ -412,6 +423,7 @@ class NDArray:
         array.device.from_numpy(np.ascontiguousarray(a), array._handle)
         return array
 
+    # TODO: proper __array__ interface
     def __array__(
         self,
         dtype: DType | None = None,
@@ -419,16 +431,6 @@ class NDArray:
     ):
         """Allow implicit conversion to numpy array"""
         return self.numpy()
-
-    def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
-        """Handle numpy ufuncs by converting to numpy first"""
-        arrays = []
-        for input in inputs:
-            if isinstance(input, NDArray):
-                arrays.append(input.numpy())
-            else:
-                arrays.append(input)
-        return getattr(ufunc, method)(*arrays, **kwargs)
 
     # Shapes and strides
 
@@ -516,7 +518,6 @@ class NDArray:
         if self.size != math.prod(new_shape):
             raise ValueError(
                 f"Cannot reshape array of size {self.size} into shape {new_shape}."
-                f"Total elements must remain constant."
             )
 
         # Create reshaped view with new strides
@@ -568,13 +569,13 @@ class NDArray:
         if self.size % other_dims_product != 0:
             raise ValueError(
                 f"Cannot reshape array of size {self.size} into shape {new_shape}. "
-                f"Size must be divisible by {other_dims_product}."
+                + f"Size must be divisible by {other_dims_product}."
             )
 
         missing_dim = self.size // other_dims_product
         return new_shape[:neg_idx] + (missing_dim,) + new_shape[neg_idx + 1 :]
 
-    def permute(self, new_axes: tuple) -> NDArray:
+    def permute(self, new_axes: Shape) -> NDArray:
         """Permute order of the dimensions.  new_axes describes a permutation of the
         existing axes, so e.g.:
           - If we have an array with dimension "BHWC" then .permute((0,3,1,2))
@@ -664,6 +665,7 @@ class NDArray:
         return slice(start, stop, step)
 
     # TODO: standardize idxs type: int | iterable[int] | slice
+    # TODO: single function for dealing with index_type
     # TODO: getitem is not really working like numpy's
     def __getitem__(self, idxs: IndexType) -> NDArray:  # noqa: C901
         """
@@ -798,7 +800,8 @@ class NDArray:
     def __setitem__(
         self,
         idxs: IndexType,
-        other: NDArray | np.ndarray | Scalar,
+        other: NDArrayLike,
+        # other: NDArray | np.ndarray | Scalar,
     ) -> None:
         """
         Set the values of a view into an array,
@@ -825,10 +828,21 @@ class NDArray:
     # Collection of element-wise and scalar function: add, multiply, boolean, etc
     # TODO: probably must implement in the backend
     def item(self) -> Scalar:
+        """Convert a size-1 array to a Python scalar.
+
+        Returns:
+            Scalar: The scalar value contained in the array.
+
+        Raises:
+            NotImplementedError: Currently not implemented.
+        """
         raise NotImplementedError("item() not implemented")
 
     def ewise_or_scalar(
-        self, other: NDArray | Scalar, ewise_func: Callable, scalar_func: Callable
+        self,
+        other: NDArrayLike,
+        ewise_func: Callable[[NDArray, NDArray, NDArray], None],
+        scalar_func: Callable[[NDArray, Scalar, NDArray], None],
     ) -> NDArray:
         """
         Run either an element-wise or scalar version of a function,
@@ -855,47 +869,52 @@ class NDArray:
             raise ValueError(f"Unsupported type {type(other)}")
         return out
 
-    def __add__(self, other):
+    def __add__(self, other: NDArrayLike) -> NDArray:
         return self.ewise_or_scalar(
             other, self.device.ewise_add, self.device.scalar_add
         )
 
     __radd__ = __add__
 
-    def __sub__(self, other):
+    def __sub__(self, other: NDArrayLike) -> NDArray:
         return self + (-other)
 
-    def __rsub__(self, other):
+    def __rsub__(self, other: NDArrayLike) -> NDArray:
         return other + (-self)
 
-    def __mul__(self, other):
+    def __mul__(self, other: NDArrayLike) -> NDArray:
         return self.ewise_or_scalar(
             other, self.device.ewise_mul, self.device.scalar_mul
         )
 
     __rmul__ = __mul__
 
-    def __truediv__(self, other):
+    def __truediv__(self, other: NDArrayLike) -> NDArray:
         return self.ewise_or_scalar(
             other, self.device.ewise_div, self.device.scalar_div
         )
 
-    def __rtruediv__(self, other) -> NDArray:
+    def __rtruediv__(self, other: NDArrayLike) -> NDArray:
         if isinstance(other, int | float):
             out = make(self.shape, device=self.device)
             out.fill(other)
             return out / self
         return NDArray(other, device=self.device) / self
 
-    def __neg__(self):
+    def __neg__(self) -> NDArray:
         return self * (-1)
 
-    def __pow__(self, other: Scalar) -> NDArray:
+    def __pow__(self, other: NDArrayLike) -> NDArray:
         out = make(self.shape, device=self.device)
-        self.device.scalar_power(self.compact()._handle, other, out._handle)
+        if isinstance(other, NDArray):
+            self.device.ewise_pow(
+                self.compact()._handle, other.compact()._handle, out._handle
+            )
+        else:
+            self.device.scalar_power(self.compact()._handle, other, out._handle)
         return out
 
-    def maximum(self, other):
+    def maximum(self, other: NDArrayLike) -> NDArray:
         return self.ewise_or_scalar(
             other, self.device.ewise_maximum, self.device.scalar_maximum
         )
@@ -917,7 +936,8 @@ class NDArray:
     def __ne__(self, other: NDArray) -> bool:
         return 1 - (self == other)
 
-    def __gt__(self, other: NDArray) -> bool:
+    # TODO: figure out correct typing for this
+    def __gt__(self, other: NDArray | Scalar) -> bool:
         return (self >= other) * (self != other)
 
     def __lt__(self, other: NDArray) -> bool:
@@ -934,12 +954,12 @@ class NDArray:
         self.device.ewise_log(self.compact()._handle, out._handle)
         return out
 
-    def exp(self):
+    def exp(self) -> NDArray:
         out = make(self.shape, device=self.device)
         self.device.ewise_exp(self.compact()._handle, out._handle)
         return out
 
-    def tanh(self):
+    def tanh(self) -> NDArray:
         out = make(self.shape, device=self.device)
         self.device.ewise_tanh(self.compact()._handle, out._handle)
         return out
@@ -1056,7 +1076,7 @@ class NDArray:
 
     # Reductions, i.e., sum/max over all element or over given axis
     def reduce_view_out(
-        self, axis: tuple | None, keepdims: bool = False
+        self, axis: Axis | None, keepdims: bool = False
     ) -> tuple[NDArray, NDArray]:
         """
         Return a view to the array set up for reduction functions and output array.
@@ -1104,12 +1124,12 @@ class NDArray:
 
         return view, out
 
-    def sum(self, axis: tuple | None = None, keepdims: bool = False) -> NDArray:
+    def sum(self, axis: Axis | None = None, keepdims: bool = False) -> NDArray:
         view, out = self.reduce_view_out(axis, keepdims=keepdims)
         self.device.reduce_sum(view.compact()._handle, out._handle, view.shape[-1])
         return out
 
-    def max(self, axis: tuple | None = None, keepdims: bool = False) -> NDArray:
+    def max(self, axis: Axis | None = None, keepdims: bool = False) -> NDArray:
         view, out = self.reduce_view_out(axis, keepdims=keepdims)
         self.device.reduce_max(view.compact()._handle, out._handle, view.shape[-1])
         return out

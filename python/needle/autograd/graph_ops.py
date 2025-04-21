@@ -13,6 +13,9 @@ def _sum_node_list(node_list: list[Tensor]) -> Tensor:
     from functools import reduce
     from operator import add
 
+    if len(node_list) == 0:
+        raise ValueError("Cannot sum an empty list of nodes.")
+
     return reduce(add, node_list)
 
 
@@ -57,14 +60,14 @@ def find_topo_sort(node_list: list[Tensor]) -> list[Tensor]:
     after all its predecessors are traversed due to post-order DFS, we get a topological
     sort.
     """
-    topo_order = []
-    visited = set()
+    topo_order: list[Tensor] = []
+    visited: set[Tensor] = set()
     for node in node_list:
         topo_sort_dfs(node, visited, topo_order)
     return topo_order
 
 
-def topo_sort_dfs(node: Tensor, visited: set, topo_order: list[Tensor]) -> None:
+def topo_sort_dfs(node: Tensor, visited: set[Tensor], topo_order: list[Tensor]) -> None:
     """
     Post-order DFS.
     """

@@ -4,21 +4,20 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from needle.backend_ndarray.ndarray import NDArray
 from needle.backend_selection import array_api
 from needle.ops.op import TensorOp
 from needle.ops.shape import broadcast_to, broadcast_to_new_axis
+from needle.tensor import Tensor
 
 if TYPE_CHECKING:
     from needle.backend_selection import NDArray
-    from needle.tensor import Tensor
+    from needle.typing import Shape
 
 
 class Summation(TensorOp):
-    def __init__(self, axes: tuple | int | None = None, keepdims: bool = False) -> None:
-        if isinstance(axes, int):
-            self.axes = (axes,)
-        else:
-            self.axes = axes
+    def __init__(self, axes: Shape | None = None, keepdims: bool = False) -> None:
+        self.axes = axes
         self.keepdims = keepdims
 
     def compute(self, a: NDArray) -> NDArray:
@@ -39,9 +38,9 @@ class Summation(TensorOp):
         # return broadcast_to(out_grad, target_shape)
 
 
-def summation(
-    a: Tensor, axes: tuple | int | None = None, keepdims: bool = False
-) -> Tensor:
+def summation(a: Tensor, axes: Shape | None = None, keepdims: bool = False) -> Tensor:
+    # TODO: fix calling convention
+    axes = (axes,) if isinstance(axes, int) else axes
     return Summation(axes, keepdims)(a)
 
 
@@ -68,7 +67,7 @@ def matmul(a: Tensor, b: Tensor) -> Tensor:
 
 
 class Negate(TensorOp):
-    def compute(self, a: NDArray):
+    def compute(self, a: NDArray) -> NDArray:
         return -a
 
     def gradient(self, out_grad: Tensor, node: Tensor) -> Tensor:
@@ -80,7 +79,7 @@ def negate(a: Tensor) -> Tensor:
 
 
 class Log(TensorOp):
-    def compute(self, a: NDArray) -> array_api.NDArray:
+    def compute(self, a: NDArray) -> NDArray:
         return array_api.log(a)
 
     def gradient(self, out_grad: Tensor, node: Tensor) -> Tensor:
@@ -118,6 +117,19 @@ def relu(a: Tensor) -> Tensor:
 
 class SquareRoot(TensorOp):
     def compute(self, a: NDArray) -> NDArray:
+        # if any(x < 0 for x in a):
+        #     raise ValueError(
+        #         f"Square root of negative number is not supported., got {a}"
+        #     )
+
+        # TODO: this does not work, because I don't have iterator over elements
+        # TODO: or min across the array
+        # for x in a:
+        #     if x < 0:
+        #         raise ValueError(
+        #             f"Square root of negative number is not supported., got {a} {x},
+        # {type(x)}"
+        #         )
         return a**0.5
 
     def gradient(self, out_grad: Tensor, node: Tensor) -> Tensor:
@@ -134,7 +146,7 @@ class Tanh(TensorOp):
 
     def gradient(self, out_grad: Tensor, node: Tensor) -> Tensor:
         tanh = array_api.tanh(node.inputs[0].realize_cached_data())
-        return out_grad * (1 - tanh**2)
+        return Tensor(out_grad.realize_cached_data() * (1 - tanh**2))
 
 
 def tanh(a: Tensor) -> Tensor:
@@ -147,7 +159,7 @@ class Sigmoid(TensorOp):
 
     def gradient(self, out_grad: Tensor, node: Tensor) -> Tensor:
         sigmoid = 1.0 / (1.0 + array_api.exp(-node.inputs[0].realize_cached_data()))
-        return out_grad * sigmoid * (1 - sigmoid)
+        return Tensor(out_grad.realize_cached_data() * sigmoid * (1 - sigmoid))
 
 
 def sigmoid(a: Tensor) -> Tensor:
@@ -155,4 +167,5 @@ def sigmoid(a: Tensor) -> Tensor:
 
 
 def mean(a: Tensor, axes: int = 0) -> Tensor:
-    return summation(a, axes=axes) / a.shape[axes]
+    # TODO: weird shapes
+    return summation(a, axes=(axes,)) / a.shape[axes]

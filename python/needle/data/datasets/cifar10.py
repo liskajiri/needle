@@ -4,19 +4,16 @@ import pickle
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from needle.backend_selection import array_api
+from needle.backend_selection import NDArray, array_api
 from needle.data.dataset import Dataset
 
 CIFARPath = Path("data/cifar-10/cifar-10-batches-py")
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
-
-    from needle.backend_selection import NDArray
     from needle.typing import IndexType
 
 
-class CIFAR10Dataset(Dataset):
+class CIFAR10Dataset(Dataset[NDArray]):
     IMAGE_SHAPE = (3, 32, 32)
     LabelType = int
 
@@ -25,7 +22,7 @@ class CIFAR10Dataset(Dataset):
         base_folder: Path = CIFARPath,
         train: bool = True,
         p: float | None = 0.5,
-        transforms: list[Callable] = [],
+        **kwargs,
     ) -> None:
         """
         Parameters:
@@ -36,7 +33,7 @@ class CIFAR10Dataset(Dataset):
         X - numpy array of images
         y - numpy array of labels
         """
-        super().__init__(transforms)
+        super().__init__(**kwargs)
         self.train = train
 
         X = []
@@ -52,7 +49,7 @@ class CIFAR10Dataset(Dataset):
                 X.append(x)
                 Y.extend(y)
         # X: (5, 10_000, 3, 32, 32) -> (50_000, 3, 32, 32)
-        self.X = array_api.stack(X).reshape(new_shape)
+        self.X = array_api.stack(tuple(X)).reshape(new_shape)
         self.Y = array_api.array(Y)
 
     def __getitem__(self, index: IndexType) -> tuple[NDArray, NDArray]:

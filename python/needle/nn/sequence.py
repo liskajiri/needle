@@ -4,10 +4,10 @@ from math import sqrt
 from typing import TYPE_CHECKING, TypedDict
 
 import needle.init as init
-import needle.nn as nn
 import needle.ops as ops
 from needle.backend_selection import default_device
-from needle.nn import Module
+from needle.nn.activations import ReLU, Tanh
+from needle.nn.core import Module, Parameter
 
 if TYPE_CHECKING:
     from needle.tensor import Tensor
@@ -55,9 +55,9 @@ class RNNCell(Module):
         self.bias = bias
         match nonlinearity:
             case "tanh":
-                self.nonlinearity = nn.Tanh()
+                self.nonlinearity = Tanh()
             case "relu":
-                self.nonlinearity = nn.ReLU()
+                self.nonlinearity = ReLU()
             case _:
                 raise ValueError(
                     f"Invalid nonlinearity '{nonlinearity}'. Must be 'tanh' or 'relu'."
@@ -68,11 +68,11 @@ class RNNCell(Module):
             low=-bound, high=bound, device=device, dtype=dtype
         )
 
-        self.W_ih = nn.Parameter(init.rand((input_size, hidden_size), **config))
-        self.W_hh = nn.Parameter(init.rand((hidden_size, hidden_size), **config))
+        self.W_ih = Parameter(init.rand((input_size, hidden_size), **config))
+        self.W_hh = Parameter(init.rand((hidden_size, hidden_size), **config))
         if bias:
-            self.bias_ih = nn.Parameter(init.rand((hidden_size,), **config))
-            self.bias_hh = nn.Parameter(init.rand((hidden_size,), **config))
+            self.bias_ih = Parameter(init.rand((hidden_size,), **config))
+            self.bias_hh = Parameter(init.rand((hidden_size,), **config))
         else:
             self.bias_ih, self.bias_hh = 0, 0
 
@@ -246,12 +246,12 @@ class LSTMCell(Module):
         )
 
         # 4*hidden_size for the four gates: input, forget, cell, output
-        self.W_ih = nn.Parameter(init.rand((input_size, 4 * hidden_size), **config))
-        self.W_hh = nn.Parameter(init.rand((hidden_size, 4 * hidden_size), **config))
+        self.W_ih = Parameter(init.rand((input_size, 4 * hidden_size), **config))
+        self.W_hh = Parameter(init.rand((hidden_size, 4 * hidden_size), **config))
 
         if bias:
-            self.bias_ih = nn.Parameter(init.rand((4 * hidden_size,), **config))
-            self.bias_hh = nn.Parameter(init.rand((4 * hidden_size,), **config))
+            self.bias_ih = Parameter(init.rand((4 * hidden_size,), **config))
+            self.bias_hh = Parameter(init.rand((4 * hidden_size,), **config))
         else:
             self.bias_ih = self.bias_hh = None
 
@@ -483,7 +483,7 @@ class Embedding(Module):
         self.device = device
         self.dtype = dtype
 
-        self.weight = nn.Parameter(
+        self.weight = Parameter(
             init.randn((num_embeddings, embedding_dim)), device=device, dtype=dtype
         )
 

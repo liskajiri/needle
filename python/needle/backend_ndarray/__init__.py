@@ -1,4 +1,5 @@
 from needle.backend_ndarray.array_api import (
+    _as_strided,
     array,
     broadcast_to,
     concatenate,
@@ -35,6 +36,7 @@ from needle.backend_ndarray.ndarray import (
 __all__ = [
     "BackendDevice",
     "NDArray",
+    "_as_strided",
     "all_devices",
     "array",
     "broadcast_shapes",

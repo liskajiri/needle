@@ -2,9 +2,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from collections.abc import Sequence
-from typing import TYPE_CHECKING, TypeVar
-
-T = TypeVar("T")
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -15,7 +13,7 @@ if TYPE_CHECKING:
 
 
 # TODO: figure out typing of generics
-class Dataset[T](Sequence, ABC):
+class Dataset[NDArray](Sequence[NDArray], ABC):
     """
     An abstract class representing a `Dataset`.
 
@@ -58,18 +56,22 @@ class Dataset[T](Sequence, ABC):
         8.0
     """
 
-    def __init__(self, transforms: Sequence[Callable] | None = None) -> None:
+    def __init__(
+        self, transforms: Sequence[Callable[[NDArray], NDArray]] | None = None
+    ) -> None:
         self._transforms = tuple(transforms) if transforms else ()
 
     @abstractmethod
-    def __getitem__(self, index: IndexType) -> Sequence[T] | tuple[Sequence[T], int]:
+    def __getitem__(
+        self, index: IndexType
+    ) -> Sequence[NDArray] | tuple[Sequence[NDArray], int]:
         raise NotImplementedError
 
     @abstractmethod
     def __len__(self) -> int:
         raise NotImplementedError
 
-    def apply_transforms(self, x: T) -> T:
+    def apply_transforms(self, x: NDArray) -> NDArray:
         for transform in self._transforms:
             x = transform(x)
         return x

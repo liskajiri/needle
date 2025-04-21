@@ -11,19 +11,26 @@ if TYPE_CHECKING:
 
 
 class MakeTensorTuple(TensorTupleOp):
-    def compute(self, *args) -> tuple:
+    """
+    Creates a TensorTuple from a sequence of tensors.
+    This is the fundamental operation for creating tensor tuples in the autograd system.
+    """
+
+    def compute(self, *args: NDArray) -> tuple[NDArray, ...]:
         return tuple(args)
 
-    def gradient(self, out_grad: TensorTuple, _node: Tensor) -> tuple:
+    def gradient(self, out_grad: TensorTuple, _node: Tensor) -> tuple[Tensor, ...]:
         assert isinstance(out_grad, TensorTuple)
-        return tuple([out_grad[i] for i in range(len(out_grad))])
+        return tuple(out_grad[i] for i in range(len(out_grad)))
 
 
-def make_tuple(*args) -> TensorTuple:
+def make_tuple(*args: Tensor) -> TensorTuple:
     return MakeTensorTuple()(*args)
 
 
 class TupleGetItem(TensorOp):
+    """Extracts a single tensor from a TensorTuple at the specified index."""
+
     def __init__(self, index: int) -> None:
         self.index = index
 
@@ -31,36 +38,48 @@ class TupleGetItem(TensorOp):
         assert isinstance(a, TensorTuple)
         # constant folding
         if fold_const and isinstance(a.op, MakeTensorTuple):
-            return a.inputs[self.index]
-        return Tensor.make_from_op(self, [a])
+            # Get the input tensor at the specified index
+            tensor = a.inputs[self.index]
+            assert isinstance(tensor, Tensor)
+            return tensor
+        # Create a new op node with TensorTuple input
+        return super().__call__(a)
 
     def compute(self, arr: list[NDArray] | tuple[NDArray, ...]) -> NDArray:
         return arr[self.index]
 
-    def gradient(self, out_grad, node) -> TensorTuple:
+    def gradient(self, out_grad: Tensor, node: Tensor) -> TensorTuple:
         index = self.index
         in_grad = []
-        for i, value in enumerate(node.inputs[0]):
+        input_tuple = node.inputs[0].realize_cached_data()
+        for i in range(len(input_tuple)):
             if i != index:
-                in_grad.append(init.zeros_like(value))
+                in_grad.append(init.zeros_like(input_tuple[i]))
             else:
                 in_grad.append(out_grad)
         return MakeTensorTuple()(*in_grad)
 
 
-def tuple_get_item(value, index: int) -> Tensor:
+def tuple_get_item(value: TensorTuple, index: int) -> Tensor:
+    """Extracts a tensor from a TensorTuple at the specified index."""
     return TupleGetItem(index)(value)
 
 
 class FusedAddScalars(TensorTupleOp):
+    """Fuses two scalar addition operations into a single op that returns a TensorTuple.
+
+    This optimization reduces memory allocations by computing both additions at once."""
+
     def __init__(self, c0: float, c1: float) -> None:
         self.c0 = c0
         self.c1 = c1
 
     def compute(self, a: NDArray) -> tuple[NDArray, NDArray]:
+        """Returns (a + c0, a + c1) as a tuple."""
         return a + self.c0, a + self.c1
 
-    def gradient(self, out_grad: Tensor, node) -> Tensor:
+    def gradient(self, out_grad: TensorTuple, node: Tensor) -> Tensor:
+        """Combines gradients from both outputs."""
         return out_grad[0] + out_grad[1]
 
 
