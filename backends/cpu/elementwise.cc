@@ -135,6 +135,11 @@ export void EwiseLog(const AlignedArray &a, AlignedArray *out) {
     }
 }
 
+export void EwisePow(const AlignedArray &a, const AlignedArray &b,
+                     AlignedArray *out) {
+    EwiseOp(a, b, out, [](float x, float y) { return std::pow(x, y); });
+}
+
 export void EwiseExp(const AlignedArray &a, AlignedArray *out) {
     for (size_t i = 0; i < a.size; ++i) {
         out->ptr[i] = std::exp(a.ptr[i]);
