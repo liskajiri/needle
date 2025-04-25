@@ -38,8 +38,8 @@ def test_dataloader(mnist_test, request) -> tuple[ndl.data.DataLoader, int]:
 def test_mnist_dataset_stats(
     mnist_train: ndl.data.MNISTDataset, mnist_test: ndl.data.MNISTDataset
 ):
-    train_X = mnist_train.X
-    test_X = mnist_test.X
+    train_X = mnist_train.x
+    test_X = mnist_test.x
 
     assert train_X.dtype == "float32"
     assert mnist_train.y.dtype == np.uint8
@@ -150,16 +150,18 @@ def test_mnist_test_sample_norms_and_labels(mnist_test):
 
 
 @pytest.mark.slow
-def test_mnist_normalization(mnist_train, mnist_test):
+def test_mnist_normalization(
+    mnist_train: ndl.data.MNISTDataset, mnist_test: ndl.data.MNISTDataset
+):
     """Test that MNIST dataset values are properly normalized to [0.0, 1.0]"""
 
     # Check train data normalization
-    train_min = mnist_train.X.numpy().min()
-    train_max = mnist_train.X.numpy().max()
+    train_min = mnist_train.x.numpy().min()
+    train_max = mnist_train.x.numpy().max()
 
     # Check test data normalization
-    test_min = mnist_test.X.numpy().min()
-    test_max = mnist_test.X.numpy().max()
+    test_min = mnist_test.x.numpy().min()
+    test_max = mnist_test.x.numpy().max()
 
     # Assert values are properly normalized to [0.0, 1.0] range
     # MNIST has those values
