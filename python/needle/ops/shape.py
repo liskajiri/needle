@@ -16,7 +16,7 @@ if TYPE_CHECKING:
 
 
 class Transpose(TensorOp):
-    def __init__(self, axes: tuple = (-1, -2)) -> None:
+    def __init__(self, axes: Shape = (-1, -2)) -> None:
         self.axes = axes if axes else (-1, -2)
 
     def compute(self, a: NDArray) -> NDArray:
@@ -48,7 +48,7 @@ class Transpose(TensorOp):
         return transpose(out_grad, inverse_axes)
 
 
-def transpose(a: Tensor, axes: tuple = ()) -> Tensor:
+def transpose(a: Tensor, axes: Shape = ()) -> Tensor:
     return Transpose(axes)(a)
 
 
@@ -100,6 +100,6 @@ def broadcast_to(a: Tensor, shape: Shape) -> Tensor:
     return BroadcastTo(shape)(a)
 
 
-def broadcast_to_new_axis(x: Tensor, new_axis: tuple, new_shape: tuple) -> Tensor:
+def broadcast_to_new_axis(x: Tensor, new_axis: Shape, new_shape: Shape) -> Tensor:
     new_axes = tuple(1 if i in new_axis else ax for i, ax in enumerate(new_shape))
     return broadcast_to(reshape(x, new_axes), new_shape)

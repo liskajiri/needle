@@ -21,6 +21,8 @@ NB_MODULE(ndarray_backend_cpu, m) {
 
     m.attr("__device_name__") = "cpu";
     m.attr("__tile_size__") = TILE;
+    m.attr("itemsize") = sizeof(scalar_t);
+    // m.attr("__dtype__") = nb::dtype<scalar_t>();
 
     nb::class_<AlignedArray>(m, "Array")
         .def(nb::init_implicit<size_t>(), nb::rv_policy::take_ownership)
@@ -72,6 +74,7 @@ NB_MODULE(ndarray_backend_cpu, m) {
     m.def("ewise_ge", EwiseGe);
     m.def("ewise_log", EwiseLog);
     m.def("ewise_exp", EwiseExp);
+    m.def("ewise_pow", EwisePow);
     m.def("ewise_tanh", EwiseTanh);
 
     m.def("scalar_setitem", ScalarSetitem);

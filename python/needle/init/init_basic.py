@@ -7,7 +7,7 @@ from needle.tensor import Tensor
 
 if TYPE_CHECKING:
     from needle.backend_selection import NDArray
-    from needle.typing.device import AbstractBackend as Device
+    from needle.typing.device import AbstractBackend
     from needle.typing.types import DType, Scalar, Shape
 
 
@@ -15,7 +15,7 @@ def rand(
     shape: Shape,
     low: float = 0.0,
     high: float = 1.0,
-    device: Device = default_device,
+    device: AbstractBackend = default_device,
     dtype: DType = "float32",
     requires_grad: bool = False,
 ) -> Tensor:
@@ -40,7 +40,7 @@ def randn(
     shape: Shape,
     mean: float = 0.0,
     std: float = 1.0,
-    device: Device = default_device,
+    device: AbstractBackend = default_device,
     dtype: DType = "float32",
     requires_grad: bool = False,
 ) -> Tensor:
@@ -64,7 +64,7 @@ def randn(
 def constant(
     shape: Shape,
     c: Scalar = 1.0,
-    device: Device = default_device,
+    device: AbstractBackend = default_device,
     dtype: DType = "float32",
     requires_grad: bool = False,
 ) -> Tensor:
@@ -86,7 +86,7 @@ def constant(
 
 def ones(
     shape: Shape,
-    device: Device = default_device,
+    device: AbstractBackend = default_device,
     dtype: DType = "float32",
     requires_grad: bool = False,
 ) -> Tensor:
@@ -108,7 +108,7 @@ def ones(
 
 def zeros(
     shape: Shape,
-    device: Device = default_device,
+    device: AbstractBackend = default_device,
     dtype: DType = "float32",
     requires_grad: bool = False,
 ) -> Tensor:
@@ -131,7 +131,7 @@ def zeros(
 def rand_binary(
     shape: Shape,
     p: float = 0.5,
-    device: Device = default_device,
+    device: AbstractBackend = default_device,
     dtype: DType = "bool",
     requires_grad: bool = False,
 ) -> Tensor:
@@ -154,7 +154,7 @@ def rand_binary(
 def one_hot(
     n: int,
     i: Tensor,
-    device: Device = default_device,
+    device: AbstractBackend = default_device,
     dtype: DType = "float32",
     requires_grad: bool = False,
 ) -> Tensor:
@@ -181,7 +181,7 @@ def one_hot(
 def zeros_like(
     array: NDArray,
     *,
-    device: Device = default_device,
+    device: AbstractBackend = default_device,
     requires_grad: bool = False,
 ) -> Tensor:
     """Generate tensor of zeros with same shape as input.
@@ -202,7 +202,7 @@ def zeros_like(
 def ones_like(
     array: NDArray,
     *,
-    device: Device = default_device,
+    device: AbstractBackend = default_device,
     requires_grad: bool = False,
 ) -> Tensor:
     """Generate tensor of ones with same shape as input.

@@ -3,7 +3,7 @@ from __future__ import annotations
 import random
 from typing import TYPE_CHECKING
 
-from needle.backend_selection import default_device
+from needle.backend_selection import NDArray, default_device
 from needle.tensor import Tensor
 
 if TYPE_CHECKING:
@@ -28,7 +28,7 @@ class DataLoader:
 
     def __init__(
         self,
-        dataset: Dataset,
+        dataset: Dataset[NDArray],
         batch_size: int = 1,
         device: AbstractBackend = default_device,
         shuffle: bool = False,

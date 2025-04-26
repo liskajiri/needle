@@ -10,17 +10,16 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
-from needle.typing import AbstractBackend
+from needle.typing.device import AbstractBackend
 
 if TYPE_CHECKING:
+    from numpy.typing import ArrayLike as NDArray
+
     from needle.typing import (
         DType,
         IndexType,
         Scalar,
         Shape,
-    )
-    from needle.typing import (
-        np_ndarray as NDArray,
     )
 
 __device_name__ = "numpy"

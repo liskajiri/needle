@@ -9,7 +9,7 @@ if TYPE_CHECKING:
     from needle.typing import AbstractBackend, IndexType
 
 
-class ArtificialMNIST(Dataset):
+class ArtificialMNIST(Dataset[NDArray]):
     """An artificial dataset with configurable dimensions and number of classes.
 
     The dataset creates images where the label corresponds to pixel density:
@@ -63,14 +63,14 @@ class ArtificialMNIST(Dataset):
             )
             images.append(image)
 
-        self.X = array_api.stack(images)
-        self.X = self.X.reshape((-1, self.image_dim, self.image_dim, 1))
+        self.x = array_api.stack(tuple(images))
+        self.x = self.x.reshape((-1, self.image_dim, self.image_dim, 1))
 
     def __getitem__(self, index: IndexType) -> tuple[NDArray, int]:
         if not isinstance(index, int):
             # TODO: remove once self.y is NDArray
             raise ValueError("Index must be an integer for now.")
-        return self.apply_transforms(self.X[index]), self.y[index]
+        return self.apply_transforms(self.x[index]), self.y[index]
 
     def __len__(self) -> int:
         return len(self.y)

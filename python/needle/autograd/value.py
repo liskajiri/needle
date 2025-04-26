@@ -30,7 +30,7 @@ class Value(ABC):
     def _init(
         self,
         op: Op | None = None,
-        inputs: Iterable[Self] = [],
+        inputs: Iterable[Self] = (),
         cached_data: NDArray | None = None,
         num_outputs: int = 1,
         requires_grad: bool | None = None,
@@ -80,7 +80,7 @@ class Value(ABC):
         if not LAZY_MODE:
             if not value.requires_grad:
                 return value.detach()
-            value.realize_cached_data()
+            _ = value.realize_cached_data()
         return value
 
     @abstractmethod

@@ -4,18 +4,17 @@ from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from typing import Any
-
     from needle.backend_selection import NDArray
-    from needle.typing import DType, IndexType, Scalar, Shape
+    from needle.typing.types import DType, IndexType, Scalar, Shape
 
 
+# TODO: protocol instead?
 class AbstractBackend(ABC):
     """
     A backend device, wraps the implementation module.
     """
 
-    def __init__(self, name: str, module: Any = None) -> None:
+    def __init__(self, name: str, module: object = None) -> None:
         self.name = name
         # A module that implements the backend.
         self.module = module
@@ -28,7 +27,7 @@ class AbstractBackend(ABC):
     def __repr__(self) -> str:
         return self.name + "()"
 
-    def __getattr__(self, name: str) -> Any:
+    def __getattr__(self, name: str) -> object:
         return getattr(self.module, name)
 
     def enabled(self) -> bool:

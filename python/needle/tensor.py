@@ -146,7 +146,8 @@ class Tensor(Value):
     def matmul(self, other: Tensor) -> Tensor:
         return ndl.ops.matmul(self, other)
 
-    def sum(self, axes=None, keepdims=False) -> Tensor:
+    # TODO: Unify what is the null value for a Shape - () or None?
+    def sum(self, axes: Shape | None = None, keepdims: bool = False) -> Tensor:
         return ndl.ops.summation(self, axes, keepdims)
 
     def broadcast_to(self, shape: Shape) -> Tensor:
@@ -176,12 +177,10 @@ class Tensor(Value):
     __rmul__ = __mul__
 
 
-# TODO: this class may be redundant
 class TensorTuple(Value):
     """
-    Represent a tuple of tensors.
-
-    To keep things simple, do not support nested tuples.
+    A wrapper around Python tuples for handling multiple tensors in the autograd system.
+    Primarily used for gradient computation and operations that return multiple tensors.
     """
 
     def __len__(self) -> int:
@@ -191,11 +190,11 @@ class TensorTuple(Value):
     def __getitem__(self, index: int) -> Tensor:
         return ndl.ops.tuple_get_item(self, index)
 
-    def __iter__(self) -> Generator[Tensor, None, None]:
+    def __iter__(self) -> Generator[Tensor]:
         for i in range(len(self)):
             yield self[i]
 
-    def tuple(self) -> tuple[Value, ...] | tuple[Tensor, ...]:
+    def tuple(self) -> tuple[Tensor, ...]:
         return tuple(self)
 
     def __repr__(self) -> str:
@@ -211,7 +210,7 @@ class TensorTuple(Value):
             isinstance(self[i], Tensor) and isinstance(other[i], Tensor)
             for i in range(len(self))
         )
-        return ndl.ops.make_tuple(*[self[i] + other[i] for i in range(len(self))])  # type: ignore
+        return ndl.ops.make_tuple(*[self[i] + other[i] for i in range(len(self))])
 
     def detach(self) -> TensorTuple:
         """Create a new tensor that shares the data but detaches from the graph."""

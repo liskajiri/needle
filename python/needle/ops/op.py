@@ -6,21 +6,20 @@ from typing import TYPE_CHECKING
 from needle.tensor import Tensor, TensorTuple
 
 if TYPE_CHECKING:
-    from typing import Any
-
-    from needle.autograd.value import Value
     from needle.backend_selection import NDArray
 
 
 class Op(ABC):
     """Operator definition."""
 
+    # TODO: proper Typing of args
+
     @abstractmethod
-    def __call__(self, *args) -> Any:
+    def __call__(self, *args: NDArray) -> object:
         raise NotImplementedError
 
     @abstractmethod
-    def compute(self, *arr: tuple[NDArray, ...]) -> NDArray:
+    def compute(self, *arr: NDArray) -> NDArray:
         """Calculate forward pass of operator.
 
         Parameters
@@ -37,31 +36,29 @@ class Op(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def gradient(self, out_grad: Value, _node: Value) -> Value | tuple[Value]:
+    def gradient(self, out_grad: Tensor, _node: Tensor) -> Tensor | tuple[Tensor, ...]:
         """Compute partial adjoint for each input value for a given output adjoint.
 
         Parameters
         ----------
-        out_grad: Value
+        out_grad: Tensor
             The adjoint wrt to the output value.
 
-        node: Value
+        _node: Tensor
             The value node of forward evaluation.
 
         Returns
         -------
-        input_grads: Value or Tuple[Value]
+        input_grads: Tensor or Tuple[Tensor]
             A list containing partial gradient adjoints to be propagated to
             each of the input node.
         """
         raise NotImplementedError
 
-    def gradient_as_tuple(self, out_grad: Value, node: Value) -> tuple[Value]:
+    def gradient_as_tuple(self, out_grad: Tensor, node: Tensor) -> tuple[Tensor, ...]:
         """Convenience method to always return a tuple from gradient call."""
         output = self.gradient(out_grad, node)
-        if isinstance(output, tuple):
-            return output
-        if isinstance(output, list):
+        if isinstance(output, (tuple | list)):
             return tuple(output)
         return (output,)
 
