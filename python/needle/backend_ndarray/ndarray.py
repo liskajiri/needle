@@ -492,6 +492,7 @@ class NDArray:  # noqa: PLR0904 = too many public methods
     # TODO: proper __array__ interface
     def __array__(
         self,
+        copy: bool = False,
     ):
         return self.numpy()
 
@@ -598,7 +599,7 @@ class NDArray:  # noqa: PLR0904 = too many public methods
         """
         if dtype != "float32":
             logger.warning("Only support float32 for now", extra={"dtype": dtype})
-            a = np.array(self, dtype="float32")
+            a = self.numpy().astype("float32")
             dtype = a.dtype
             logger.warning(
                 "Converting to numpy array with dtype",
