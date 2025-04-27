@@ -1,20 +1,15 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, TypedDict
+from typing import TYPE_CHECKING
 
 from needle import init
 from needle.backend_selection import default_device
 from needle.nn.core import Module, Parameter
+from needle.typing.types import TensorKwargs
 
 if TYPE_CHECKING:
     from needle.tensor import Tensor
     from needle.typing import AbstractBackend, DType
-
-
-class Config(TypedDict):
-    device: AbstractBackend
-    dtype: DType
-    requires_grad: bool
 
 
 class Linear(Module):
@@ -30,7 +25,7 @@ class Linear(Module):
         self.in_features = in_features
         self.out_features = out_features
 
-        config = Config(device=device, dtype=dtype, requires_grad=True)
+        config = TensorKwargs(device=device, dtype=dtype, requires_grad=True)
 
         self.weight = Parameter(
             init.kaiming_uniform(

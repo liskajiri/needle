@@ -219,13 +219,36 @@ def make(
     offset: int = 0,
 ) -> NDArray:
     """
-    Create a new NDArray with the given properties
-    This will allocate the memory if handle=None,
-    otherwise it will use the handle of an existing array.
+    Create a new NDArray with the given properties.
+    Allocates a new array if handle is not provided.
+
+    Args:
+        shape: Tuple specifying dimensions of the array
+        strides: Optional tuple specifying stride for each dimension
+        device: Device backend for the array (defaults to CPU)
+        handle: Existing handle to use for memory (allocates new if None)
+        offset: Memory offset for the array (default: 0)
+
+    Returns:
+        NDArray: New array with requested properties
+
+    Raises:
+        ValueError: If shape contains invalid dimensions
+
+    Examples:
+        >>> make((2, 3)).shape
+        (2, 3)
+        >>> make((2, 3), strides=(1, 2)).strides
+        (1, 2)
+        >>> make((2, 3), strides=(1, 2))._offset
+        0
+        >>> make((2, 3), strides=(1, 2), offset=5)._offset
+        5
+        >>> make((2, 3), strides=(1, 2), device=cpu()).device
+        cpu()
     """
 
-    def prod(shape: tuple[int, ...]) -> int:
-        # TODO: flatten?
+    def prod(shape: Shape) -> int:
         """Calculate product of shape tuple, handling nested tuples."""
         result = 1
         for dim in shape:
@@ -251,7 +274,8 @@ def make(
 
 
 def broadcast_shapes(*shapes: Shape) -> Shape:
-    """Return broadcasted shape for multiple input shapes.
+    """
+    Return broadcasted shape for multiple input shapes.
 
     Broadcasting rules (numpy-style):
         1. Start with the trailing (rightmost) dimensions and continue left.
@@ -261,8 +285,10 @@ def broadcast_shapes(*shapes: Shape) -> Shape:
 
     Args:
         *shapes: one or more shapes as tuples
+
     Returns:
         tuple: broadcast-compatible shape
+
     Raises:
         ValueError: If shapes cannot be broadcast together
 
@@ -301,11 +327,33 @@ def broadcast_shapes(*shapes: Shape) -> Shape:
     return tuple(result)
 
 
-class NDArray:
-    """A generic ND array class that may contain multiple different backends
+class NDArray:  # noqa: PLR0904 = too many public methods
+    """
+    A generic ND array class that may contain multiple different backends
     i.e., a Numpy backend, a native CPU backend, or a GPU backend.
-    For now, for simplicity the class only supports float32 types, though
-    this can be extended if desired.
+
+    For now, for simplicity the class only supports float32 types.
+
+    Examples:
+        >>> # Create from Python list
+        >>> arr = NDArray([[1, 2], [3, 4]])
+        >>> arr.shape
+        (2, 2)
+        >>> arr.ndim
+        2
+        >>> arr.size
+        4
+
+        >>> # Create from numpy array
+        >>> import numpy as np
+        >>> arr = NDArray(np.zeros((3, 2)))
+        >>> arr.shape
+        (3, 2)
+
+        >>> # Create copy on specific device
+        >>> cpu_arr = NDArray([1, 2, 3], device=cpu())
+        >>> cpu_arr.device
+        cpu()
     """
 
     def __init__(
@@ -314,17 +362,25 @@ class NDArray:
         device: AbstractBackend = default_device,
         dtype: DType = "float32",
     ) -> None:
-        # TODO: allow creating by itself and from list[]
-        """Create by copying another NDArray, or from numpy."""
+        """Initialize an NDArray by copying from another array-like object.
+
+        Args:
+            other: Source array-like object to copy from. Can be:
+                - Another NDArray (creates a copy)
+                - A numpy ndarray
+                - A Python list/tuple that can be converted to ndarray
+            device: The backend device to create the array on. Defaults to CPU.
+            dtype: Data type for the array. Currently only float32 is supported.
+        """
         if isinstance(other, NDArray):
-            # create a copy of existing NDArray
+            # Create a copy of existing NDArray
             if device != other.device:
                 logger.error(
                     f"Creating NDArray with different device {device} != {other.device}"
                 )
-            self._init(other.to(device) + 0.0)  # this creates a copy
+            self._init(other.to(device) + 0.0)  # This creates a copy
         elif isinstance(other, np.ndarray):
-            # create copy from numpy array
+            # Create copy from numpy array
             array = make(other.shape, device=device)
             array.device.from_numpy(np.ascontiguousarray(other), array._handle)
             self._init(array)
@@ -341,17 +397,7 @@ class NDArray:
         self._device = other._device
         self._handle = other._handle
 
-    @staticmethod
-    def compact_strides(shape: Shape) -> Strides:
-        """Utility function to compute compact strides."""
-        stride = 1
-        res = []
-        for i in range(1, len(shape) + 1):
-            res.append(stride)
-            stride *= shape[-i]
-        return tuple(res[::-1])
-
-        # Properties and string representations
+    # ==================== Properties and string representations
 
     @property
     def shape(self) -> Shape:
@@ -372,7 +418,7 @@ class NDArray:
 
     @property
     def ndim(self) -> int:
-        """Return number of dimensions."""
+        """Number of dimensions."""
         return len(self._shape)
 
     @cached_property
@@ -381,10 +427,8 @@ class NDArray:
 
     def __repr__(self) -> str:
         return self.__str__()
-        return f"NDArray( shape: {self.shape} | device={self.device}"
 
     def __str__(self) -> str:
-        # return f"NDArray( shape: {self.shape} | device={self.device}"
         return self.numpy().__str__()
 
     def __len__(self) -> int:
@@ -397,19 +441,33 @@ class NDArray:
             return 1
         return self.shape[0]
 
-    # Basic array manipulation
+    # ==================== Basic array manipulation
+
     def fill(self, value: Scalar) -> None:
         """Fill (in place) with a constant value."""
         self._device.fill(self._handle, value)
 
     def to(self, device: AbstractBackend) -> NDArray:
-        """Convert between devices, using to/from numpy calls as the unifying bridge."""
+        """
+        Convert between devices, using to/from numpy calls as the unifying bridge.
+
+        Args:
+            device (AbstractBackend): The target backend device to convert to.
+
+        Returns:
+            NDArray: A new NDArray instance on the target device.
+        """
         if device == self.device:
             return self
         return NDArray(self.numpy(), device=device)
 
+    # ==================== Numpy/Array/DLPack Interop
     def numpy(self) -> np_ndarray:
-        """Convert to a numpy array."""
+        """Convert to a numpy array.
+
+        Returns:
+            np.ndarray: A numpy array with the same shape and data as the NDArray.
+        """
         return self.device.to_numpy(
             self._handle, self.shape, self.strides, self._offset
         )
@@ -418,7 +476,15 @@ class NDArray:
     def from_numpy(
         a: np_ndarray,
     ) -> NDArray:
-        """Copy from a numpy array."""
+        """
+        Copy from a numpy array.
+
+        Args:
+            a (np.ndarray): The numpy array to copy from.
+
+        Returns:
+            NDArray: A NDArray with the same shape and data as the numpy array.
+        """
         array = make(a.shape)
         array.device.from_numpy(np.ascontiguousarray(a), array._handle)
         return array
@@ -426,18 +492,50 @@ class NDArray:
     # TODO: proper __array__ interface
     def __array__(
         self,
-        dtype: DType | None = None,
         copy: bool = False,
     ):
-        """Allow implicit conversion to numpy array"""
         return self.numpy()
 
-    # Shapes and strides
+    # ==================== Shapes and strides
+
+    @staticmethod
+    def compact_strides(shape: Shape) -> Strides:
+        """
+        For a contiguous array, this calculates how many elements to skip to move
+        one step along each dimension.
+        Computation starts with the (rightmost) dimension and works outward.
+
+        Args:
+            shape: The shape of the array as a tuple of dimensions
+
+        Returns:
+            A tuple of strides, one for each dimension in the shape
+
+        Examples:
+            >>> NDArray.compact_strides((2, 3, 4))
+            (12, 4, 1)
+            >>> NDArray.compact_strides((5,))
+            (1,)
+            >>> NDArray.compact_strides(())
+            ()
+        """
+        stride = 1
+        strides = []
+        for dim in reversed(shape):
+            strides.append(stride)
+            stride *= dim
+
+        return tuple(reversed(strides))
 
     def is_compact(self) -> bool:
         """
-        Return true if array is compact in memory and
-        internal size equals math.product of the shape dimensions.
+        Check if the array is compact in memory.
+
+        A compact array has contiguous memory layout and the internal size matches
+        the product of its shape dimensions.
+
+        Returns:
+            bool: True if the array is compact, False otherwise.
         """
         return (
             self._strides == self.compact_strides(self._shape)
@@ -445,18 +543,42 @@ class NDArray:
         )
 
     def compact(self) -> NDArray:
-        """Convert a matrix to be compact."""
+        """
+        Convert a matrix to be compact.
+
+        Returns:
+            NDArray: A new NDArray that is compact in memory.
+        """
         if self.is_compact():
             return self
         out = make(self.shape, device=self.device)
         self.device.compact(
-            self._handle, out._handle, self.shape, self.strides, self._offset
+            self._handle,
+            out._handle,
+            self.shape,
+            self.strides,
+            self._offset,
         )
         return out
 
     def as_strided(self, shape: Shape, strides: Strides) -> NDArray:
-        """Re-stride the matrix without copying memory."""
-        assert len(shape) == len(strides)
+        """
+        Re-stride the matrix without copying memory.
+
+        Args:
+            shape (Shape): Target shape for the array
+            strides (Strides): Strides for each dimension
+
+        Returns:
+            NDArray: NDArray that is a view of the original with new shape and strides.
+
+        Raises:
+            ValueError: If the length of shape and strides do not match.
+        """
+        if len(shape) != len(strides):
+            raise ValueError(
+                f"Shape {shape} and strides {strides} must have the same length"
+            )
         return make(
             shape,
             strides=strides,
@@ -466,21 +588,43 @@ class NDArray:
         )
 
     def astype(self, dtype: DType = "float32") -> NDArray:
-        """Return a copy of the array with a different type."""
+        """
+        Return a copy of the array with a different type.
+
+        Args:
+            dtype (DType): The desired data type for the array. Defaults to float32.
+
+        Returns:
+            NDArray: A new NDArray with the specified data type.
+        """
         if dtype != "float32":
-            logger.warning(f"Only support float32 for now, got {dtype}")
-            a = np.array(self, dtype="float32")
+            logger.warning("Only support float32 for now", extra={"dtype": dtype})
+            a = self.numpy().astype("float32")
             dtype = a.dtype
-            logger.warning(f"Converting to numpy array with dtype {dtype}")
+            logger.warning(
+                "Converting to numpy array with dtype",
+                extra={"dtype": dtype},
+            )
         assert dtype == "float32", f"Only support float32 for now, got {dtype}"
         return self + 0.0
 
     def flatten(self) -> NDArray:
-        """Return a 1D view of the array."""
+        """
+        Return a 1D view of the array.
+
+        Returns:
+            NDArray: A new NDArray that is a flattened view of the original.
+
+        Example:
+            >>> x = NDArray([[1, 2], [3, 4]])
+            >>> x.flatten().shape
+            (4,)
+        """
         return self.reshape((self.size,))
 
     def reshape(self, new_shape: Shape) -> NDArray:
-        """Reshape the matrix without copying memory.
+        """
+        Reshape the matrix without copying memory.
 
         Returns a new array that points to the same memory but with a different shape.
         The total number of elements must remain the same and the array must be compact.
@@ -497,6 +641,15 @@ class NDArray:
                 - Array is not compact
                 - Multiple -1 dimensions specified
                 - Size is not divisible when using -1 dimension
+
+        Examples:
+            >>> x = NDArray(np.array([1, 2, 3, 4, 5, 6]))
+            >>> x.reshape((2, 3)).shape
+            (2, 3)
+            >>> x.reshape((3, 2)).shape
+            (3, 2)
+            >>> x.reshape((2, -1)).shape  # Automatic dimension calculation
+            (2, 3)
         """
         if self.shape == new_shape:
             return self
@@ -524,7 +677,13 @@ class NDArray:
         return self.as_strided(new_shape, self.compact_strides(new_shape))
 
     def _is_1d_to_column_vector(self, new_shape: Shape) -> bool:
-        """Check if reshaping from 1D array to column vector."""
+        """Check if reshaping from 1D array to column vector.
+
+        Args:
+            new_shape (Shape): New shape for the NDArray
+
+        Returns:
+        """
         return (
             len(self.shape) == 1
             and len(new_shape) == 2
@@ -533,7 +692,11 @@ class NDArray:
         )
 
     def _make_column_vector(self, new_shape: Shape) -> NDArray:
-        """Convert 1D array to column vector with optimized strides."""
+        """Convert 1D array to column vector with optimized strides.
+
+        Returns:
+            NDArray: New NDArray with a 1d shape.
+        """
         return make(
             new_shape,
             device=self.device,
@@ -542,7 +705,8 @@ class NDArray:
         )
 
     def _resolve_negative_dimensions(self, new_shape: Shape) -> Shape:
-        """Calculate actual shape when -1 dimension is used.
+        """
+        Calculate actual shape when -1 dimension is used.
 
         Args:
             new_shape: Proposed shape with possible -1 dimension
@@ -569,30 +733,46 @@ class NDArray:
         if self.size % other_dims_product != 0:
             raise ValueError(
                 f"Cannot reshape array of size {self.size} into shape {new_shape}. "
-                + f"Size must be divisible by {other_dims_product}."
+                f"Size must be divisible by {other_dims_product}."
             )
 
         missing_dim = self.size // other_dims_product
         return new_shape[:neg_idx] + (missing_dim,) + new_shape[neg_idx + 1 :]
 
     def permute(self, new_axes: Shape) -> NDArray:
-        """Permute order of the dimensions.  new_axes describes a permutation of the
-        existing axes, so e.g.:
-          - If we have an array with dimension "BHWC" then .permute((0,3,1,2))
-            would convert this to "BCHW" order.
-          - For a 2D array, .permute((1,0)) would transpose the array.
-        Like reshape, this operation should not copy memory, but achieves the
-        permuting by just adjusting the shape/strides of the array.  That is,
-        it returns a new array that has the dimensions permuted as desired, but
-        which points to the same memory as the original array.
+        """
+        Permute the order of array dimensions without copying memory.
+
+        Reorders dimensions by adjusting the shape and strides
+        of the array, returning a view that points to the same memory.
 
         Args:
-            new_axes (tuple): permutation order of the dimensions
-        Returns:
-            NDarray : new NDArray object with permuted dimensions, pointing
-            to the same memory as the original NDArray (i.e., just shape and
-            strides changed).
+            new_axes (Shape): permutation order of the dimensions
 
+        Returns:
+            NDArray: A view of the array with permuted dimensions.
+
+        Raises:
+            ValueError: If the length of new_axes doesn't match ndim or
+                    if new_axes isn't a valid permutation.
+
+        Examples:
+            >>> x = NDArray(np.arange(24).reshape(2, 3, 4))
+            >>> x.shape
+            (2, 3, 4)
+            >>> # Transpose last two dimensions
+            >>> y = x.permute((0, 2, 1))
+            >>> y.shape
+            (2, 4, 3)
+
+            >>> # Simple matrix transpose
+            >>> z = NDArray([[1, 2, 3], [4, 5, 6]])
+            >>> z.permute((1, 0)).shape
+            (3, 2)
+            >>> # Permute 4D tensor from BHWC to BCHW format
+            >>> t = NDArray(np.ones((8, 16, 16, 3)))  # BHWC format
+            >>> t.permute((0, 3, 1, 2)).shape  # BCHW format
+            (8, 3, 16, 16)
         """
         if len(new_axes) != self.ndim:
             raise ValueError(
@@ -606,22 +786,41 @@ class NDArray:
         return self.as_strided(new_shape, new_strides)
 
     def broadcast_to(self, new_shape: Shape) -> NDArray:
-        """Broadcast an array to a new shape.
-        New_shape's elements must be the same as the original shape,
-        except for dimensions in the self where the size = 1
-        (which can then be broadcast to any size). As with the
-        previous calls, this will not copy memory, and just achieves
-        broadcasting by manipulating the strides.
+        """
+        Broadcast an array to a new shape without copying memory.
+
+        Broadcasting follows NumPy's rules:
+        1. Dimensions are aligned from right to left
+        2. Size-1 dimensions can be stretched to any size
+        3. Missing dimensions are treated as size 1
+
+        This operation changes the view (strides) of the array without copying data.
 
         Args:
-            new_shape (tuple): shape to broadcast to
+            new_shape (Shape): Target shape to broadcast to
+
         Returns:
-            NDArray: the new NDArray object with the new broadcast shape; should
-            point to the same memory as the original array.
+            NDArray: A view with the new broadcast shape pointing to the same memory
+
         Raises:
             ValueError: If shapes are incompatible for broadcasting
-            AssertionError if new_shape[i] != shape[i] for all i where
-            shape[i] != 1
+
+        Examples:
+            >>> x = NDArray(np.array([[1], [2]]))  # Shape (2, 1)
+            >>> x.broadcast_to((2, 3)).shape
+            (2, 3)
+
+            >>> # Add leading dimensions
+            >>> y = NDArray(np.array([5]))  # Shape (1,)
+            >>> y.broadcast_to((3, 2, 1)).shape
+            (3, 2, 1)
+
+            >>> # Error: can't broadcast dimension with size != 1
+            >>> z = NDArray(np.array([[1, 2], [3, 4]]))  # Shape (2, 2)
+            >>> z.broadcast_to((2, 3))
+            Traceback (most recent call last):
+            ...
+            ValueError: Cannot broadcast shape (2, 2) to (2, 3)
         """
         if self.shape == new_shape:
             return self
@@ -644,7 +843,7 @@ class NDArray:
     # === Get and set elements
 
     def process_slice(self, sl: slice, dim: int) -> slice:
-        """Convert a slice to an explicit start/stop/step."""
+        """Convert a slice to an explicit start/stop/step"""  # noqa: DOC201
         start, stop, step = sl.start, sl.stop, sl.step
         if start is None:
             start = 0
@@ -667,30 +866,49 @@ class NDArray:
     # TODO: standardize idxs type: int | iterable[int] | slice
     # TODO: single function for dealing with index_type
     # TODO: getitem is not really working like numpy's
-    def __getitem__(self, idxs: IndexType) -> NDArray:  # noqa: C901
+    def __getitem__(self, idxs: IndexType) -> NDArray:
         """
-        The __getitem__ operator in Python allows access to elements of the
-        array.
-        When passed notation such as a[1:5,:-1:2,4,:] etc, Python will
-        convert this to a tuple of slices and integers (for singletons like the
-        '4' in this example).
-        Slices have three elements: (.start .stop .step), which can be None
-        or have negative entries.
-        For this tuple of slices, return an array that subsets the desired
-        elements.
-        Raises:
-            AssertionError if a slice has negative size or step, or if number
-            of slices is not equal to the number of dimension (the stub code
-            already raises all these errors.
+        Get a view into the array based on the given indices.
+
+        Implements Python's indexing protocol for array access. The method supports:
+        - Integer indexing (single value)
+        - Slice indexing (ranges of values)
+        - Multiple dimension indexing (tuples of indices/slices)
+        - Boolean/integer array indexing
+
+        The resulting array shares memory with the original when possible (slicing),
+        and creates a new array when necessary (advanced indexing).
 
         Args:
-            idxs tuple[slice], a tuple of slice elements
-            corresponding to the subset of the matrix to get
+            idxs: Index specification, which can be:
+                - An integer (single element)
+                - A slice (range of elements)
+                - A tuple of integers/slices (multi-dimensional indexing)
+                - An array of integers/booleans (advanced indexing)
+                - List of integers (advanced indexing)
+
         Returns:
-            NDArray: a new NDArray object corresponding to the selected
-            subset of elements.  As before, this should not copy memory but just
-            manipulate the shape/strides/offset of the new array, referencing
-            the same array as the original one.
+            NDArray: A view of the selected elements
+
+        Note:
+            - Negative indices are supported and wrap around
+            - Step values in slices must be positive
+            - The number of indices must match the number of dimensions
+
+        Raises:
+            AssertionError: If the number of idxs does not match number of dimensions.
+
+        Examples:
+            >>> x = NDArray([[1, 2, 3], [4, 5, 6]])
+            >>> x[0, 1]  # Integer indexing
+            2.0
+            >>> x[0:2, 1:]  # Slice indexing
+            [[2. 3.]
+             [5. 6.]]
+
+            # TODO: Advanced indexing
+            # >>> x[[0, 1], [1, 2]]  # Advanced indexing
+            # [2. 6.]
         """
 
         def _prepare_indices(
@@ -780,7 +998,7 @@ class NDArray:
         if len(slices) != self.ndim:
             raise AssertionError(
                 f"""Need indexes equal to number of dimensions,
-                trying to select {idxs} from {self.ndim} dimensions"""
+                trying to select {idxs} from {self.ndim} dimensions"""  # noqa: S608
             )
 
         new_shape, new_strides, new_offset = _compute_view_shape(slices, squeeze_dims)
@@ -804,8 +1022,28 @@ class NDArray:
         # other: NDArray | np.ndarray | Scalar,
     ) -> None:
         """
-        Set the values of a view into an array,
-        using the same semantics as __getitem__().
+        Set the value of the array at the specified indices.
+
+        For supported index types, see __getitem__.
+
+        Args:
+            idxs (IndexType): Indices to set the value at.:
+            other (NDArrayLike): Value to set at the specified indices.
+
+        Raises:
+            ValueError: If the size of the view and other do not match.
+
+        Examples:
+            >>> x = NDArray([[1, 2], [3, 4]])
+            >>> x[0, 1] = 5
+            >>> x
+            [[1. 5.]
+             [3. 4.]]
+
+            >>> x[0:2, 1:] = NDArray([[6], [7]])
+            >>> x
+            [[1. 6.]
+             [3. 7.]]
         """
         view = self.__getitem__(idxs)
         if isinstance(other, np.ndarray):
@@ -830,12 +1068,13 @@ class NDArray:
     def item(self) -> Scalar:
         """Convert a size-1 array to a Python scalar.
 
-        Returns:
-            Scalar: The scalar value contained in the array.
+        # Returns:
+            # Scalar: The scalar value contained in the array.
 
         Raises:
             NotImplementedError: Currently not implemented.
         """
+        assert self.size == 1, "item() only works on size-1 arrays"
         raise NotImplementedError("item() not implemented")
 
     def ewise_or_scalar(
@@ -847,6 +1086,19 @@ class NDArray:
         """
         Run either an element-wise or scalar version of a function,
         depending on whether "other" is an NDArray or scalar.
+
+        Args:
+            other (NDArrayLike): The other operand for the operation.
+            ewise_func (Callable[[NDArray, NDArray, NDArray], None]):
+                Element-wise function to apply.
+            scalar_func (Callable[[NDArray, Scalar, NDArray], None]):
+                Scalar function to apply.
+
+        Returns:
+            NDArray: The result of the operation.
+
+        Raises:
+            TypeError: If `other` is not an NDArrayLike object.
         """
         if isinstance(other, NDArray):
             if other.shape != self.shape:
@@ -866,7 +1118,7 @@ class NDArray:
                 NDArray(other, device=self.device), ewise_func, scalar_func
             )
         else:
-            raise ValueError(f"Unsupported type {type(other)}")
+            raise TypeError(f"Unsupported type {type(other)}")
         return out
 
     def __add__(self, other: NDArrayLike) -> NDArray:
@@ -965,21 +1217,41 @@ class NDArray:
         return out
 
     # Matrix multiplication
-    def __matmul__(self, other: NDArray) -> NDArray:  # noqa: C901
+    def __matmul__(self, other: NDArray) -> NDArray:
         """
         Matrix multiplication of two arrays.
-        This requires that both arrays be 2D
-        (i.e., we don't handle batch matrix multiplication),
-        and that the sizes match up properly for matrix multiplication.
-        In the case of the CPU backend, you will implement an efficient "tiled"
-        version of matrix multiplication for the case when all dimensions of
-        the array are divisible by self.device.__tile_size__.
-        In this case, the code below will re-stride and compact the matrix
-        into tiled form, and then pass to the relevant CPU backend.
-        For the CPU version we will just fall back to the naive CPU implementation
-        if the array shape is not a multiple of the tile size.
-        The GPU (and numpy) versions don't have any tiled version (or rather,
-        the GPU version will just work natively by tiling any input size).
+
+        Args:
+            other: The second array to multiply with. Must be 2D or 3D.
+
+        Returns:
+            NDArray: The result of the matrix multiplication.
+
+        Raises:
+            ValueError: If the shapes are not compatible for matrix multiplication.
+            AssertionError: If the batch sizes of the arrays do not match.
+
+        Note:
+            - For N-D arrays, the last two dimensions are treated as matrices.
+            - The batch size is determined by the leading dimensions of the arrays.
+
+        Raises:
+
+        Examples:
+            >>> a = NDArray([[1, 2], [3, 4]])
+            >>> b = NDArray([[5, 6], [7, 8]])
+            >>> c = a @ b
+            >>> c.shape
+            (2, 2)
+            >>> c
+            [[19. 22.]
+             [43. 50.]]
+
+            >>> a = NDArray(np.random.rand(2, 2, 3, 4))
+            >>> b = NDArray(np.random.rand(2, 2, 4, 5))
+            >>> c = a @ b
+            >>> c.shape
+            (2, 2, 3, 5)
         """
 
         def _check_matrix_shapes() -> None:
@@ -1025,6 +1297,7 @@ class NDArray:
             # Restore batch dimensions
             return out.reshape((*batch_shape, m, n))
 
+        #  TODO: move this to the cpu backend
         def _tiled_matmul(self, other: NDArray) -> NDArray:
             def _tile(a: NDArray, tile: int) -> NDArray:
                 """
@@ -1086,9 +1359,20 @@ class NDArray:
             keepdims: If true, reduced axes are kept with size 1
 
         Returns:
-            tuple of (view, out) where:
-            - view is arranged for reduction
-            - out is the output array
+            tuple(NDArray, NDArray): A tuple of two NDArray objects:
+                - The first is a view of the array set up for reduction.
+                - The second is an output array for the result of the reduction.
+
+        Raises:
+            ValueError: If axis is empty or invalid.
+
+        Examples:
+            >>> x = NDArray([[1, 2], [3, 4]])
+            >>> view, out = x.reduce_view_out(axis=0)
+            >>> view.shape
+            (2, 2)
+            >>> out.shape
+            (2,)
         """
         if isinstance(axis, tuple) and not axis:
             raise ValueError("Empty axis in reduce")
@@ -1125,11 +1409,57 @@ class NDArray:
         return view, out
 
     def sum(self, axis: Axis | None = None, keepdims: bool = False) -> NDArray:
+        """
+        Sum the elements of the array along the specified axis.
+
+        Args:
+            axis (Axis or None): Axis or axes to sum over. If None, sum all elements.
+            keepdims (bool): If true, keep reduced dimensions with size 1.
+
+        Returns:
+            NDArray: The sum of the elements along the specified axis.
+
+        Raises:
+            ValueError: If axis is empty or invalid.
+
+        Examples:
+            >>> x = NDArray([[1, 2], [3, 4]])
+            >>> x.sum(axis=0)
+            [4. 6.]
+            >>> x.sum(axis=1)
+            [3. 7.]
+            >>> x.sum()
+            [10.]
+        """  # noqa: DOC502
         view, out = self.reduce_view_out(axis, keepdims=keepdims)
         self.device.reduce_sum(view.compact()._handle, out._handle, view.shape[-1])
         return out
 
     def max(self, axis: Axis | None = None, keepdims: bool = False) -> NDArray:
+        """
+        Find the maximum value in the array along the specified axis.
+
+        Args:
+            axis (Axis or None):
+                Axes to find the maximum over.
+                If None, find the maximum of all elements.
+            keepdims (bool): If true, keep reduced dimensions with size 1.
+
+        Returns:
+            NDArray: The maximum value along the specified axis.
+
+        Raises:
+            ValueError: If axis is empty or invalid.
+
+        Examples:
+            >>> x = NDArray([[1, 2], [3, 4]])
+            >>> x.max(axis=0)
+            [3. 4.]
+            >>> x.max(axis=1)
+            [2. 4.]
+            >>> x.max()
+            [4.]
+        """  # noqa: DOC502
         view, out = self.reduce_view_out(axis, keepdims=keepdims)
         self.device.reduce_max(view.compact()._handle, out._handle, view.shape[-1])
         return out
