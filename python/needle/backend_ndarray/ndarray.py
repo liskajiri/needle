@@ -492,19 +492,8 @@ class NDArray:  # noqa: PLR0904 = too many public methods
     # TODO: proper __array__ interface
     def __array__(
         self,
-        dtype: DType | None = None,
-        copy: bool = False,
     ):
-        """Export array as a DLPack capsule.
-
-        Args:
-            stream: Optional CUDA stream (unused for CPU arrays)
-
-        Returns:
-            A DLPack capsule that can be consumed by other frameworks.
-            The capsule owns a copy of the array data to ensure safety.
-        """
-        return self._handle.__dlpack__(self._shape, self._strides, self._offset)
+        return self.numpy()
 
     # ==================== Shapes and strides
 
