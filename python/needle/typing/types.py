@@ -1,6 +1,8 @@
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, TypedDict
 
 from numpy.typing import ArrayLike
+
+from needle.typing.device import AbstractBackend
 
 if TYPE_CHECKING:
     from needle.backend_selection import NDArray
@@ -27,3 +29,11 @@ type IndexType = (
     int | slice | tuple[int | slice, ...] | list[int] | NDArray | np_ndarray
 )
 # TODO: Type for axes
+
+
+class TensorKwargs(TypedDict, total=False):
+    """Type for Tensor keyword arguments."""
+
+    device: AbstractBackend
+    dtype: DType
+    requires_grad: bool

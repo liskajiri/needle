@@ -72,8 +72,6 @@ def kaiming_uniform(
     gain: float = math.sqrt(2.0),
     nonlinearity: ReLU | None = None,
     mode: Literal["fan_in", "fan_out"] = "fan_in",
-    # TODO: type generic kwargs - has requires grad, device, dtype,
-    # TODO: probably present in nn.Linear
     **kwargs,
 ) -> Tensor:
     """Initialize weights using He/Kaiming uniform initialization.

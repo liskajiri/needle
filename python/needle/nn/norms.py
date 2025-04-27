@@ -2,21 +2,16 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, TypedDict
+from typing import TYPE_CHECKING
 
 from needle import init, ops
 from needle.backend_selection import default_device
 from needle.nn.core import Module, Parameter
+from needle.typing.types import TensorKwargs
 
 if TYPE_CHECKING:
     from needle.tensor import Tensor
     from needle.typing import AbstractBackend, DType
-
-
-class Config(TypedDict):
-    device: AbstractBackend
-    dtype: DType
-    requires_grad: bool
 
 
 class BatchNorm1d(Module):
@@ -43,12 +38,14 @@ class BatchNorm1d(Module):
         self.eps = eps
         self.momentum = momentum
 
-        trainable_config = Config(device=device, dtype=dtype, requires_grad=True)
+        trainable_config = TensorKwargs(device=device, dtype=dtype, requires_grad=True)
         shape = (self.dim,)
         self.weight = Parameter(init.ones(shape, **trainable_config))
         self.bias = Parameter(init.zeros(shape, **trainable_config))
 
-        non_trainable_config = Config(device=device, dtype=dtype, requires_grad=False)
+        non_trainable_config = TensorKwargs(
+            device=device, dtype=dtype, requires_grad=False
+        )
         self.running_mean = init.zeros(shape, **non_trainable_config)
         self.running_var = init.ones(shape, **non_trainable_config)
 
@@ -106,7 +103,7 @@ class LayerNorm1d(Module):
         self.dim = dim
         self.eps = eps
 
-        config = Config(device=device, dtype=dtype, requires_grad=True)
+        config = TensorKwargs(device=device, dtype=dtype, requires_grad=True)
 
         self.weight = Parameter(init.ones((self.dim,), **config))
         self.bias = Parameter(init.zeros((self.dim,), **config))
