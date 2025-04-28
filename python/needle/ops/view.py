@@ -10,7 +10,7 @@ from needle.ops.ops_tuple import make_tuple
 if TYPE_CHECKING:
     from needle.backend_selection import NDArray
     from needle.tensor import Tensor, TensorTuple
-    from needle.typing import IndexType, np_ndarray
+    from needle.typing import IndexType
 
 
 class Stack(TensorOp):
@@ -194,7 +194,7 @@ class GetItem(TensorOp):
     def __init__(self, index: IndexType) -> None:
         self.index = index
 
-    def _convert_to_numpy(self, index: IndexType) -> np_ndarray:
+    def _convert_to_numpy(self, index: IndexType) -> IndexType | tuple:
         """Convert tensor indices to numpy arrays for indexing"""
         if isinstance(index, (Tensor | NDArray)):
             return index.numpy()

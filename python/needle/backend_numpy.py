@@ -12,15 +12,16 @@ import numpy as np
 
 from needle.typing.device import AbstractBackend
 
-if TYPE_CHECKING:
-    from numpy.typing import ArrayLike as NDArray
+type NDArray = np.ndarray
 
+if TYPE_CHECKING:
     from needle.typing import (
         DType,
         IndexType,
         Scalar,
         Shape,
     )
+
 
 __device_name__ = "numpy"
 _datatype = np.float32
@@ -43,8 +44,6 @@ def to_numpy(a, shape, strides, offset) -> NDArray:
 
 
 class NumpyBackend(AbstractBackend):
-    # note: numpy doesn't support types within standard random routines, and
-    # .astype("float32") does work if we're generating a singleton
     def randn(self, shape: Shape, dtype: DType = "float32") -> NDArray:
         return np.random.randn(*shape)
 
@@ -52,19 +51,6 @@ class NumpyBackend(AbstractBackend):
         return np.random.rand(*shape)
 
     def one_hot(self, n: int, i: IndexType, dtype: DType) -> NDArray:
-        """Create a one-hot vector.
-
-        Args:
-            n (int): Length of the vector.
-            i (int): Index of the one-hot element.
-            dtype (_type_, optional):
-
-        Raises:
-            NotImplementedError: If the method is not implemented.
-
-        Returns:
-            NDArray: A one-hot vector.
-        """
         return np.eye(n, dtype=dtype)[i]
 
     def zeros(self, shape: Shape, dtype: DType) -> NDArray:
@@ -85,7 +71,7 @@ class NumpyBackend(AbstractBackend):
 
 def cpu() -> AbstractBackend:
     """Return cpu device."""
-    return NumpyBackend("numpy", sys.modules[__name__])
+    return NumpyBackend("numpy", sys.modules[__name__])  # type: ignore
 
 
 def all_devices() -> list[AbstractBackend]:

@@ -1,14 +1,16 @@
-from typing import TYPE_CHECKING, TypedDict
-
-from numpy.typing import ArrayLike
-
-from needle.typing.device import AbstractBackend
+from collections.abc import Iterable
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from needle.backend_selection import NDArray
+    from array import array as std_array
+
+    # from needle.backend_selection import NDArray
+    from needle.backend_ndarray.ndarray import NDArray
     from needle.tensor import Tensor
 
-type np_ndarray = ArrayLike
+from numpy.typing import NDArray as NP_NDArray
+
+np_ndarray = NP_NDArray
 
 
 type DType = str
@@ -18,22 +20,16 @@ type Shape = tuple[int, ...]
 type Axis = int | tuple[int, ...]
 # TODO: Axes vs axis
 type Strides = Shape
-type NDArrayLike = NDArray | np_ndarray | list[Scalar] | tuple[Scalar, ...] | Scalar
+type NDArrayLike = (
+    NDArray | np_ndarray | list[Scalar] | tuple[Scalar, ...] | Scalar | std_array
+)
 
 # TODO: proper type, this clashes with certain things, get something like nd.float32
 float32: DType = "float32"
 
 type BatchType = tuple[Tensor, ...]
-# TODO: better definition of index type
-type IndexType = (
-    int | slice | tuple[int | slice, ...] | list[int] | NDArray | np_ndarray
-)
-# TODO: Type for axes
 
-
-class TensorKwargs(TypedDict, total=False):
-    """Type for Tensor keyword arguments."""
-
-    device: AbstractBackend
-    dtype: DType
-    requires_grad: bool
+type SingleIndex = int | slice  # TODO: add Ellipsis
+type ListTupleIndex = list[int] | tuple[int, ...]
+type ArrayIndex = Iterable[int | bool] | NDArray | np_ndarray
+type IndexType = SingleIndex | ArrayIndex
