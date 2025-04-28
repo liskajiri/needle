@@ -10,7 +10,7 @@ if TYPE_CHECKING:
 
 from numpy.typing import NDArray as NP_NDArray
 
-np_ndarray = NP_NDArray
+type np_ndarray = NP_NDArray
 
 
 type DType = str
