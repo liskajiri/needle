@@ -17,22 +17,40 @@ if TYPE_CHECKING:
         Strides,
         np_ndarray,
     )
+    from needle.typing.dlpack import DLPackDeviceType, SupportsDLPack
 
 
 def from_numpy(a: np_ndarray) -> NDArray:
     return NDArray(a)
 
 
+def from_dlpack(
+    a: SupportsDLPack, device: DLPackDeviceType | None = None, copy: bool = False
+) -> NDArray:
+    """Convert a DLPack capsule to an NDArray.
+
+    Args:
+        a: DLPack capsule
+
+    Returns:
+        NDArray: Converted NDArray
+    """
+    return NDArray(a)
+
+
 def array(
-    a: np_ndarray | NDArray | list,
-    dtype="float32",
+    a: NDArrayLike,
+    dtype: DType = "float32",
     device: AbstractBackend = default_device,
 ) -> NDArray:
     """Convenience methods to match numpy a bit more closely."""
     if dtype != "float32":
-        logging.warning(f"Only support float32 for now, got {dtype}")
-        logging.warning(f"Converting to numpy array with dtype {dtype}")
+        logging.warning("Only support float32 for now", extra={"dtype": dtype})
         dtype = "float32"
+        logging.warning(
+            "Converting to numpy array with dtype",
+            extra={"dtype": dtype},
+        )
     assert dtype == "float32"
     return NDArray(a, dtype=dtype, device=device)
 

@@ -1,4 +1,3 @@
-from collections.abc import Iterable
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -31,5 +30,5 @@ type BatchType = tuple[Tensor, ...]
 
 type SingleIndex = int | slice  # TODO: add Ellipsis
 type ListTupleIndex = list[int] | tuple[int, ...]
-type ArrayIndex = Iterable[int | bool] | NDArray | np_ndarray
+type ArrayIndex = ListTupleIndex | NDArray | np_ndarray
 type IndexType = SingleIndex | ArrayIndex

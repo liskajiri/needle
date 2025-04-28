@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
-from needle.typing import AbstractBackend
+from needle.typing import AbstractBackend, ArrayInterface
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -23,6 +23,7 @@ if TYPE_CHECKING:
         np_ndarray,
     )
     from needle.typing.device import ModuleProtocol
+    from needle.typing.dlpack import DLPackDeviceId, DLPackDeviceType
 
 logger = logging.getLogger(__name__)
 
@@ -476,12 +477,67 @@ class NDArray:  # noqa: PLR0904 = too many public methods
         array.device.from_numpy(np.ascontiguousarray(a), array._handle)
         return array
 
-    # TODO: proper __array__ interface
-    def __array__(
-        self,
-        copy: bool = False,
-    ):
+    def __array__(self, copy: bool = False) -> np_ndarray:
+        """Convert to a numpy array.
+
+        Returns:
+            np.ndarray: A numpy array with the same shape and data as the NDArray.
+        """
         return self.numpy()
+
+    @property
+    def __array_interface__(self) -> ArrayInterface:  # noqa: PLW3201
+        """Provide the NumPy array interface for zero-copy interop.
+
+        Returns:
+            ArrayInterface: A dictionary containing the array interface.
+        """
+        if not self.is_compact():
+            # Can't provide a zero-copy view if the array isn't compact
+            return self.compact().__array_interface__
+
+        ptr = self._handle.ptr()
+
+        return ArrayInterface(
+            shape=self.shape,
+            typestr="<f4",  # little-endian float32
+            descr=[("", "<f4")],
+            data=(ptr, False),  # (data pointer, read-only flag)
+            strides=tuple(
+                s * self.device.itemsize for s in self.strides
+            ),  # convert strides to bytes using itemsize
+            version=3,
+        )
+
+    def __dlpack_device__(self) -> tuple[DLPackDeviceType, DLPackDeviceId]:
+        """
+        Returns a tuple of (device_type, device_id) representing the DLPack device.
+
+        Device types follow DLPack:
+
+        Returns:
+            tuple: (device_type, device_id)
+        """
+        return self._handle.__dlpack_device__()
+
+    def __dlpack__(
+        self,
+        *,
+        max_version: tuple[int, int] = (2024, 12),
+        stream: int | None = None,
+        dl_device: tuple[int, int] | None = None,
+        copy: bool = False,
+    ) -> object:
+        """Export array as a DLPack capsule.
+
+        Args:
+            stream: Optional CUDA stream (unused for CPU arrays)
+
+        Returns:
+            A DLPack capsule that can be consumed by other frameworks.
+            The capsule owns a copy of the array data to ensure safety.
+        """
+        return self._handle.__dlpack__(self._shape, self._strides, self._offset)
 
     # ==================== Shapes and strides
 
