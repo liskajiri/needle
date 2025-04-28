@@ -61,6 +61,7 @@ jobs:
         uses: prefix-dev/setup-pixi@v0.8.5
       - run: |
           pixi run test_all
+          coverage combine
           coverage xml
 
       - name: Publish Test Results

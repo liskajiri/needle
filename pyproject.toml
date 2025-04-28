@@ -95,11 +95,12 @@ docstring-code-format = true
 ban-relative-imports = "all"
 
 [tool.coverage.run]
-branch = true
 source = ["python/needle"]
 omit = ["tests/*"]
-parallel = true
+branch = true
 context = "test"
+parallel = true
+concurrency = ["multiprocessing"]
 
 [tool.coverage.report]
 show_missing = true
