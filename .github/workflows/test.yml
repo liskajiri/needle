@@ -60,7 +60,7 @@ jobs:
       - name: Test
         uses: prefix-dev/setup-pixi@v0.8.5
       - run: |
-          pixi run test_all
+          # Runs all tests
           pixi run report_coverage
 
       - name: Publish Test Results
