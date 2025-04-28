@@ -59,7 +59,9 @@ jobs:
         run: echo "NEEDLE_BACKEND=${{ matrix.backend }}" >> "$GITHUB_ENV"
       - name: Test
         uses: prefix-dev/setup-pixi@v0.8.5
-      - run: pixi run test_all
+      - run: |
+          pixi run test_all
+          coverage xml
 
       - name: Publish Test Results
         uses: EnricoMi/publish-unit-test-result-action@v2
