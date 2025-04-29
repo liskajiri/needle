@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
-from needle.typing import AbstractBackend, ArrayInterface
+from needle.typing import AbstractBackend
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -381,6 +381,7 @@ class NDArray:  # noqa: PLR0904 = too many public methods
     def _init(self, other: NDArray) -> None:
         self._shape = other._shape
         self._strides = other._strides
+        # TODO: clarify if this is items or bytes
         self._offset = other._offset
         self._device = other._device
         self._handle = other._handle
@@ -485,30 +486,6 @@ class NDArray:  # noqa: PLR0904 = too many public methods
         """
         return self.numpy()
 
-    @property
-    def __array_interface__(self) -> ArrayInterface:  # noqa: PLW3201
-        """Provide the NumPy array interface for zero-copy interop.
-
-        Returns:
-            ArrayInterface: A dictionary containing the array interface.
-        """
-        if not self.is_compact():
-            # Can't provide a zero-copy view if the array isn't compact
-            return self.compact().__array_interface__
-
-        ptr = self._handle.ptr()
-
-        return ArrayInterface(
-            shape=self.shape,
-            typestr="<f4",  # little-endian float32
-            descr=[("", "<f4")],
-            data=(ptr, False),  # (data pointer, read-only flag)
-            strides=tuple(
-                s * self.device.itemsize for s in self.strides
-            ),  # convert strides to bytes using itemsize
-            version=3,
-        )
-
     def __dlpack_device__(self) -> tuple[DLPackDeviceType, DLPackDeviceId]:
         """
         Returns a tuple of (device_type, device_id) representing the DLPack device.
@@ -533,6 +510,8 @@ class NDArray:  # noqa: PLR0904 = too many public methods
         Args:
             max_version: Maximum version of DLPack to use.
             stream: Optional CUDA stream (unused for CPU arrays)
+            dl_device: Optional device ID for DLPack (unused for CPU arrays)
+            copy: If True, a copy of the array is made. Defaults to False.
 
         Returns:
             A DLPack capsule that can be consumed by other frameworks.

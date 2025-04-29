@@ -42,7 +42,7 @@ def test_zero_copy_array_interface(lst_array):
             "Memory is not shared between NDArray and NumPy"
         )
 
-    nd_ptr = arr.__array_interface__["data"][0]
+    nd_ptr = arr._handle.ptr()
     np_ptr = np_arr.__array_interface__["data"][0]
     assert nd_ptr == np_ptr, "Arrays don't share memory (different addresses)"
 
