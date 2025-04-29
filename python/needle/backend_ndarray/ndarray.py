@@ -531,6 +531,7 @@ class NDArray:  # noqa: PLR0904 = too many public methods
         """Export array as a DLPack capsule.
 
         Args:
+            max_version: Maximum version of DLPack to use.
             stream: Optional CUDA stream (unused for CPU arrays)
 
         Returns:
