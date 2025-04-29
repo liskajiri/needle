@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 from needle import init
 from needle.backend_selection import default_device
 from needle.nn.core import Module, Parameter
-from needle.typing.types import TensorKwargs
+from needle.typing import TensorKwargs
 
 if TYPE_CHECKING:
     from needle.tensor import Tensor

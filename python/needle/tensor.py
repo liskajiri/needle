@@ -13,7 +13,7 @@ if TYPE_CHECKING:
     from typing import Self
 
     from needle.typing import AbstractBackend as Device
-    from needle.typing import DType, IndexType, Scalar, Shape, np_ndarray
+    from needle.typing import DType, IndexType, NDArrayLike, Scalar, Shape, np_ndarray
 
 
 class Tensor(Value):
@@ -21,7 +21,7 @@ class Tensor(Value):
 
     def __init__(
         self,
-        array: np_ndarray | NDArray | Tensor,
+        array: Tensor | NDArrayLike,
         device: Device = default_device,
         dtype: DType = "float32",
         requires_grad: bool = True,
@@ -31,13 +31,11 @@ class Tensor(Value):
                 cached_data = array.realize_cached_data()
             else:
                 # fall back, copy through numpy conversion
-                cached_data = Tensor._array_from_numpy(
-                    array.numpy(), device=device, dtype=dtype
-                )
+                cached_data = array_api.array(array.numpy(), device=device, dtype=dtype)
         elif isinstance(array, NDArray):
             cached_data = array
         else:
-            cached_data = Tensor._array_from_numpy(array, device=device, dtype=dtype)
+            cached_data = array_api.array(array, device=device, dtype=dtype)
 
         super()._init(cached_data=cached_data, requires_grad=requires_grad)
 
@@ -46,12 +44,6 @@ class Tensor(Value):
         cls: type[Self], data: NDArray, requires_grad: bool = False
     ) -> Tensor:
         return super().make_const(data, requires_grad=requires_grad)
-
-    @staticmethod
-    def _array_from_numpy(
-        numpy_array: np_ndarray, device: Device, dtype: DType
-    ) -> NDArray:
-        return array_api.array(numpy_array, device=device, dtype=dtype)
 
     @property
     def data(self) -> Tensor:

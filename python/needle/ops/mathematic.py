@@ -108,7 +108,9 @@ class ReLU(TensorOp):
 
     def gradient(self, out_grad: Tensor, node: Tensor) -> Tensor:
         # cannot be differentiated twice, so calling cached_data is ok
-        return Tensor(out_grad * (node.inputs[0].realize_cached_data() > 0))
+        return Tensor(
+            out_grad.realize_cached_data() * (node.inputs[0].realize_cached_data() > 0)
+        )
 
 
 def relu(a: Tensor) -> Tensor:

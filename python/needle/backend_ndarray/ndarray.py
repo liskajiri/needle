@@ -22,59 +22,49 @@ if TYPE_CHECKING:
         Strides,
         np_ndarray,
     )
+    from needle.typing.device import ModuleProtocol
+    from needle.typing.dlpack import DLPackDeviceId, DLPackDeviceType
 
 logger = logging.getLogger(__name__)
 
 # TODO: reference hw3.ipynb for future optimizations
 # TODO: investigate usage of __slots__, Python's array.array for NDArray class
 
+# TODO: Special ShapeError, etc.
+
 if True:
 
     class BackendDevice(AbstractBackend):
-        # note: numpy doesn't support types within standard random routines, and
-        # .astype("float32") does work if we're generating a singleton
+        def __init__(
+            self, name: str, module: ModuleProtocol[NDArray] | None = None
+        ) -> None:
+            self.name = name
+            self.module = module
+            self.__tile_size__ = module.__tile_size__ if module else -1
+            self.itemsize = module.itemsize if module else -1
 
-        # TODO: move to c++ backend
+        def enabled(self) -> bool:
+            return self.module is not None
+
+        def __eq__(self, other: object) -> bool:
+            if not isinstance(other, BackendDevice):
+                return False
+            return self.name == other.name
+
+        def __repr__(self) -> str:
+            return self.name + "()"
+
         def randn(self, shape: Shape, dtype: DType = "float32") -> NDArray:
-            # import random
-
-            # random_values = [random.random() for _ in range(math.prod(shape))]
-
-            # arr = make(shape, device=self)
-            # for i, value in enumerate(random_values):
-            #     arr[i] = value
-
-            # return arr
             if isinstance(shape, int):
                 shape = (shape,)
             return NDArray(np.random.randn(*shape).astype(dtype), device=self)
 
         def rand(self, shape: Shape, dtype: DType = "float32") -> NDArray:
-            # random_values = [random.uniform(0, 1) for _ in range(math.prod(shape))]
-
-            # arr = make(shape, device=self)
-            # for i, value in enumerate(random_values):
-            #     arr._handle[i] = value
-
-            # return arr
             if isinstance(shape, int):
                 shape = (shape,)
             return NDArray(np.random.rand(*shape).astype(dtype), device=self)
 
         def one_hot(self, n: int, i: IndexType, dtype: DType) -> NDArray:
-            """Create a one-hot vector.
-
-            Args:
-                n (int): Length of the vector.
-                i (int): Index of the one-hot element.
-                dtype (_type_, optional):
-
-            Raises:
-                NotImplementedError: If the method is not implemented.
-
-            Returns:
-                NDArray: A one-hot vector.
-            """
             return NDArray(np.eye(n, dtype=dtype)[i], device=self)
 
         def zeros(self, shape: Shape, dtype: DType) -> NDArray:
@@ -179,7 +169,7 @@ def cuda() -> AbstractBackend:
 
         return BackendDevice("cuda", ndarray_backend_cuda)
     except ImportError:
-        return BackendDevice("cuda")
+        return BackendDevice("cuda", None)
 
 
 def cpu_numpy() -> AbstractBackend:
@@ -188,7 +178,7 @@ def cpu_numpy() -> AbstractBackend:
         from needle import backend_numpy
         from needle.backend_numpy import NumpyBackend
 
-        return NumpyBackend("cpu_numpy", backend_numpy)
+        return NumpyBackend("cpu_numpy", backend_numpy)  # type: ignore
     except ImportError:
         raise ImportError("Numpy backend not available")
 
@@ -309,16 +299,14 @@ def broadcast_shapes(*shapes: Shape) -> Shape:
     if len(shapes) == 1:
         return shapes[0]
 
-    from builtins import max as pymax
-
-    max_dims = pymax([len(shape) for shape in shapes])
+    max_dims = max(len(shape) for shape in shapes)
     # Left-pad shorter shapes with 1s to align dimensions
     aligned_shapes = [(1,) * (max_dims - len(s)) + s for s in shapes]
 
     # Determine output dimension for each position
     result = []
     for dims in zip(*aligned_shapes, strict=False):
-        max_dim = pymax(dims)
+        max_dim = max(dims)
         for d in dims:
             if d != 1 and d != max_dim:
                 raise ValueError(f"Incompatible shapes for broadcasting: {shapes}")
@@ -393,6 +381,7 @@ class NDArray:  # noqa: PLR0904 = too many public methods
     def _init(self, other: NDArray) -> None:
         self._shape = other._shape
         self._strides = other._strides
+        # TODO: clarify if this is items or bytes
         self._offset = other._offset
         self._device = other._device
         self._handle = other._handle
@@ -489,12 +478,46 @@ class NDArray:  # noqa: PLR0904 = too many public methods
         array.device.from_numpy(np.ascontiguousarray(a), array._handle)
         return array
 
-    # TODO: proper __array__ interface
-    def __array__(
-        self,
-        copy: bool = False,
-    ):
+    def __array__(self, copy: bool = False) -> np_ndarray:
+        """Convert to a numpy array.
+
+        Returns:
+            np.ndarray: A numpy array with the same shape and data as the NDArray.
+        """
         return self.numpy()
+
+    def __dlpack_device__(self) -> tuple[DLPackDeviceType, DLPackDeviceId]:
+        """
+        Returns a tuple of (device_type, device_id) representing the DLPack device.
+
+        Device types follow DLPack:
+
+        Returns:
+            tuple: (device_type, device_id)
+        """
+        return self._handle.__dlpack_device__()
+
+    def __dlpack__(
+        self,
+        *,
+        max_version: tuple[int, int] = (2024, 12),
+        stream: int | None = None,
+        dl_device: tuple[int, int] | None = None,
+        copy: bool = False,
+    ) -> object:
+        """Export array as a DLPack capsule.
+
+        Args:
+            max_version: Maximum version of DLPack to use.
+            stream: Optional CUDA stream (unused for CPU arrays)
+            dl_device: Optional device ID for DLPack (unused for CPU arrays)
+            copy: If True, a copy of the array is made. Defaults to False.
+
+        Returns:
+            A DLPack capsule that can be consumed by other frameworks.
+            The capsule owns a copy of the array data to ensure safety.
+        """
+        return self._handle.__dlpack__(self._shape, self._strides, self._offset)
 
     # ==================== Shapes and strides
 
@@ -657,7 +680,6 @@ class NDArray:  # noqa: PLR0904 = too many public methods
         # Special case: Convert 1D array to column vector
         if self._is_1d_to_column_vector(new_shape):
             return self._make_column_vector(new_shape)
-
         if not self.is_compact():
             raise ValueError(
                 f"""Cannot reshape non-compact array of shape {self.shape}.
@@ -1121,32 +1143,32 @@ class NDArray:  # noqa: PLR0904 = too many public methods
             raise TypeError(f"Unsupported type {type(other)}")
         return out
 
-    def __add__(self, other: NDArrayLike) -> NDArray:
+    def __add__(self, other: NDArray | Scalar) -> NDArray:
         return self.ewise_or_scalar(
             other, self.device.ewise_add, self.device.scalar_add
         )
 
     __radd__ = __add__
 
-    def __sub__(self, other: NDArrayLike) -> NDArray:
+    def __sub__(self, other: NDArray | Scalar) -> NDArray:
         return self + (-other)
 
-    def __rsub__(self, other: NDArrayLike) -> NDArray:
+    def __rsub__(self, other: NDArray | Scalar) -> NDArray:
         return other + (-self)
 
-    def __mul__(self, other: NDArrayLike) -> NDArray:
+    def __mul__(self, other: NDArray | Scalar) -> NDArray:
         return self.ewise_or_scalar(
             other, self.device.ewise_mul, self.device.scalar_mul
         )
 
     __rmul__ = __mul__
 
-    def __truediv__(self, other: NDArrayLike) -> NDArray:
+    def __truediv__(self, other: NDArray | Scalar) -> NDArray:
         return self.ewise_or_scalar(
             other, self.device.ewise_div, self.device.scalar_div
         )
 
-    def __rtruediv__(self, other: NDArrayLike) -> NDArray:
+    def __rtruediv__(self, other: NDArray | Scalar) -> NDArray:
         if isinstance(other, int | float):
             out = make(self.shape, device=self.device)
             out.fill(other)
@@ -1156,47 +1178,47 @@ class NDArray:  # noqa: PLR0904 = too many public methods
     def __neg__(self) -> NDArray:
         return self * (-1)
 
-    def __pow__(self, other: NDArrayLike) -> NDArray:
+    def __pow__(self, other: NDArray | Scalar) -> NDArray:
         out = make(self.shape, device=self.device)
         if isinstance(other, NDArray):
             self.device.ewise_pow(
                 self.compact()._handle, other.compact()._handle, out._handle
             )
-        else:
+        elif isinstance(other, int | float):
             self.device.scalar_power(self.compact()._handle, other, out._handle)
         return out
 
-    def maximum(self, other: NDArrayLike) -> NDArray:
+    def maximum(self, other: NDArray | Scalar) -> NDArray:
         return self.ewise_or_scalar(
             other, self.device.ewise_maximum, self.device.scalar_maximum
         )
 
     # Binary operators all return (0.0, 1.0) floating point values
     # TODO: could of course be optimized
+    # def __hash__(self) -> int:
+    #     return hash(self._handle)
 
-    def __eq__(self, other: object) -> bool:
-        """Support == comparison with numpy arrays and scalars"""
+    def __eq__(self, other: NDArrayLike) -> NDArray:
         if isinstance(other, np.ndarray):
-            return np.array_equal(self.numpy(), other)
+            return NDArray(np.equal(self.numpy(), other).astype("float32"))
         return self.ewise_or_scalar(other, self.device.ewise_eq, self.device.scalar_eq)
 
-    def __ge__(self, other: NDArray | Scalar) -> bool:
+    def __ge__(self, other: NDArrayLike) -> NDArray:
         if isinstance(other, np.ndarray):
-            np.greater_equal(self.numpy(), other)
+            return NDArray(np.greater_equal(self.numpy(), other).astype("float32"))
         return self.ewise_or_scalar(other, self.device.ewise_ge, self.device.scalar_ge)
 
-    def __ne__(self, other: NDArray) -> bool:
-        return 1 - (self == other)
+    def __ne__(self, other: NDArrayLike) -> NDArray:
+        return 1.0 - (self == other)
 
-    # TODO: figure out correct typing for this
-    def __gt__(self, other: NDArray | Scalar) -> bool:
-        return (self >= other) * (self != other)
+    def __gt__(self, other: NDArrayLike) -> NDArray:
+        return (self >= other) * (1.0 - (self == other))
 
-    def __lt__(self, other: NDArray) -> bool:
-        return 1 - (self >= other)
+    def __lt__(self, other: NDArrayLike) -> NDArray:
+        return 1.0 - (self >= other)
 
-    def __le__(self, other: NDArray | Scalar) -> NDArray:
-        return 1 - (self > other)
+    def __le__(self, other: NDArrayLike) -> NDArray:
+        return 1.0 - (self > other)
 
     # Element-wise functions
 
@@ -1349,7 +1371,7 @@ class NDArray:  # noqa: PLR0904 = too many public methods
 
     # Reductions, i.e., sum/max over all element or over given axis
     def reduce_view_out(
-        self, axis: Axis | None, keepdims: bool = False
+        self, axis: Axis | None, *, keepdims: bool = False
     ) -> tuple[NDArray, NDArray]:
         """
         Return a view to the array set up for reduction functions and output array.
@@ -1408,7 +1430,7 @@ class NDArray:  # noqa: PLR0904 = too many public methods
 
         return view, out
 
-    def sum(self, axis: Axis | None = None, keepdims: bool = False) -> NDArray:
+    def sum(self, axis: Axis | None = None, *, keepdims: bool = False) -> NDArray:
         """
         Sum the elements of the array along the specified axis.
 
@@ -1435,7 +1457,7 @@ class NDArray:  # noqa: PLR0904 = too many public methods
         self.device.reduce_sum(view.compact()._handle, out._handle, view.shape[-1])
         return out
 
-    def max(self, axis: Axis | None = None, keepdims: bool = False) -> NDArray:
+    def max(self, axis: Axis | None = None, *, keepdims: bool = False) -> NDArray:
         """
         Find the maximum value in the array along the specified axis.
 

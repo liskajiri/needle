@@ -14,6 +14,12 @@ import reductions;
 
 export module ndarray_backend_cpu;
 
+// TODO: std::array?
+// TODO: https://nanobind.readthedocs.io/en/latest/ndarray.html
+
+// TODO: Dtypes in nanobind:
+// https://nanobind.readthedocs.io/en/latest/ndarray.html#ndarray-nonstandard
+
 NB_MODULE(ndarray_backend_cpu, m) {
     namespace nb = nanobind;
     using namespace needle;
@@ -28,7 +34,41 @@ NB_MODULE(ndarray_backend_cpu, m) {
         .def(nb::init_implicit<size_t>(), nb::rv_policy::take_ownership)
         .def("ptr", &AlignedArray::ptr_as_int)
         // read only
-        .def_ro("size", &AlignedArray::size);
+        .def_ro("size", &AlignedArray::size)
+        .def(
+            "__dlpack__",
+            [](AlignedArray &a, const nb::tuple &shape_tuple,
+               const nb::tuple &strides_tuple, size_t offset,
+               nb::kwargs kwargs) {
+                bool copy = kwargs.contains("copy")
+                                ? nb::cast<bool>(kwargs["copy"])
+                                : false;
+                if (copy) {
+                    throw std::runtime_error(
+                        "Copy not supported in __dlpack__");
+                }
+                const size_t ndim = shape_tuple.size();
+                auto shape_arr = std::make_unique<size_t[]>(ndim);
+                auto strides_arr = std::make_unique<int64_t[]>(ndim);
+
+                for (size_t i = 0; i < ndim; i++) {
+                    shape_arr[i] = nb::cast<size_t>(shape_tuple[i]);
+                    // Convert byte strides to element strides
+                    strides_arr[i] = static_cast<int64_t>(
+                        nb::cast<size_t>(strides_tuple[i]));
+                }
+
+                return nb::ndarray<scalar_t>(
+                    a.ptr + offset,                          // data pointer
+                    ndim,                                    // ndim
+                    shape_arr.get(),                         // shape array
+                    nb::capsule(&a, [](void *) noexcept {}), // keep array alive
+                    strides_arr.get(),                       // strides array
+                    nb::dtype<scalar_t>()                    // dtype
+                );
+            })
+        .def("__dlpack_device__",
+             []() { return std::make_pair(nb::device::cpu::value, 0); });
 
     m.def(
         "to_numpy",
@@ -55,7 +95,8 @@ NB_MODULE(ndarray_backend_cpu, m) {
     // convert from numpy (with copying)
     m.def(
         "from_numpy",
-        [](nb::ndarray<scalar_t> &a, AlignedArray *out) {
+        [](nb::ndarray<nb::numpy, nb::c_contig, nb::device::cpu, scalar_t> &a,
+           AlignedArray *out) {
             out->ptr = static_cast<scalar_t *>(a.data());
             out->size = a.size();
             out->numpy_handle = a.data();

@@ -58,7 +58,8 @@ class DataLoader:
         for start_idx in range(0, len(indices), self.batch_size):
             batch_indices = indices[start_idx : start_idx + self.batch_size]
             yield tuple(
-                Tensor(i, device=self.device) for i in self.dataset[batch_indices]
+                Tensor(i, device=self.device)  # type: ignore
+                for i in self.dataset[batch_indices]
             )
 
     def __len__(self) -> int:
