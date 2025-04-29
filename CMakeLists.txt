@@ -43,7 +43,7 @@ endif()
 
 #--- Python setup
 execute_process(COMMAND python3-config --prefix OUTPUT_VARIABLE Python_ROOT_DIR)
-find_package(Python 3.12 COMPONENTS Interpreter Development.Module REQUIRED)
+find_package(Python 3.13 COMPONENTS Interpreter Development.Module REQUIRED)
 include_directories(${Python_INCLUDE_DIRS})
 
 # Detect the installed nanobind package and import it into CMake
