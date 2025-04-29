@@ -1,7 +1,7 @@
 [project]
 name = "needle"
 version = "0.1"
-requires-python = ">=3.12"
+requires-python = ">=3.13"
 description = "A Python library for deep learning and neural networks"
 readme = "README.md"
 license = "MIT"
@@ -56,28 +56,27 @@ markers = [
 # log_cli = true
 
 [tool.ruff]
-target-version = "py312"
-# preview = true
+target-version = "py313"
 fix = true
 
 [tool.ruff.lint]
 extend-select = ["UP", "E", "W", "F", "I", "SIM", "TID", "PTH", "PERF", "RUF"]
 # extend-select = ["ALL"]
 ignore = [
-  "D",
-  "ANN",
-  "FIX",
-  "TD",
-  "COM",
-  "ARG",
-  "PLR",
-  "NPY002",
-  "N",
-  "ERA001",
+  "D",      # documentation
+  "TD",     # to-do fixes
+  "FIX002", # to-do's in code
+  "ERA001", # commented-out code
   "FBT001", # boolean args in functions
   "S311",   # non-crypto random number generation
   "RUF100", # unused no-qa: Remove after fixing
+  "EM101",  # strings in error messages, remove
+  "EM102",  # strings in exceptions messages, remove
+  "TRY003", # messages outside of exception class
+  "COM812", # trailing comma
+  "SLF001", # private member access
 ]
+# preview = false
 fixable = ["ALL"]
 
 [tool.ruff.lint.per-file-ignores]
@@ -96,10 +95,12 @@ docstring-code-format = true
 ban-relative-imports = "all"
 
 [tool.coverage.run]
-branch = true
 source = ["python/needle"]
 omit = ["tests/*"]
+branch = true
+context = "test"
 parallel = true
+concurrency = ["multiprocessing"]
 
 [tool.coverage.report]
 show_missing = true
@@ -123,10 +124,6 @@ exclude_also = [
 [tool.coverage.xml]
 # Save code coverage report
 output = "reports/coverage.xml"
-
-[tool.coverage.html]
-directory = "reports/coverage-html"
-show_contexts = true
 
 [tool.pyright]
 include = ["python/needle"]

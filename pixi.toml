@@ -90,7 +90,7 @@ depends-on = [{ "task" = "download_cifar" }]
 # TODO: gpu test/bench environment
 [environments]
 notebooks = ["notebooks"]
-lint = { features = ["lint"], no-default-feature = true }
+lint = { features = ["lint"] }
 dev = ["dev"]
 test = { features = ["test"], solve-group = "test" }
 benchmark = { features = ["benchmark"], solve-group = "test" }
@@ -108,9 +108,8 @@ pytorch = ">=2.6.0,<3"
 [feature.lint.dependencies]
 pre-commit = ">=4.2.0,<5"
 pre-commit-hooks = ">=5.0.0,<6"
-pyright = ">=1.1.399,<2"
-basedpyright = ">=1.28.5,<2"
-python = "3.13.*"
+pyright = ">=1.1.400,<2"
+basedpyright = ">=1.29.1,<2"
 
 [feature.lint.tasks]
 lint = "pre-commit run --all-files --color=always --show-diff-on-failure"
@@ -140,12 +139,12 @@ build = { cmd = ["ninja", "-C", ".build"], depends-on = ["make"] }
 numdifftools = ">=0.9.41,<0.10"
 pytest = ">=8.3.5,<9"
 pytest-sugar = ">=1.0.0,<2"
-# TODO: use coverage instead of pytest-cov
-pytest-cov = ">=6.1.1,<7"
 pytest-xdist = ">=3.6.1,<4"
 hypothesis = ">=6.131.0,<7"
 pytest-randomly = ">=3.15.0,<4"
 pytorch = ">=2.6.0,<3"
+# TODO: Investigate other coverage tools: https://github.com/plasma-umass/slipcover
+coverage = ">=7.8.0,<8"
 
 
 [feature.test.tasks]
@@ -165,43 +164,61 @@ test_hypothesis = { cmd = "pytest -n 8 -m 'hypothesis' --hypothesis-profile=dev"
   "build",
   "print_backend",
 ] }
-# TODO: measure effect of coverage on performance
-# TODO: try low impact monitoring
-# TODO: Investigate other coverage tools: https://github.com/plasma-umass/slipcover
-test_all = { cmd = """pytest -n auto
+test_all = { cmd = """coverage run -m pytest -n auto
 --junitxml=$TEST_REPORT_PATH.xml -o junit_family=legacy
---cov --cov-report=xml --cov-report=html --cov-context=test
 """, depends-on = ["build", "print_backend", "download_datasets"] }
-# low impact monitoring https://github.com/nedbat/coveragepy/issues/1746
+report_coverage = { cmd = "coverage combine && coverage xml", depends-on = [
+  "test_all",
+] }
 
 # [feature.test.tasks.test]
 # args = [
-#   { "arg" = "n_threads", "default" = "8" },
-#   { "arg" = "path", "default" = "''" },
-#   { "arg" = "modules", "default" = "'not slow and not benchmark'" },
+#   { "arg" = "path", "default" = "tests/ python/needle" },
+#   { "arg" = "n_threads", "default" = "2" },
+#   { "arg" = "modules", "default" = "'not slow'" },
 #   { "arg" = "names", "default" = "'not dataset'" },
-#   { "arg" = "other", "default" = "''" },
+#   { "arg" = "other", "default" = " " },
 # ]
 # cmd = "pytest {{ path }} -n {{ n_threads }} -m {{ modules }} -k {{ names }} {{ other }}"
 # depends-on = ["build", "print_backend"]
 
 # [feature.test.tasks.test_datasets]
-# depends-on = [{"task" = "test", "args" = ["4", "tests/datasets", "''", "'dataset'"]}]
+# depends-on = [
+#   { "task" = "test", "args" = [
+#     # { "arg" = "path", "default" = "tests/datasets" },
+#     "tests/datasets",
+#     "4",
+#     "''",
+#     "'dataset'",
+#   ] },
+# ]
 
 # [feature.test.tasks.test_doctests]
-# depends-on = [{"task" = "test", "args" = ["0", "python/needle", " ", " ", "--doctest-modules"]}]
+# depends-on = [
+#   { task = "test", args = [
+#     "python/needle",
+#     "0",
+#     "''",
+#     "''",
+#     "--doctest-modules",
+#   ] },
+# ]
 
 # [feature.test.tasks.test_hypothesis]
-# depends-on = [{"task" = "test", "args" = ["8", " ", "'hypothesis'", "''", "--hypothesis-profile=dev"]}]
+# depends-on = [
+#   { "task" = "test", "args" = [
+#     " ",
+#     "4",
+#     "'hypothesis'",
+#     "''",
+#     "--hypothesis-profile=dev",
+#   ] },
+# ]
 
 # [feature.test.tasks.test_all]
-# depends-on = [{"task" = "test", "args" = ["auto", " ", "''", "''",
-# """
+# depends-on = [{ "task" = "test", "args" = [" ", "auto", "''", "''", """
 # --junitxml=$TEST_REPORT_PATH.xml -o junit_family=legacy
-# --cov --cov-report=xml --cov-report=html
-# --cov-context=test
-# """
-# ]}]
+# """] }]
 
 
 [feature.test.activation.env]
@@ -229,9 +246,7 @@ benchmark_matmul = { cmd = "pytest benchmarks/test_matmul.py --codspeed", depend
   "build",
 ] }
 
-# [feature.benchmark.pypi-dependencies]
-# pytest-test-groups = ">=1.2.0, <2"
-
 [activation.env]
 PYTHONPATH = "./python:./apps:."
 NEEDLE_BACKEND = "nd"
+COVERAGE_PROCESS_START = "./pyproject.toml"
