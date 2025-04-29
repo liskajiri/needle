@@ -246,9 +246,7 @@ benchmark_matmul = { cmd = "pytest benchmarks/test_matmul.py --codspeed", depend
   "build",
 ] }
 
-# [feature.benchmark.pypi-dependencies]
-# pytest-test-groups = ">=1.2.0, <2"
-
 [activation.env]
 PYTHONPATH = "./python:./apps:."
 NEEDLE_BACKEND = "nd"
+COVERAGE_PROCESS_START = "./pyproject.toml"
