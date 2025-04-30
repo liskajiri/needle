@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
+from needle.errors import BroadcastError
 from needle.typing import AbstractBackend
 
 if TYPE_CHECKING:
@@ -29,8 +30,6 @@ logger = logging.getLogger(__name__)
 
 # TODO: reference hw3.ipynb for future optimizations
 # TODO: investigate usage of __slots__, Python's array.array for NDArray class
-
-# TODO: Special ShapeError, etc.
 
 if True:
 
@@ -253,8 +252,9 @@ def make(
     array._strides = NDArray.compact_strides(shape) if strides is None else strides
     array._offset = offset
     array._device = device
+
+    array_size = prod(shape)
     if handle is None:
-        array_size = prod(shape)
         if array_size <= 0:
             raise ValueError(f"Array size cannot be negative, Invalid shape: {shape}")
         array._handle = array.device.Array(array_size)
@@ -280,7 +280,7 @@ def broadcast_shapes(*shapes: Shape) -> Shape:
         tuple: broadcast-compatible shape
 
     Raises:
-        ValueError: If shapes cannot be broadcast together
+        BroadcastError: If shapes cannot be broadcast together
 
 
     Examples:
@@ -293,7 +293,7 @@ def broadcast_shapes(*shapes: Shape) -> Shape:
         >>> broadcast_shapes((2, 3), (2, 4))
         Traceback (most recent call last):
         ...
-        ValueError: Incompatible shapes for broadcasting: ((2, 3), (2, 4))
+        BroadcastError: Incompatible shapes for broadcasting: ((2, 3), (2, 4))
     """
     # If only one shape provided, return it
     if len(shapes) == 1:
@@ -309,7 +309,7 @@ def broadcast_shapes(*shapes: Shape) -> Shape:
         max_dim = max(dims)
         for d in dims:
             if d != 1 and d != max_dim:
-                raise ValueError(f"Incompatible shapes for broadcasting: {shapes}")
+                raise BroadcastError(shapes)
         result.append(max_dim)
 
     return tuple(result)
@@ -596,11 +596,12 @@ class NDArray:  # noqa: PLR0904 = too many public methods
             NDArray: NDArray that is a view of the original with new shape and strides.
 
         Raises:
-            ValueError: If the length of shape and strides do not match.
+            DimensionError: If the length of shape and strides do not match.
         """
         if len(shape) != len(strides):
             raise ValueError(
-                f"Shape {shape} and strides {strides} must have the same length"
+                "Shape and strides must have same number of dimensions, "
+                f"got {len(shape)} vs {len(strides)}"
             )
         return make(
             shape,
@@ -679,20 +680,22 @@ class NDArray:  # noqa: PLR0904 = too many public methods
 
         # Special case: Convert 1D array to column vector
         if self._is_1d_to_column_vector(new_shape):
-            return self._make_column_vector(new_shape)
-        if not self.is_compact():
-            raise ValueError(
-                f"""Cannot reshape non-compact array of shape {self.shape}.
-                Call compact() first."""
+            return make(
+                new_shape,
+                device=self.device,
+                handle=self._handle,
+                strides=(self.strides[0], 0),
             )
+        if not self.is_compact():
+            raise ValueError("Cannot reshape non-compact array. Call compact() first.")
 
         # Handle automatic dimension calculation with -1
-        new_shape = self._resolve_negative_dimensions(new_shape)
+        new_shape = self._resolve_negative_dimensions(new_shape, self.size)
 
         # Verify total size remains constant
         if self.size != math.prod(new_shape):
             raise ValueError(
-                f"Cannot reshape array of size {self.size} into shape {new_shape}."
+                f"Cannot reshape array of size {self.size} into shape {new_shape}"
             )
 
         # Create reshaped view with new strides
@@ -713,20 +716,8 @@ class NDArray:  # noqa: PLR0904 = too many public methods
             and new_shape[1] == 1
         )
 
-    def _make_column_vector(self, new_shape: Shape) -> NDArray:
-        """Convert 1D array to column vector with optimized strides.
-
-        Returns:
-            NDArray: New NDArray with a 1d shape.
-        """
-        return make(
-            new_shape,
-            device=self.device,
-            handle=self._handle,
-            strides=(self.strides[0], 0),
-        )
-
-    def _resolve_negative_dimensions(self, new_shape: Shape) -> Shape:
+    @staticmethod
+    def _resolve_negative_dimensions(new_shape: Shape, size: int) -> Shape:
         """
         Calculate actual shape when -1 dimension is used.
 
@@ -739,11 +730,12 @@ class NDArray:  # noqa: PLR0904 = too many public methods
         Raises:
             ValueError: If multiple -1 dimensions or size mismatch
         """
-        if -1 not in new_shape:
+        new_dims_count = new_shape.count(-1)
+        if new_dims_count == 0:
             return new_shape
 
         # Verify only one -1 dimension
-        if new_shape.count(-1) > 1:
+        if new_dims_count > 1:
             raise ValueError(
                 f"Cannot deduce shape with multiple -1 dimensions in {new_shape}"
             )
@@ -752,13 +744,13 @@ class NDArray:  # noqa: PLR0904 = too many public methods
         neg_idx = new_shape.index(-1)
         other_dims_product = math.prod(new_shape[:neg_idx] + new_shape[neg_idx + 1 :])
 
-        if self.size % other_dims_product != 0:
+        if size % other_dims_product != 0:
             raise ValueError(
-                f"Cannot reshape array of size {self.size} into shape {new_shape}. "
+                f"Cannot reshape array of size {size} into shape {new_shape}. "
                 f"Size must be divisible by {other_dims_product}."
             )
 
-        missing_dim = self.size // other_dims_product
+        missing_dim = size // other_dims_product
         return new_shape[:neg_idx] + (missing_dim,) + new_shape[neg_idx + 1 :]
 
     def permute(self, new_axes: Shape) -> NDArray:
@@ -825,7 +817,7 @@ class NDArray:  # noqa: PLR0904 = too many public methods
             NDArray: A view with the new broadcast shape pointing to the same memory
 
         Raises:
-            ValueError: If shapes are incompatible for broadcasting
+            BroadcastError: If shapes are incompatible for broadcasting
 
         Examples:
             >>> x = NDArray(np.array([[1], [2]]))  # Shape (2, 1)
@@ -842,14 +834,14 @@ class NDArray:  # noqa: PLR0904 = too many public methods
             >>> z.broadcast_to((2, 3))
             Traceback (most recent call last):
             ...
-            ValueError: Cannot broadcast shape (2, 2) to (2, 3)
+            BroadcastError: Cannot broadcast shape (2, 2) to (2, 3)
         """
         if self.shape == new_shape:
             return self
 
         new_size = math.prod(new_shape)
         if len(new_shape) < len(self._shape) or new_size % self.size != 0:
-            raise ValueError(f"Cannot broadcast shape {self._shape} to {new_shape}")
+            raise BroadcastError((self._shape, new_shape))
 
         leading_dims = len(new_shape) - len(self._shape)
         broadcast_strides = (0,) * leading_dims + self._strides
@@ -864,30 +856,131 @@ class NDArray:  # noqa: PLR0904 = too many public methods
 
     # === Get and set elements
 
-    def process_slice(self, sl: slice, dim: int) -> slice:
-        """Convert a slice to an explicit start/stop/step"""  # noqa: DOC201
-        start, stop, step = sl.start, sl.stop, sl.step
-        if start is None:
-            start = 0
-        if start < 0:
-            start = self.shape[dim]
+    def _process_slice(self, sl: slice, dim: int) -> slice:
+        """Convert a slice to an explicit start/stop/step
 
-        if stop is None:
-            stop = self.shape[dim]
-        if stop < 0:
-            stop = self.shape[dim] + stop
+        Returns:
+            slice: A slice object with explicit start, stop, and step values.
+                Also handles negative indices and adjusts start/stop accordingly.
+                Ranges of values are:
+                - start: [0, size)
+                - stop: [-1 - size, size)]
+        """
+        size = self.shape[dim]
+        step = sl.step if sl.step is not None else 1
 
-        if step is None:
-            step = 1
+        # Handle negative indices
+        if sl.start is not None:
+            start = sl.start if sl.start >= 0 else size + sl.start
+        else:
+            start = size - 1 if step < 0 else 0
+        # start: [0, size)
 
-        # we're not gonna handle negative strides and that kind of thing
-        assert stop > start, "Start must be less than stop"
-        assert step > 0, "No support for  negative increments"
+        if sl.stop is not None:
+            stop = sl.stop if sl.stop >= 0 else size + sl.stop
+        else:
+            stop = size if step > 0 else -1
+        # stop: [-1 - size, size)]
+
         return slice(start, stop, step)
 
-    # TODO: standardize idxs type: int | iterable[int] | slice
-    # TODO: single function for dealing with index_type
-    # TODO: getitem is not really working like numpy's
+    def _prepare_indices(
+        self,
+        idxs: int | tuple[int | slice, ...] | slice,
+    ) -> tuple[tuple[slice, ...], set[int]]:
+        """
+        Convert input indices to tuple of slices and track squeeze dimensions.
+        """
+        if idxs is Ellipsis:
+            return tuple(slice(0, d, 1) for d in self.shape), set()
+
+        # Convert single integer index to tuple
+        if isinstance(idxs, int | slice):
+            orig_idxs = (idxs,)
+        elif isinstance(idxs, tuple):
+            if Ellipsis in idxs:
+                ellipsis_idx = idxs.index(Ellipsis)
+                extra_dims = self.ndim - (len(idxs) - 1)
+                expanded_slices = (slice(None),) * extra_dims
+                orig_idxs = (
+                    idxs[:ellipsis_idx] + expanded_slices + idxs[ellipsis_idx + 1 :]
+                )
+            else:
+                orig_idxs = idxs
+        else:
+            raise TypeError(f"Invalid index type: {type(idxs)}")
+
+        # Track dimensions to squeeze (from integer indexing)
+        squeeze_dims = set()
+        processed_idxs = []
+
+        # Process each index
+        for i, idx in enumerate(orig_idxs):
+            if isinstance(idx, int):
+                # Handle negative indices
+                if idx < 0:
+                    idx += self.shape[i]
+                if not 0 <= idx < self.shape[i]:
+                    raise IndexError(f"Index {idx} is out of bounds for axis {i}")
+                processed_idxs.append(slice(idx, idx + 1, 1))
+                squeeze_dims.add(i)
+            else:
+                processed_idxs.append(self._process_slice(idx, i))
+
+        # Fill in remaining dimensions
+        processed_idxs.extend(
+            slice(0, self.shape[i], 1) for i in range(len(processed_idxs), self.ndim)
+        )
+
+        return tuple(processed_idxs), squeeze_dims
+
+    def _compute_view_shape(
+        self, slices: tuple[slice, ...], squeeze_dims: set[int]
+    ) -> tuple[Shape, Strides, int]:
+        """Compute shape, strides and offset for the sliced view."""
+        new_shape = []
+        new_strides = []
+        new_offset = self._offset
+
+        for i, slc in enumerate(slices):
+            new_offset += self._strides[i] * slc.start
+
+            if i in squeeze_dims:
+                continue
+
+            start, stop, step = slc.start, slc.stop, slc.step
+            if (step > 0 and start >= stop) or (step < 0 and start <= stop):
+                n_elements = 0
+                new_strides.append(self._strides[i])
+            else:
+                n_elements = stop - start + step
+                if step > 0:
+                    n_elements -= 1
+                else:
+                    n_elements += 1
+                n_elements //= step
+                new_strides.append(self._strides[i] * step)
+
+            new_shape.append(n_elements)
+
+        return tuple(new_shape), tuple(new_strides), new_offset
+
+    def _handle_array_indexing(self, idxs: NDArray) -> NDArray:
+        """
+        Handle indexing with a list or NDArray
+        """
+        out_shape = idxs.shape + self.shape[1:]
+        out = make(out_shape, device=self.device)
+
+        # Copy selected elements
+        flat_idxs = idxs.numpy().flatten()
+        padding = (slice(None),) * (self.ndim - 1)
+        for i, idx in enumerate(flat_idxs):
+            src_idx = (int(idx), *padding)
+            dst_idx = (i, *padding)
+            out[dst_idx] = self[src_idx]
+        return out.compact()
+
     def __getitem__(self, idxs: IndexType) -> NDArray:
         """
         Get a view into the array based on the given indices.
@@ -896,17 +989,16 @@ class NDArray:  # noqa: PLR0904 = too many public methods
         - Integer indexing (single value)
         - Slice indexing (ranges of values)
         - Multiple dimension indexing (tuples of indices/slices)
-        - Boolean/integer array indexing
+        - Integer array indexing
 
-        The resulting array shares memory with the original when possible (slicing),
-        and creates a new array when necessary (advanced indexing).
+        The resulting array shares memory with the original when possible.
 
         Args:
             idxs: Index specification, which can be:
                 - An integer (single element)
                 - A slice (range of elements)
                 - A tuple of integers/slices (multi-dimensional indexing)
-                - An array of integers/booleans (advanced indexing)
+                - An array of integers (advanced indexing)
                 - List of integers (advanced indexing)
 
         Returns:
@@ -933,102 +1025,25 @@ class NDArray:  # noqa: PLR0904 = too many public methods
             # [2. 6.]
         """
 
-        def _prepare_indices(
-            idxs: int | tuple[int | slice, ...],
-        ) -> tuple[tuple[slice, ...], set[int]]:
-            """
-            Convert input indices to tuple of slices and track squeeze dimensions.
-            """
-            # Convert single integer index to tuple
-            orig_idxs = (idxs,) if not isinstance(idxs, tuple) else idxs
-            if not isinstance(orig_idxs, tuple):
-                raise TypeError(f"Invalid index type: {type(orig_idxs)}")
-
-            # Track dimensions to squeeze (from integer indexing)
-            squeeze_dims = {
-                i for i, idx in enumerate(orig_idxs) if isinstance(idx, int)
-            }
-
-            # Convert each index to slice
-            processed_idxs = []
-            for i, idx in enumerate(orig_idxs):
-                if isinstance(idx, slice):
-                    processed_idxs.append(self.process_slice(idx, i))
-                elif isinstance(idx, int):
-                    processed_idxs.append(slice(idx, idx + 1, 1))
-                else:
-                    processed_idxs.append(idx)
-
-            # Pad with full slices
-            final_idxs = tuple(
-                processed_idxs + [slice(None)] * (self.ndim - len(processed_idxs))
-            )
-
-            return final_idxs, squeeze_dims
-
-        def _handle_array_indexing(idxs: NDArray) -> NDArray:
-            """
-            Handle indexing with a list or NDArray
-            """
-            out_shape = idxs.shape + self.shape[1:]
-            out = make(out_shape, device=self.device)
-
-            # Copy selected elements
-            for i, idx in enumerate(idxs.numpy().flatten()):
-                src_idx = (int(idx),) + (slice(None),) * (self.ndim - 1)
-                dst_idx = (i,) + (slice(None),) * (self.ndim - 1)
-                out[dst_idx] = self[src_idx]
-            return out.compact()
-
-        def _compute_view_shape(
-            slices: tuple[slice, ...], squeeze_dims: set[int]
-        ) -> tuple[Shape, Strides, int]:
-            """
-            Compute the shape and strides of the view resulting from slicing.
-            Removes dimensions that should be squeezed due to integer indexing.
-            """
-            new_shape = []
-            new_strides = list(self._strides)
-            new_offset = self._offset
-
-            for i, ax in enumerate(slices):
-                start = ax.start if ax.start is not None else 0
-                stop = ax.stop if ax.stop is not None else self.shape[i]
-                step = ax.step if ax.step is not None else 1
-                if i not in squeeze_dims:
-                    n_shape = (stop - start - 1) // step + 1
-                    new_shape.append(n_shape)
-                new_strides[i] *= step
-                new_offset += self._strides[i] * start
-
-            # Remove strides for squeezed dimensions
-            final_strides = tuple(
-                stride for i, stride in enumerate(new_strides) if i not in squeeze_dims
-            )
-
-            return tuple(new_shape), final_strides, new_offset
-
-        # Indexing with a list or NDArray
-        if isinstance(idxs, list | np.ndarray | NDArray):
+        # Indexing with an Array
+        if isinstance(idxs, list | NDArray | np.ndarray):
             # Convert to NDArray if needed
             if not isinstance(idxs, NDArray):
                 idxs = NDArray(idxs, device=self.device)
-            return _handle_array_indexing(idxs)
+            return self._handle_array_indexing(idxs)
 
         # Process indices and track which dimensions need squeezing
-        slices, squeeze_dims = _prepare_indices(idxs)
+        slices, squeeze_dims = self._prepare_indices(idxs)
         if len(slices) != self.ndim:
-            raise AssertionError(
+            raise IndexError(
                 f"""Need indexes equal to number of dimensions,
-                trying to select {idxs} from {self.ndim} dimensions"""  # noqa: S608
+                trying to select {idxs} from {self.ndim} dimensions"""
             )
 
-        new_shape, new_strides, new_offset = _compute_view_shape(slices, squeeze_dims)
+        new_shape, new_strides, new_offset = self._compute_view_shape(
+            slices, squeeze_dims
+        )
 
-        # TODO: This array is smaller and so its size is smaller
-        # That is not however changed, so the check is_compact fails, because
-        # the sub array still thinks it is the larger array
-        # This leads to needed unnecessary calls to compact
         return make(
             new_shape,
             strides=new_strides,
@@ -1041,7 +1056,6 @@ class NDArray:  # noqa: PLR0904 = too many public methods
         self,
         idxs: IndexType,
         other: NDArrayLike,
-        # other: NDArray | np.ndarray | Scalar,
     ) -> None:
         """
         Set the value of the array at the specified indices.
@@ -1070,6 +1084,7 @@ class NDArray:  # noqa: PLR0904 = too many public methods
         view = self.__getitem__(idxs)
         if isinstance(other, np.ndarray):
             other = NDArray(other, device=self.device)
+
         if isinstance(other, NDArray):
             if view.size != other.size:
                 raise ValueError(f"Size mismatch: {view.size} != {other.size}")
@@ -1080,7 +1095,7 @@ class NDArray:  # noqa: PLR0904 = too many public methods
                 view.strides,
                 view._offset,
             )
-        else:
+        elif isinstance(other, float | int):
             self.device.scalar_setitem(
                 view.size, other, view._handle, view.shape, view.strides, view._offset
             )
@@ -1286,11 +1301,10 @@ class NDArray:  # noqa: PLR0904 = too many public methods
                     f"Matrix multiplication needs at least 2D arrays, got {other.shape}"
                 )
             if self.shape[-1] != other.shape[-2]:
-                raise ValueError(f"""
-                    Matrix multiplication requires inner dimensions to match,
-                    but A.cols != B.rows: {self.shape[-1]} != {other.shape[-2]}
-                    for shapes {self.shape} and {other.shape}
-                    """)
+                raise ValueError(
+                    "Matrix multiplication needs compatible shapes, "
+                    f"got {self.shape} and {other.shape}"
+                )
 
         def _batched_matmul(self, other: NDArray) -> NDArray:
             m, k1 = self.shape[-2:]

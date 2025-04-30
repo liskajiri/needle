@@ -53,6 +53,7 @@ markers = [
   "datasets: marks tests as requiring datasets",
   "benchmark: marks tests as benchmark tests",
 ]
+doctest_optionflags = "IGNORE_EXCEPTION_DETAIL"
 # log_cli = true
 
 [tool.ruff]

@@ -54,8 +54,7 @@ NB_MODULE(ndarray_backend_cpu, m) {
                 for (size_t i = 0; i < ndim; i++) {
                     shape_arr[i] = nb::cast<size_t>(shape_tuple[i]);
                     // Convert byte strides to element strides
-                    strides_arr[i] = static_cast<int64_t>(
-                        nb::cast<size_t>(strides_tuple[i]));
+                    strides_arr[i] = nb::cast<int64_t>(strides_tuple[i]);
                 }
 
                 return nb::ndarray<scalar_t>(
@@ -80,8 +79,7 @@ NB_MODULE(ndarray_backend_cpu, m) {
 
             for (size_t i = 0; i < ndim; i++) {
                 shape_arr[i] = nb::cast<size_t>(shape_tuple[i]);
-                strides_arr[i] =
-                    static_cast<int64_t>(nb::cast<size_t>(strides_tuple[i]));
+                strides_arr[i] = nb::cast<int64_t>(strides_tuple[i]);
             }
 
             return nb::ndarray<nb::numpy, scalar_t>(
