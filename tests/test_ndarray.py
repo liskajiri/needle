@@ -2,7 +2,11 @@ import math
 
 import numpy as np
 import pytest
+from hypothesis import given
+from hypothesis import strategies as st
+from hypothesis.extra.numpy import array_shapes, arrays, basic_indices
 from needle import backend_ndarray as ndl
+from needle.errors import BroadcastError
 
 from tests.devices import all_devices
 
@@ -222,7 +226,7 @@ to make some proceeding tests easier to read
 class _ShapeAndSlices(ndl.NDArray):
     def __getitem__(self, idxs):
         idxs = tuple(
-            self.process_slice(s, i) if isinstance(s, slice) else slice(s, s + 1, 1)
+            self._process_slice(s, i) if isinstance(s, slice) else slice(s, s + 1, 1)
             for i, s in enumerate(idxs)
         )
         return self.shape, idxs
@@ -435,7 +439,7 @@ def test_reshape_errors(device, params):
     _a = np.random.randn(*shape)
     a = ndl.array(_a, device=device)
 
-    with pytest.raises((ValueError, AssertionError)):
+    with pytest.raises(ValueError):
         a.reshape(new_shape)
 
 
@@ -492,80 +496,87 @@ def test_broadcast_to_errors(device, params):
     _a = np.random.randn(*shape)
     a = ndl.array(_a, device=device)
 
-    with pytest.raises((ValueError, AssertionError)):
+    with pytest.raises(BroadcastError):
         a.broadcast_to(broadcast_shape)
 
 
-getitem_params = [
-    {"shape": (8, 16), "fn": lambda X: X[3:4, 3:4]},
-    {"shape": (8, 16), "fn": lambda X: X[1:2, 1:3]},
-    {"shape": (8, 16), "fn": lambda X: X[3:4, 1:4]},
-    {"shape": (8, 16), "fn": lambda X: X[1:4, 3:4]},
-]
+arr_strategy = arrays(
+    dtype=np.float32, shape=array_shapes(min_dims=1, max_dims=3, min_side=1, max_side=5)
+)
 
 
-@pytest.mark.parametrize("params", getitem_params)
-@all_devices()
-def test_getitem(device, params):
-    fn = params["fn"]
-    _a = np.random.randn(5, 5)
-    a = ndl.array(_a, device=device)
-    lhs = fn(_a)
-    rhs = fn(a)
-    np.testing.assert_allclose(lhs, rhs.numpy(), atol=1e-5, rtol=1e-5)
-    compare_strides(lhs, rhs)
-    check_same_memory(a, rhs)
+@given(data=st.data())
+def test_getitem_proptest(data):
+    arr = data.draw(arr_strategy)
+    nd_array = ndl.array(arr)
+
+    idx = data.draw(basic_indices(arr.shape))
+    nd_indexed = nd_array[idx]
+    np_indexes = arr[idx]
+
+    np.testing.assert_array_equal(nd_indexed, np_indexes)
 
 
-list_index_params = [
-    {"fn": lambda X: X[1]},
-    {"fn": lambda X: X[4, 2]},
-    {"fn": lambda X: X[0, 2, 3]},
-    {"fn": lambda X: X[0, 3, 4, 1]},
-]
+@given(data=st.data())
+def test_getitem_multi_index(data):
+    arr = data.draw(arr_strategy)
+    nd_array = ndl.array(arr)
+
+    # Generate number of indices to select
+    n_indices = data.draw(st.integers(min_value=1, max_value=4))
+
+    # Generate array of indices, each within bounds of first dimension
+    indices = data.draw(
+        st.lists(
+            st.integers(min_value=0, max_value=arr.shape[0] - 1),
+            min_size=n_indices,
+            max_size=n_indices,
+        )
+    )
+    indices = list(indices)
+
+    # Compare numpy and ndarray indexing
+    np_result = arr[indices]
+    nd_result = nd_array[indices]
+    np.testing.assert_array_equal(nd_result, np_result)
 
 
-@pytest.mark.parametrize("params", list_index_params)
-@all_devices()
-def test_getitem_list(device, params):
-    fn = params["fn"]
-    _a = rng.standard_normal((5, 5, 5, 5))
-    a = ndl.array(_a, device=device)
-    lhs = fn(_a)
-    rhs = fn(a)
-    np.testing.assert_allclose(rhs.numpy(), lhs, atol=1e-5, rtol=1e-5)
-    compare_strides(lhs, rhs)
+@given(data=st.data())
+def test_getitem_raises_out_of_range_index(data):
+    arr = data.draw(arr_strategy)
+    nd_array = ndl.array(arr)
+
+    bad_idx_strategy = st.one_of(
+        st.integers(min_value=-arr.size - 100, max_value=-arr.size - 1),
+        st.integers(min_value=arr.size, max_value=arr.size + 100),
+    )
+    bad_idx = data.draw(bad_idx_strategy)
+
+    with pytest.raises(IndexError):
+        _ = nd_array[bad_idx]
+    with pytest.raises(IndexError):
+        _ = arr[bad_idx]
 
 
-@all_devices()
-def test_getitem_more_indexes_than_axis(device):
-    def over_indexing(X):
-        return X[1, 2, 3, 4, 5]
+@given(data=st.data())
+def test_getitem_raises_too_many_indices(data):
+    # Generate an array with 1-3 dimensions
+    arr = data.draw(arr_strategy)
+    nd_array = ndl.array(arr)
 
-    _a = rng.standard_normal((5, 5, 5, 5))
-    a = ndl.array(_a, device=device)
-    with pytest.raises((ValueError, AssertionError)):
-        over_indexing(a)
+    # Generate number of indices (must be more than ndim)
+    n_indices = arr.ndim + data.draw(st.integers(min_value=1, max_value=3))
 
+    # Generate list of integers as indices
+    indices = tuple(
+        data.draw(st.integers(min_value=0, max_value=max(arr.shape) - 1))
+        for _ in range(n_indices)
+    )
 
-# TODO: Investigate using 2d indices
-multi_index_getitem_params = [
-    {"fn": lambda X: X[[1, 2]]},
-    {"fn": lambda X: X[[1, 2, 3]]},
-    {"fn": lambda X: X[[0, 3, 4, 1]]},
-]
-
-
-@pytest.mark.parametrize("params", multi_index_getitem_params)
-@all_devices()
-def test_getitem_multi_index(device, params):
-    fn = params["fn"]
-    _a = rng.standard_normal((5, 5))
-    a = ndl.array(_a, device=device)
-    lhs = fn(_a)
-    rhs = fn(a)
-    np.testing.assert_allclose(lhs, rhs.numpy(), atol=1e-5, rtol=1e-5)
-    compare_strides(lhs, rhs)
+    with pytest.raises(IndexError):
+        _ = nd_array[indices]
+    with pytest.raises(IndexError):
+        _ = arr[indices]
 
 
 broadcast_params = [
@@ -766,7 +777,7 @@ def test_broadcast_shapes(shapes, expected):
 )
 def test_broadcast_shapes_failure(shapes):
     """Test that broadcast_shapes raises ValueError for incompatible shapes."""
-    with pytest.raises(ValueError, match="Incompatible shapes for broadcasting"):
+    with pytest.raises(BroadcastError, match="Incompatible shapes for broadcasting"):
         ndl.broadcast_shapes(*shapes)
 
 
