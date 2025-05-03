@@ -9,12 +9,12 @@ from tests.utils import set_random_seeds
 
 @pytest.fixture(scope="module")
 def mnist_train():
-    return ndl.data.MNISTDataset(MNISTPaths.TRAIN_IMAGES, MNISTPaths.TRAIN_LABELS)
+    return ndl.data.MNISTDataset(train=True)
 
 
 @pytest.fixture(scope="module")
 def mnist_test():
-    return ndl.data.MNISTDataset(MNISTPaths.TEST_IMAGES, MNISTPaths.TEST_LABELS)
+    return ndl.data.MNISTDataset(train=False)
 
 
 @pytest.fixture(params=[1])
@@ -194,9 +194,8 @@ def test_mnist_train_crop28_flip():
         3.090034,
     ]
 
-    dataset = ndl.data.MNISTDataset(
-        MNISTPaths.TRAIN_IMAGES, MNISTPaths.TRAIN_LABELS, transforms=transforms
-    )
+    dataset = ndl.data.MNISTDataset(train=True, transforms=transforms)
+    dataset.x = dataset.x.reshape((-1, 28, 28, 1))
     sample_norms = [np.linalg.norm(dataset[idx][0]) for idx in SAMPLE_INDICES]
     sample_labels = [dataset[idx][1] for idx in SAMPLE_INDICES]
 
@@ -221,9 +220,8 @@ def test_mnist_train_crop12_flip():
         9.565062,
     ]
 
-    dataset = ndl.data.MNISTDataset(
-        MNISTPaths.TRAIN_IMAGES, MNISTPaths.TRAIN_LABELS, transforms=transforms
-    )
+    dataset = ndl.data.MNISTDataset(train=True, transforms=transforms)
+    dataset.x = dataset.x.reshape((-1, 28, 28, 1))
     sample_norms = [np.linalg.norm(dataset[idx][0]) for idx in SAMPLE_INDICES]
     sample_labels = [dataset[idx][1] for idx in SAMPLE_INDICES]
 

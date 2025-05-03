@@ -1,9 +1,10 @@
+import os
+
 import needle as ndl
 import pytest
 from models.resnet9 import MLPResNet
-from needle.data.datasets.mnist import MNISTPaths
 
-from apps.resnet_mnist import epoch
+from apps.train_utils import epoch
 
 INPUT_DIM = 784
 HIDDEN_DIM = 10
@@ -13,10 +14,8 @@ WEIGHT_DECAY = 0.1
 
 
 try:
-    mnist_train = ndl.data.MNISTDataset(
-        MNISTPaths.TRAIN_IMAGES, MNISTPaths.TRAIN_LABELS
-    )
-    mnist_test = ndl.data.MNISTDataset(MNISTPaths.TEST_IMAGES, MNISTPaths.TEST_LABELS)
+    mnist_train = ndl.data.MNISTDataset(train=True)
+    mnist_test = ndl.data.MNISTDataset(train=False)
 except FileNotFoundError:
     pytest.skip(
         "MNIST dataset not found. Please download the dataset.",
@@ -36,10 +35,11 @@ except FileNotFoundError:
     ids=["train", "test"],
 )
 @pytest.mark.parametrize("optimizer", [ndl.optim.Adam, ndl.optim.SGD])
-# TODO: Re-add CI step after adding mnist benchmarks
-@pytest.mark.skip("MNIST benchmark test too slow for now.")
+@pytest.mark.skipif(os.getenv("CI") == "true", reason="Benchmark skipped in CI")
 def test_mnist_epoch(benchmark, dataloader, mode, optimizer) -> None:
     model = MLPResNet(INPUT_DIM, HIDDEN_DIM)
     optimizer = optimizer(model.parameters(), lr=LR, weight_decay=WEIGHT_DECAY)
 
-    benchmark(epoch, dataloader, model, optimizer, mode)
+    if mode == "test":
+        optimizer = None
+    benchmark(epoch, dataloader, model, optimizer, mode=mode)

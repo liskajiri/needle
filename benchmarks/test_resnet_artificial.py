@@ -1,18 +1,20 @@
+import os
+
 import needle as ndl
 import pytest
 from models.resnet9 import MLPResNet
 from needle.data.datasets.artificial_mnist import ArtificialMNIST
 
-from apps.resnet_mnist import epoch
+from apps.train_utils import epoch
 
 IMAGE_DIMENSION = 28
 HIDDEN_DIM = 10
 NUM_CLASSES = 10
-BATCH_SIZE = 128
+BATCH_SIZE = 512
 LR = 0.01
 WEIGHT_DECAY = 0.1
-TRAIN_SAMPLES = 5000
-TEST_SAMPLES = 1000
+TRAIN_SAMPLES = 10_000
+TEST_SAMPLES = 1_000
 
 
 def create_datasets(image_dim: int):
@@ -31,7 +33,7 @@ def create_datasets(image_dim: int):
 
 @pytest.mark.parametrize("dataset_type", ["train", "test"], ids=["train", "test"])
 @pytest.mark.parametrize("optimizer", [ndl.optim.Adam, ndl.optim.SGD])
-@pytest.mark.skip(reason="Benchmarking test too slow for now.")
+@pytest.mark.skipif(os.getenv("CI") == "true", reason="Benchmark skipped in CI")
 def test_artificial_mnist_epoch(
     benchmark, dataset_type, optimizer, image_dim=IMAGE_DIMENSION
 ) -> None:
@@ -56,4 +58,6 @@ def test_artificial_mnist_epoch(
     model = MLPResNet(input_dim, HIDDEN_DIM)
     optimizer = optimizer(model.parameters(), lr=LR, weight_decay=WEIGHT_DECAY)
 
-    benchmark(epoch, dataloader, model, optimizer, dataset_type)
+    if dataset_type == "test":
+        optimizer = None
+    benchmark(epoch, dataloader, model, optimizer, mode=dataset_type)

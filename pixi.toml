@@ -99,6 +99,8 @@ train = ["train"]
 [dependencies]
 numpy = ">=2.2.2,<3"
 python = ">=3.13.3,<3.14"
+# Pin python-gil to 3.13.3 to avoid issues with getting threaded python
+python-gil = ">=3.13.3,<4"
 # needle = { path = "."}
 # ndarray_backend_cpu = { path = "backends/"}
 
@@ -254,14 +256,16 @@ benchmark_matmul = { cmd = "pytest benchmarks/test_matmul.py --codspeed", depend
 tqdm = ">=4.67.1,<5"
 
 [feature.train.tasks]
-train_resnet = { cmd = "python apps/train_resnet.py --log=INFO", depends-on = [
+train_resnet = { cmd = "python -m apps.train_resnet --log=INFO", depends-on = [
   "build",
-  # "download_datasets",
+  "download_mnist",
+  "download_cifar",
 ] }
-train_tree_bank = { cmd = "python apps/tree_bank.py --log=INFO", depends-on = [
+train_tree_bank = { cmd = "python -m apps.tree_bank --log=INFO", depends-on = [
   "build",
+  "download_tree_bank",
 ] }
 
 [activation.env]
-PYTHONPATH = "./python:./apps:."
+PYTHONPATH = "./python:./apps:.:/backends"
 NEEDLE_BACKEND = "nd"
