@@ -6,9 +6,9 @@ import pytest
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from cifar import train_cifar10
 from models.resnet9 import ResNet9
 
+from apps.train_utils import epoch
 from tests.devices import all_devices
 from tests.utils import set_random_seeds
 
@@ -154,12 +154,13 @@ def test_train_cifar10(device, atol=1e-2):
     )
 
     model = ResNet9(device=device, dtype="float32")
-    acc, loss = train_cifar10(
+    opt = ndl.optim.Adam(model.parameters(), lr=0.001)
+
+    acc, loss = epoch(
         dataloader=dataloader,
         model=model,
-        n_epochs=1,
-        loss_fn=ndl.nn.SoftmaxLoss,
-        optimizer=ndl.optim.Adam,
+        loss_fn=ndl.nn.SoftmaxLoss(),
+        opt=opt,
     )
     np.testing.assert_allclose(
         acc,

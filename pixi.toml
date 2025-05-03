@@ -94,10 +94,13 @@ lint = { features = ["lint"] }
 dev = ["dev"]
 test = { features = ["test"], solve-group = "test" }
 benchmark = { features = ["benchmark"], solve-group = "test" }
+train = ["train"]
 
 [dependencies]
 numpy = ">=2.2.2,<3"
 python = ">=3.13.3,<3.14"
+# Pin python-gil to 3.13.3 to avoid issues with getting threaded python
+python-gil = ">=3.13.3,<4"
 # needle = { path = "."}
 # ndarray_backend_cpu = { path = "backends/"}
 
@@ -128,7 +131,6 @@ libcxx = ">=20.1.2,<21"
 libcxx-devel = ">=20.1.2,<21"
 libcxxabi = ">=20.1.2,<21"
 clang-tools = ">=20.1.2,<21"
-tqdm = ">=4.67.1,<5"
 
 [feature.dev.tasks]
 # TODO: Move CMakelists to backends folder
@@ -166,7 +168,11 @@ test_hypothesis = { cmd = "pytest -n 8 -m 'hypothesis' --hypothesis-profile=dev"
 ] }
 test_all = { cmd = """coverage run -m pytest -n auto
 --junitxml=$TEST_REPORT_PATH.xml -o junit_family=legacy
-""", depends-on = ["build", "print_backend", "download_datasets"] }
+""", depends-on = [
+  "build",
+  "print_backend",
+  "download_datasets",
+], env = { COVERAGE_PROCESS_START = "./pyproject.toml" } }
 report_coverage = { cmd = "coverage combine && coverage xml", depends-on = [
   "test_all",
 ] }
@@ -246,7 +252,20 @@ benchmark_matmul = { cmd = "pytest benchmarks/test_matmul.py --codspeed", depend
   "build",
 ] }
 
+[feature.train.dependencies]
+tqdm = ">=4.67.1,<5"
+
+[feature.train.tasks]
+train_resnet = { cmd = "python -m apps.train_resnet --log=INFO", depends-on = [
+  "build",
+  "download_mnist",
+  "download_cifar",
+] }
+train_tree_bank = { cmd = "python -m apps.tree_bank --log=INFO", depends-on = [
+  "build",
+  "download_tree_bank",
+] }
+
 [activation.env]
-PYTHONPATH = "./python:./apps:."
+PYTHONPATH = "./python:./apps:.:/backends"
 NEEDLE_BACKEND = "nd"
-COVERAGE_PROCESS_START = "./pyproject.toml"

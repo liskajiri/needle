@@ -7,6 +7,13 @@ from needle.backend_selection import default_device
 from needle.data.nlp import Corpus
 from needle.typing import AbstractBackend, DType
 
+try:
+    from tqdm import tqdm  # type: ignore
+
+    TQDM_AVAILABLE = True
+except ImportError:
+    TQDM_AVAILABLE = False
+
 
 def epoch_general_ptb(
     data: ndl.Tensor,
@@ -44,12 +51,15 @@ def epoch_general_ptb(
     else:
         model.eval()
 
-    _n_batch, batch_size = data.shape
+    n_batches, batch_size = data.shape
     total_loss = 0.0
     total_correct = 0
     total_samples = 0
 
-    for i in range(0, data.shape[0] - 1, seq_len):
+    iter_range = range(0, data.shape[0] - 1, seq_len)
+    if TQDM_AVAILABLE:
+        iter_range = tqdm(iter_range, desc="Processing batches", total=n_batches)
+    for i in iter_range:
         X, y = ndl.data.nlp.get_batch(data, i, seq_len, device=device, dtype=dtype)
 
         # Forward pass
@@ -75,10 +85,17 @@ def epoch_general_ptb(
 
         # detach hidden state to avoid back-propagating through entire history
         h = tuple([h_i.detach() for h_i in h]) if isinstance(h, tuple) else h.detach()
-        logging.info(
-            f"""Batch {i // seq_len}: Loss: {loss.numpy()},
-              Accuracy: {total_correct / total_samples}"""
-        )
+        if TQDM_AVAILABLE:
+            current_acc = total_correct / total_samples
+            # Format numbers with consistent decimal places for better readability
+            iter_range.set_postfix(
+                loss=f"{(loss.numpy().item()):.2f}", accuracy=f"{current_acc:.2%}"
+            )
+        else:
+            logging.info(
+                f"""Batch {i // seq_len}: Loss: {(loss.numpy().item()):.2f},
+                Accuracy: {(total_correct / total_samples):.2f}"""
+            )
 
     avg_loss = total_loss / total_samples
     avg_acc = total_correct / total_samples
