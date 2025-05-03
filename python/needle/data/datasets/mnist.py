@@ -26,8 +26,7 @@ class MNISTDataset(Dataset[NDArray]):
 
     def __init__(
         self,
-        images: Path = MNISTPaths.TRAIN_IMAGES,
-        labels: Path = MNISTPaths.TRAIN_LABELS,
+        train: bool = True,
         **kwargs,
     ) -> None:
         """
@@ -35,10 +34,11 @@ class MNISTDataset(Dataset[NDArray]):
         http://yann.lecun.com/exdb/mnist/ for a description of the file format.
 
         Args:
-            images (Path): Path to the gzipped images file in MNIST format.
-                Defaults to MNISTPaths.TRAIN_IMAGES.
-            labels (Path): Path to the gzipped labels file in MNIST format.
-                Defaults to MNISTPaths.TRAIN_LABELS.
+            train (bool): If True, load training data; if False, load test data.
+            # images (Path): Path to the gzipped images file in MNIST format.
+            #     Defaults to MNISTPaths.TRAIN_IMAGES.
+            # labels (Path): Path to the gzipped labels file in MNIST format.
+            #     Defaults to MNISTPaths.TRAIN_LABELS.
             *kwargs: Additional arguments passed to the Dataset parent class.
 
         Notes:
@@ -50,9 +50,16 @@ class MNISTDataset(Dataset[NDArray]):
 
         super().__init__(**kwargs)
 
+        if train:
+            images: Path = MNISTPaths.TRAIN_IMAGES
+            labels: Path = MNISTPaths.TRAIN_LABELS
+        else:
+            images: Path = MNISTPaths.TEST_IMAGES
+            labels: Path = MNISTPaths.TEST_LABELS
+
         self.x, self.y = MNISTDataset.parse_mnist(images, labels)
         self.x = (
-            NDArray(self.x).compact().reshape((-1, self.IMAGE_DIM, self.IMAGE_DIM, 1))
+            NDArray(self.x).compact().reshape((-1, self.IMAGE_DIM * self.IMAGE_DIM))
         )
         # self.y = NDArray(self.y)
 

@@ -6,8 +6,8 @@ import torch
 from models.resnet9 import MLPResNet, ResidualBlock
 from needle import nn
 from needle.data.datasets.mnist import MNISTDataset, MNISTPaths
-from resnet_mnist import epoch
 
+from apps.train_utils import epoch
 from tests.utils import set_random_seeds
 
 rng = np.random.default_rng(0)
@@ -376,10 +376,7 @@ def mlp_resnet_forward(dim, hidden_dim, num_blocks, num_classes, norm, drop_prob
 # TODO: Test speed of epoch
 def train_epoch_1(hidden_dim, batch_size, optimizer, **kwargs):
     set_random_seeds(1)
-    train_dataset = ndl.data.MNISTDataset(
-        MNISTPaths.TRAIN_IMAGES,
-        MNISTPaths.TRAIN_LABELS,
-    )
+    train_dataset = ndl.data.MNISTDataset(train=True)
     train_dataloader = ndl.data.DataLoader(dataset=train_dataset, batch_size=batch_size)
 
     model = MLPResNet(784, hidden_dim)
@@ -391,7 +388,7 @@ def train_epoch_1(hidden_dim, batch_size, optimizer, **kwargs):
 
 def eval_epoch_1(hidden_dim, batch_size):
     set_random_seeds(1)
-    test_dataset = ndl.data.MNISTDataset(MNISTPaths.TEST_IMAGES, MNISTPaths.TEST_LABELS)
+    test_dataset = ndl.data.MNISTDataset(train=False)
     test_dataloader = ndl.data.DataLoader(
         dataset=test_dataset, batch_size=batch_size, shuffle=False
     )
@@ -410,8 +407,7 @@ def train_mnist_1(
     "Returns train_acc, train_loss, test_acc, test_loss"
     set_random_seeds(1)
     train_dataset = ndl.data.MNISTDataset(
-        MNISTPaths.TRAIN_IMAGES,
-        MNISTPaths.TRAIN_LABELS,
+        train=True,
     )
     train_dataloader = ndl.data.DataLoader(dataset=train_dataset, batch_size=batch_size)
 
@@ -423,10 +419,7 @@ def train_mnist_1(
         train_acc, train_loss = epoch(train_dataloader, model, opt)
 
     model.eval()
-    test_dataset = ndl.data.MNISTDataset(
-        MNISTPaths.TEST_IMAGES,
-        MNISTPaths.TEST_LABELS,
-    )
+    test_dataset = ndl.data.MNISTDataset(train=False)
     test_dataloader = ndl.data.DataLoader(
         dataset=test_dataset, batch_size=batch_size, shuffle=False
     )

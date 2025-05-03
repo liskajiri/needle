@@ -34,7 +34,7 @@ def ResidualBlock(
 
 
 def MLPResNet(
-    dim: int,
+    input_dim: int,
     hidden_dim: int = 100,
     num_blocks: int = 3,
     num_classes: int = 10,
@@ -48,7 +48,7 @@ def MLPResNet(
     )
     return nn.Sequential(
         *(
-            nn.Linear(dim, hidden_dim),
+            nn.Linear(input_dim, hidden_dim),
             nn.ReLU(),
             *residual_blocks,
             nn.Linear(hidden_dim, num_classes),
@@ -61,7 +61,7 @@ class ResNet9(nn.Module):
         self,
         in_features: int = 3,
         out_features: int = 10,
-        hidden_linear_dim=128,
+        hidden_linear_dim: int = 128,
         device: AbstractBackend = default_device,
         dtype: DType = "float32",
     ) -> None:
@@ -71,7 +71,7 @@ class ResNet9(nn.Module):
         self.config = Config(device=device, dtype=dtype)
 
         self.module = nn.Sequential(
-            self._make_conv_layer(3, 16, 7, 4),
+            self._make_conv_layer(self.in_features, 16, 7, 4),
             self._make_conv_layer(16, 32, 3, 2),
             nn.Residual(
                 nn.Sequential(
@@ -90,7 +90,7 @@ class ResNet9(nn.Module):
             nn.Flatten(),
             nn.Linear(128, hidden_linear_dim, **self.config),
             nn.ReLU(),
-            nn.Linear(hidden_linear_dim, 10, **self.config),
+            nn.Linear(hidden_linear_dim, self.out_features, **self.config),
         )
 
     def _make_conv_layer(
