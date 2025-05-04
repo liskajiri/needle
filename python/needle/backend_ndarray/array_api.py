@@ -90,6 +90,42 @@ def max(array: NDArray, axis: Axis | None = None, keepdims: bool = False) -> NDA
     return array.max(axis=axis, keepdims=keepdims)
 
 
+def min(array: NDArray, axis: Axis | None = None, keepdims: bool = False) -> NDArray:
+    """
+    Compute the minimum value of the array along the specified axis.
+
+    Args:
+        array: Input NDArray.
+        axis: Axis or axes along which to compute the minimum.
+        keepdims: If True, the reduced dimensions are retained with length 1.
+
+    Returns:
+        NDArray: The minimum value(s) along the specified axis.
+
+    Example:
+        >>> import needle as ndl
+        >>> import numpy as np
+        >>> a = ndl.NDArray(np.array([[1, 2], [3, 4]]))
+        >>> ndl.array_api.min(a, axis=0)
+        [1. 2.]
+        >>> ndl.array_api.min(a, axis=1)
+        [1. 3.]
+        >>> ndl.array_api.min(
+        ...     a, axis=None
+        ... )  # TODO: this should be a scalar, not ndarray
+        [1.]
+        >>> ndl.array_api.min(a, axis=0, keepdims=True)
+        [[1. 2.]]
+        >>> ndl.array_api.min(a, axis=1, keepdims=True)
+        [[1.]
+         [3.]]
+        >>> ndl.array_api.min(a, axis=None, keepdims=True)
+        [[1.]]
+    """
+    arr = -array
+    return -arr.max(axis=axis, keepdims=keepdims)
+
+
 def reshape(array: NDArray, new_shape: Shape) -> NDArray:
     return array.reshape(new_shape)
 
