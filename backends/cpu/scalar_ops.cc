@@ -103,5 +103,12 @@ export void ScalarGe(const AlignedArray &a, const scalar_t scalar,
     ScalarOp(a, scalar, out, std::greater_equal<scalar_t>());
 }
 
+export scalar_t ScalarItem(const AlignedArray &a, const size_t index) {
+    /**
+     * Get a scalar value from an array
+     */
+    return a.ptr[index];
+}
+
 } // namespace cpu
 } // namespace needle
