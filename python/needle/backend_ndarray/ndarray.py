@@ -185,9 +185,10 @@ def cpu_numpy() -> AbstractBackend:
 def cpu() -> AbstractBackend:
     """Return cpu device."""
     try:
-        from needle.backend_ndarray import ndarray_backend_cpu  # type: ignore
+        from backends.cpu import ndarray_backend_cpu  # type: ignore
+        # import ndarray_backend_cpu
 
-        return BackendDevice("cpu", ndarray_backend_cpu)
+        return BackendDevice("cpu", ndarray_backend_cpu)  # type: ignore
     except ImportError:
         raise ImportError("CPU backend not available")
 
@@ -854,7 +855,7 @@ class NDArray:  # noqa: PLR0904 = too many public methods
 
         return self.as_strided(new_shape, tuple(new_strides))
 
-    # === Get and set elements
+    # ====================  Get and set elements
 
     def _process_slice(self, sl: slice, dim: int) -> slice:
         """Convert a slice to an explicit start/stop/step
@@ -935,7 +936,7 @@ class NDArray:  # noqa: PLR0904 = too many public methods
         return tuple(processed_idxs), squeeze_dims
 
     def _compute_view_shape(
-        self, slices: tuple[slice, ...], squeeze_dims: set[int]
+        self, slices: tuple[slice[int, int, int], ...], squeeze_dims: set[int]
     ) -> tuple[Shape, Strides, int]:
         """Compute shape, strides and offset for the sliced view."""
         new_shape = []
@@ -1243,13 +1244,30 @@ class NDArray:  # noqa: PLR0904 = too many public methods
             self.device.scalar_power(self.compact()._handle, other, out._handle)
         return out
 
-    def maximum(self, other: NDArray | Scalar) -> NDArray:
+    def maximum(self, other: NDArrayLike) -> NDArray:
         return self.ewise_or_scalar(
             other, self.device.ewise_maximum, self.device.scalar_maximum
         )
 
-    # Binary operators all return (0.0, 1.0) floating point values
-    # TODO: could of course be optimized
+    # Element-wise functions
+
+    def log(self) -> NDArray:
+        out = make(self.shape, device=self.device)
+        self.device.ewise_log(self.compact()._handle, out._handle)
+        return out
+
+    def exp(self) -> NDArray:
+        out = make(self.shape, device=self.device)
+        self.device.ewise_exp(self.compact()._handle, out._handle)
+        return out
+
+    def tanh(self) -> NDArray:
+        out = make(self.shape, device=self.device)
+        self.device.ewise_tanh(self.compact()._handle, out._handle)
+        return out
+
+    # ====================  Comparison operators
+
     # def __hash__(self) -> int:
     #     return hash(self._handle)
 
@@ -1275,25 +1293,80 @@ class NDArray:  # noqa: PLR0904 = too many public methods
     def __le__(self, other: NDArrayLike) -> NDArray:
         return 1.0 - (self > other)
 
-    # Element-wise functions
+    # TODO: breaks array interop
+    # def __bool__(self) -> bool:
+    #     """Convert array to boolean value (True or False)."""
+    #     if self.size == 1:
+    #         return bool(self.item())
+    #     raise ValueError(
+    #         "Truth value of NDArray with more than one element is ambiguous"
+    #     )
 
-    # TODO: auto derive inplace functions
-    def log(self) -> NDArray:
-        out = make(self.shape, device=self.device)
-        self.device.ewise_log(self.compact()._handle, out._handle)
-        return out
+    # ====================  Matrix multiplication
+    def _check_matrix_shapes(self, other: NDArray) -> None:
+        if self.ndim < 2:
+            raise ValueError(
+                f"Matrix multiplication needs at least 2D arrays, got {self.shape}"
+            )
+        if other.ndim < 2:
+            raise ValueError(
+                f"Matrix multiplication needs at least 2D arrays, got {other.shape}"
+            )
+        if self.shape[-1] != other.shape[-2]:
+            raise ValueError(
+                "Matrix multiplication needs compatible shapes, "
+                f"got {self.shape} and {other.shape}"
+            )
 
-    def exp(self) -> NDArray:
-        out = make(self.shape, device=self.device)
-        self.device.ewise_exp(self.compact()._handle, out._handle)
-        return out
+    def _batched_matmul(self, other: NDArray) -> NDArray:
+        m, k1 = self.shape[-2:]
+        k2, n = other.shape[-2:]
 
-    def tanh(self) -> NDArray:
-        out = make(self.shape, device=self.device)
-        self.device.ewise_tanh(self.compact()._handle, out._handle)
-        return out
+        a_batch_shape = self.shape[:-2] if self.ndim > 2 else (1,)
+        b_batch_shape = other.shape[:-2] if other.ndim > 2 else (1,)
 
-    # Matrix multiplication
+        batch_shape = broadcast_shapes(a_batch_shape, b_batch_shape)
+        batch_size = math.prod(batch_shape)
+
+        # broadcast shapes of axis
+        a = self.broadcast_to((*batch_shape, m, k1)).compact()
+        b = other.broadcast_to((*batch_shape, k2, n)).compact()
+
+        a = a.reshape((-1, m, k1))
+        b = b.reshape((-1, k2, n))
+        if a.shape[0] != b.shape[0]:
+            raise AssertionError(f"Batched matmul: {a.shape[0]} != {b.shape[0]}")
+
+        # Create output
+        out = make((batch_size, m, n), device=self.device)
+        for i in range(batch_size):
+            out[i] = a[i] @ b[i]
+
+        # Restore batch dimensions
+        return out.reshape((*batch_shape, m, n))
+
+    #  TODO: move this to the cpu backend
+    def _tiled_matmul(self, other: NDArray, m: int, n: int, p: int) -> NDArray:
+        def _tile(a: NDArray, tile: int) -> NDArray:
+            """
+            Transforms a matrix [k, n] into a
+            matrix [k // tile, n // tile, tile, tile].
+            """
+            return a.as_strided(
+                (a.shape[0] // tile, a.shape[1] // tile, tile, tile),
+                (a.shape[1] * tile, tile, a.shape[1], 1),
+            ).compact()
+
+        t = self.device.__tile_size__
+        a = _tile(self.compact(), t)
+        b = _tile(other.compact(), t)
+        out = make((a.shape[0], b.shape[1], t, t), device=self.device)
+        self.device.matmul_tiled(a._handle, b._handle, out._handle, m, n, p)
+
+        return (
+            out.permute((0, 2, 1, 3)).compact().reshape((self.shape[0], other.shape[1]))
+        )
+
     def __matmul__(self, other: NDArray) -> NDArray:
         """
         Matrix multiplication of two arrays.
@@ -1330,84 +1403,14 @@ class NDArray:  # noqa: PLR0904 = too many public methods
             >>> c.shape
             (2, 2, 3, 5)
         """
-
-        def _check_matrix_shapes() -> None:
-            if self.ndim < 2:
-                raise ValueError(
-                    f"Matrix multiplication needs at least 2D arrays, got {self.shape}"
-                )
-            if other.ndim < 2:
-                raise ValueError(
-                    f"Matrix multiplication needs at least 2D arrays, got {other.shape}"
-                )
-            if self.shape[-1] != other.shape[-2]:
-                raise ValueError(
-                    "Matrix multiplication needs compatible shapes, "
-                    f"got {self.shape} and {other.shape}"
-                )
-
-        def _batched_matmul(self, other: NDArray) -> NDArray:
-            m, k1 = self.shape[-2:]
-            k2, n = other.shape[-2:]
-
-            a_batch_shape = self.shape[:-2] if self.ndim > 2 else (1,)
-            b_batch_shape = other.shape[:-2] if other.ndim > 2 else (1,)
-
-            batch_shape = broadcast_shapes(a_batch_shape, b_batch_shape)
-            batch_size = math.prod(batch_shape)
-
-            # broadcast shapes of axis
-            a = self.broadcast_to((*batch_shape, m, k1)).compact()
-            b = other.broadcast_to((*batch_shape, k2, n)).compact()
-
-            a = a.reshape((-1, m, k1))
-            b = b.reshape((-1, k2, n))
-            if a.shape[0] != b.shape[0]:
-                raise AssertionError(f"Batched matmul: {a.shape[0]} != {b.shape[0]}")
-
-            # Create output
-            out = make((batch_size, m, n), device=self.device)
-            for i in range(batch_size):
-                out[i] = a[i] @ b[i]
-
-            # Restore batch dimensions
-            return out.reshape((*batch_shape, m, n))
-
-        #  TODO: move this to the cpu backend
-        def _tiled_matmul(self, other: NDArray) -> NDArray:
-            def _tile(a: NDArray, tile: int) -> NDArray:
-                """
-                Transforms a matrix [k, n] into a
-                matrix [k // tile, n // tile, tile, tile].
-                """
-                return a.as_strided(
-                    (a.shape[0] // tile, a.shape[1] // tile, tile, tile),
-                    (a.shape[1] * tile, tile, a.shape[1], 1),
-                ).compact()
-
-            t = self.device.__tile_size__
-            a = _tile(self.compact(), t)
-            b = _tile(other.compact(), t)
-            out = make((a.shape[0], b.shape[1], t, t), device=self.device)
-            self.device.matmul_tiled(a._handle, b._handle, out._handle, m, n, p)
-
-            return (
-                out.permute((0, 2, 1, 3))
-                .compact()
-                .reshape((self.shape[0], other.shape[1]))
-            )
-
-        # Main matmul function
-
-        _check_matrix_shapes()
+        self._check_matrix_shapes(other)
 
         if self.ndim > 2 or other.ndim > 2:
-            return _batched_matmul(self, other)
+            return self._batched_matmul(other)
 
         m, n, p = self.shape[0], self.shape[1], other.shape[1]
 
         # For smaller matrices, the overhead of tiling and reshaping is too large
-        # TODO: More scientific study of this
         matrix_is_large = m * n * p > 64**3
 
         if (
@@ -1415,7 +1418,7 @@ class NDArray:  # noqa: PLR0904 = too many public methods
             and hasattr(self.device, "matmul_tiled")
             and all(d % self.device.__tile_size__ == 0 for d in (m, n, p))
         ):
-            return _tiled_matmul(self, other)
+            return self._tiled_matmul(other, m, n, p)
 
         out = make((m, p), device=self.device)
         self.device.matmul(
@@ -1423,7 +1426,8 @@ class NDArray:  # noqa: PLR0904 = too many public methods
         )
         return out
 
-    # Reductions, i.e., sum/max over all element or over given axis
+    # ====================  Reductions over all element or over given axis
+
     def reduce_view_out(
         self, axis: Axis | None, *, keepdims: bool = False
     ) -> tuple[NDArray, NDArray]:
@@ -1431,7 +1435,7 @@ class NDArray:  # noqa: PLR0904 = too many public methods
         Return a view to the array set up for reduction functions and output array.
 
         Args:
-            axis: Axes to reduce over. Either None to reduce all axes, or tuple of axes.
+            axis: Axes to reduce over. None to reduce all axes, or int/tuple of axes.
             keepdims: If true, reduced axes are kept with size 1
 
         Returns:
@@ -1455,13 +1459,12 @@ class NDArray:  # noqa: PLR0904 = too many public methods
 
         if axis is None:
             view = self.compact().reshape((1,) * (self.ndim - 1) + (self.size,))
-            out = make((1,), device=self.device)
+            out_shape = (1,) * self.ndim if keepdims else (1,)
+            out = make(out_shape, device=self.device)
             return view, out
 
         if isinstance(axis, int):
             axis = (axis,)
-        elif isinstance(axis, list):
-            axis = tuple(axis)
 
         # handle negative axes - probably not needed
         axis = tuple(sorted([ax if ax >= 0 else self.ndim + ax for ax in axis]))
@@ -1506,6 +1509,12 @@ class NDArray:  # noqa: PLR0904 = too many public methods
             [3. 7.]
             >>> x.sum()
             [10.]
+            >>> x.sum(axis=(0, 1))
+            10.0
+            >>> x.sum(keepdims=True)
+            [[10.]]
+            >>> x.sum(axis=0, keepdims=True)
+            [[4. 6.]]
         """  # noqa: DOC502
         view, out = self.reduce_view_out(axis, keepdims=keepdims)
         self.device.reduce_sum(view.compact()._handle, out._handle, view.shape[-1])
@@ -1535,6 +1544,12 @@ class NDArray:  # noqa: PLR0904 = too many public methods
             [2. 4.]
             >>> x.max()
             [4.]
+            >>> x.max(axis=(0, 1))
+            4.0
+            >>> x.max(keepdims=True)
+            [[4.]]
+            >>> x.max(axis=0, keepdims=True)
+            [[3. 4.]]
         """  # noqa: DOC502
         view, out = self.reduce_view_out(axis, keepdims=keepdims)
         self.device.reduce_max(view.compact()._handle, out._handle, view.shape[-1])
