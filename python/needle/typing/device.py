@@ -5,20 +5,15 @@ from collections.abc import Callable
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
-    from needle.backend_ndarray.ndarray import NDArray
     from needle.typing.types import DType, IndexType, Scalar, Shape, Strides, np_ndarray
 
 
-class AbstractBackend(ABC):
+class AbstractBackend[T](ABC):
     """
     A backend device, wraps the implementation module.
     """
 
-    # TODO: generic over NDArray type?
-
-    def __init__(
-        self, name: str, module: ModuleProtocol[NDArray] | None = None
-    ) -> None:
+    def __init__(self, name: str, module: ModuleProtocol[T] | None = None) -> None:
         self.name = name
         # A module that implements the backend.
         self.module = module
@@ -46,31 +41,31 @@ class AbstractBackend(ABC):
         return self.module is not None
 
     @abstractmethod
-    def rand(self, shape: Shape, dtype: DType = "float32") -> NDArray:
+    def rand(self, shape: Shape, dtype: DType = "float32") -> T:
         raise NotImplementedError
 
     @abstractmethod
-    def randn(self, shape: Shape, dtype: DType) -> NDArray:
+    def randn(self, shape: Shape, dtype: DType) -> T:
         raise NotImplementedError
 
     @abstractmethod
-    def one_hot(self, n: int, i: IndexType, dtype: DType) -> NDArray:
+    def one_hot(self, n: int, i: IndexType, dtype: DType) -> T:
         raise NotImplementedError
 
     @abstractmethod
-    def zeros(self, shape: Shape, dtype: DType) -> NDArray:
+    def zeros(self, shape: Shape, dtype: DType) -> T:
         raise NotImplementedError
 
     @abstractmethod
-    def ones(self, shape: Shape, dtype: DType) -> NDArray:
+    def ones(self, shape: Shape, dtype: DType) -> T:
         raise NotImplementedError
 
     @abstractmethod
-    def empty(self, shape: Shape, dtype: DType) -> NDArray:
+    def empty(self, shape: Shape, dtype: DType) -> T:
         raise NotImplementedError
 
     @abstractmethod
-    def full(self, shape: Shape, fill_value: Scalar, dtype: DType) -> NDArray:
+    def full(self, shape: Shape, fill_value: Scalar, dtype: DType) -> T:
         raise NotImplementedError
 
 
