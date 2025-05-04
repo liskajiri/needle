@@ -7,10 +7,10 @@ from needle.ops.mathematic import summation
 from needle.ops.op import TensorOp
 from needle.ops.shape import broadcast_to_new_axis
 from needle.tensor import Tensor
+from needle.typing.types import Axis
 
 if TYPE_CHECKING:
     from needle.backend_selection import NDArray
-    from needle.typing.types import Shape
 
 
 class LogSoftmax(TensorOp):
@@ -47,8 +47,8 @@ def logsoftmax(a: Tensor) -> Tensor:
 
 
 class LogSumExp(TensorOp):
-    def __init__(self, axes: Shape = ()) -> None:
-        self.axes = (axes,) if isinstance(axes, int) else axes
+    def __init__(self, axes: Axis | None = None) -> None:
+        self.axes = axes
 
     def compute(self, z: NDArray) -> NDArray:
         """
@@ -79,5 +79,5 @@ class LogSumExp(TensorOp):
         return out_grad * (exp_Z / denominator)
 
 
-def logsumexp(a: Tensor, axes: Shape = ()) -> Tensor:
+def logsumexp(a: Tensor, axes: Axis | None = None) -> Tensor:
     return LogSumExp(axes=axes)(a)

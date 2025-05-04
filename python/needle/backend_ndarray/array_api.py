@@ -17,15 +17,15 @@ if TYPE_CHECKING:
         Strides,
         np_ndarray,
     )
-    from needle.typing.dlpack import DLPackDeviceType, SupportsDLPack
+    from needle.typing.dlpack import DLPackDeviceType
 
 
 def from_numpy(a: np_ndarray) -> NDArray:
     return NDArray(a)
 
 
-def from_dlpack(
-    a: SupportsDLPack, device: DLPackDeviceType | None = None, copy: bool = False
+def from_dlpack[SupportsDLPack: NDArray](
+    a: NDArray, device: DLPackDeviceType | None = None, copy: bool = False
 ) -> NDArray:
     """Convert a DLPack capsule to an NDArray.
 
@@ -35,6 +35,7 @@ def from_dlpack(
     Returns:
         NDArray: Converted NDArray
     """
+    # TODO(GPU): add device
     return NDArray(a)
 
 
@@ -156,7 +157,7 @@ def flip(a: NDArray, axis: Axis) -> NDArray:
     Note: compacts the array before returning.
 
     Args:
-        axes: Tuple or int specifying the axes to flip
+        axis: Tuple or int specifying the axes to flip
 
     Returns:
         NDArray: New array with flipped axes
@@ -173,8 +174,7 @@ def flip(a: NDArray, axis: Axis) -> NDArray:
             )
 
     # Normalize negative axes
-    # TODO: this will be common in array ops, make it a function
-    # (convert neg to pos  idx)
+    # (convert neg to pos idx)
     axis = tuple(ax if ax >= 0 else a.ndim + ax for ax in axis)
 
     # Create new view with modified strides and offset
@@ -195,9 +195,8 @@ def flip(a: NDArray, axis: Axis) -> NDArray:
         handle=a._handle,
         offset=offset,
     )
-    # Return compacted array to ensure standard memory layout
-    # TODO: Copies memory, if negative strides are supported, this can be avoided
-    return out.compact()
+    return out
+    # return out.compact()
 
 
 def pad(a: NDArray, axes: tuple[tuple[int, int], ...]) -> NDArray:
@@ -347,13 +346,13 @@ def split(
     return out
 
 
-def transpose(a: NDArray, axes: tuple[int, ...] = ()) -> NDArray:
-    if not axes:
+def transpose(a: NDArray, axes: tuple[int, ...] | None = None) -> NDArray:
+    if axes is None:
         axes = tuple(range(a.ndim))[::-1]
     return a.permute(axes)
 
 
-def concatenate(arrays: tuple[NDArray], axis: int = 0) -> NDArray:
+def concatenate(arrays: tuple[NDArray, ...], axis: int = 0) -> NDArray:
     """Concatenate arrays along an existing axis.
 
     Args:

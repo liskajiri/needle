@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 import needle as ndl
 from needle.autograd.value import Value
 from needle.backend_selection import NDArray, array_api, default_device
+from needle.typing.types import Axis
 
 if TYPE_CHECKING:
     from collections.abc import Generator
@@ -139,7 +140,7 @@ class Tensor(Value):
         return ndl.ops.matmul(self, other)
 
     # TODO: Unify what is the null value for a Shape - () or None?
-    def sum(self, axes: Shape | None = None, keepdims: bool = False) -> Tensor:
+    def sum(self, axes: Axis | None = None, keepdims: bool = False) -> Tensor:
         return ndl.ops.summation(self, axes, keepdims)
 
     def broadcast_to(self, shape: Shape) -> Tensor:
@@ -151,10 +152,10 @@ class Tensor(Value):
     def __neg__(self) -> Tensor:
         return ndl.ops.negate(self)
 
-    def transpose(self, axes: tuple[int, ...] = ()) -> Tensor:
+    def transpose(self, axes: Axis | None = None) -> Tensor:
         return ndl.ops.transpose(self, axes)
 
-    def flip(self, axes: tuple[int, ...]) -> Tensor:
+    def flip(self, axes: Axis) -> Tensor:
         return ndl.ops.flip(self, axes)
 
     @property
