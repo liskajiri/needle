@@ -1100,19 +1100,59 @@ class NDArray:  # noqa: PLR0904 = too many public methods
                 view.size, other, view._handle, view.shape, view.strides, view._offset
             )
 
-    # Collection of element-wise and scalar function: add, multiply, boolean, etc
-    # TODO: probably must implement in the backend
-    def item(self) -> Scalar:
-        """Convert a size-1 array to a Python scalar.
+    def item(self, index: int | tuple[int, ...] | None = None) -> Scalar:
+        """Copy an element of an array to a standard Python scalar and return it.
 
-        # Returns:
-            # Scalar: The scalar value contained in the array.
+        Parameters:
+            index: The index of the element to copy. Can be:
+                None: Only works for arrays with one element (a.size == 1),
+                int | tuple[int, ...]: Indices of the element to return.
 
-        Raises:
-            NotImplementedError: Currently not implemented.
+        Returns:
+            Scalar: A copy of the specified element of the array as a Python scalar
+
+        Examples:
+            >>> x = NDArray([1])
+            >>> x.item()
+            1.0
+
+            >>> x = NDArray([[1, 2], [3, 4]])
+            >>> x.item(0)
+            1.0
+            >>> x.item((1, 0))
+            3.0
+            >>> x.item((0, 1))
+            2.0
+            >>> x.item()  # Only works for arrays with one element
+            Traceback (most recent call last):
+            ...
+            ValueError: Can only convert an array of size 1 to a Python scalar
         """
-        assert self.size == 1, "item() only works on size-1 arrays"
-        raise NotImplementedError("item() not implemented")
+        if index is None:
+            if self.size != 1:
+                raise ValueError(
+                    "Can only convert an array of size 1 to a Python scalar"
+                )
+            return self.device.scalar_item(self._handle, self._offset)
+
+        if isinstance(index, int):
+            if not 0 <= index < self.size:
+                raise IndexError("Index out of bounds")
+            compact = self.compact()
+            return self.device.scalar_item(compact._handle, index)
+
+        if isinstance(index, tuple):
+            if len(index) != len(self.shape):
+                raise IndexError(
+                    f"Tuple index must have exactly {len(self.shape)} elements"
+                )
+            offset = sum(i * s for i, s in zip(index, self.strides))
+            if not 0 <= offset < self.size:
+                raise IndexError("Index out of bounds")
+            compact = self.compact()
+            return self.device.scalar_item(compact._handle, compact._offset + offset)
+
+    # ====================  Element-wise and scalar functions
 
     def ewise_or_scalar(
         self,
