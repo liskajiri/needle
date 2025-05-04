@@ -17,15 +17,15 @@ if TYPE_CHECKING:
         Strides,
         np_ndarray,
     )
-    from needle.typing.dlpack import DLPackDeviceType, SupportsDLPack
+    from needle.typing.dlpack import DLPackDeviceType
 
 
 def from_numpy(a: np_ndarray) -> NDArray:
     return NDArray(a)
 
 
-def from_dlpack(
-    a: SupportsDLPack, device: DLPackDeviceType | None = None, copy: bool = False
+def from_dlpack[SupportsDLPack: NDArray](
+    a: NDArray, device: DLPackDeviceType | None = None, copy: bool = False
 ) -> NDArray:
     """Convert a DLPack capsule to an NDArray.
 
@@ -35,6 +35,7 @@ def from_dlpack(
     Returns:
         NDArray: Converted NDArray
     """
+    # TODO(GPU): add device
     return NDArray(a)
 
 
@@ -90,6 +91,42 @@ def max(array: NDArray, axis: Axis | None = None, keepdims: bool = False) -> NDA
     return array.max(axis=axis, keepdims=keepdims)
 
 
+def min(array: NDArray, axis: Axis | None = None, keepdims: bool = False) -> NDArray:
+    """
+    Compute the minimum value of the array along the specified axis.
+
+    Args:
+        array: Input NDArray.
+        axis: Axis or axes along which to compute the minimum.
+        keepdims: If True, the reduced dimensions are retained with length 1.
+
+    Returns:
+        NDArray: The minimum value(s) along the specified axis.
+
+    Example:
+        >>> import needle as ndl
+        >>> import numpy as np
+        >>> a = ndl.NDArray(np.array([[1, 2], [3, 4]]))
+        >>> ndl.array_api.min(a, axis=0)
+        [1. 2.]
+        >>> ndl.array_api.min(a, axis=1)
+        [1. 3.]
+        >>> ndl.array_api.min(
+        ...     a, axis=None
+        ... )  # TODO: this should be a scalar, not ndarray
+        [1.]
+        >>> ndl.array_api.min(a, axis=0, keepdims=True)
+        [[1. 2.]]
+        >>> ndl.array_api.min(a, axis=1, keepdims=True)
+        [[1.]
+         [3.]]
+        >>> ndl.array_api.min(a, axis=None, keepdims=True)
+        [[1.]]
+    """
+    arr = -array
+    return -arr.max(axis=axis, keepdims=keepdims)
+
+
 def reshape(array: NDArray, new_shape: Shape) -> NDArray:
     return array.reshape(new_shape)
 
@@ -120,7 +157,7 @@ def flip(a: NDArray, axis: Axis) -> NDArray:
     Note: compacts the array before returning.
 
     Args:
-        axes: Tuple or int specifying the axes to flip
+        axis: Tuple or int specifying the axes to flip
 
     Returns:
         NDArray: New array with flipped axes
@@ -137,8 +174,7 @@ def flip(a: NDArray, axis: Axis) -> NDArray:
             )
 
     # Normalize negative axes
-    # TODO: this will be common in array ops, make it a function
-    # (convert neg to pos  idx)
+    # (convert neg to pos idx)
     axis = tuple(ax if ax >= 0 else a.ndim + ax for ax in axis)
 
     # Create new view with modified strides and offset
@@ -159,9 +195,8 @@ def flip(a: NDArray, axis: Axis) -> NDArray:
         handle=a._handle,
         offset=offset,
     )
-    # Return compacted array to ensure standard memory layout
-    # TODO: Copies memory, if negative strides are supported, this can be avoided
-    return out.compact()
+    return out
+    # return out.compact()
 
 
 def pad(a: NDArray, axes: tuple[tuple[int, int], ...]) -> NDArray:
@@ -311,13 +346,13 @@ def split(
     return out
 
 
-def transpose(a: NDArray, axes: tuple[int, ...] = ()) -> NDArray:
-    if not axes:
+def transpose(a: NDArray, axes: tuple[int, ...] | None = None) -> NDArray:
+    if axes is None:
         axes = tuple(range(a.ndim))[::-1]
     return a.permute(axes)
 
 
-def concatenate(arrays: tuple[NDArray], axis: int = 0) -> NDArray:
+def concatenate(arrays: tuple[NDArray, ...], axis: int = 0) -> NDArray:
     """Concatenate arrays along an existing axis.
 
     Args:

@@ -9,14 +9,14 @@ from needle.backend_selection import array_api
 from needle.ops.op import TensorOp
 from needle.ops.shape import broadcast_to, broadcast_to_new_axis
 from needle.tensor import Tensor
+from needle.typing.types import Axis
 
 if TYPE_CHECKING:
     from needle.backend_selection import NDArray
-    from needle.typing import Shape
 
 
 class Summation(TensorOp):
-    def __init__(self, axes: Shape | None = None, keepdims: bool = False) -> None:
+    def __init__(self, axes: Axis | None = None, keepdims: bool = False) -> None:
         self.axes = axes
         self.keepdims = keepdims
 
@@ -38,9 +38,7 @@ class Summation(TensorOp):
         # return broadcast_to(out_grad, target_shape)
 
 
-def summation(a: Tensor, axes: Shape | None = None, keepdims: bool = False) -> Tensor:
-    # TODO: fix calling convention
-    axes = (axes,) if isinstance(axes, int) else axes
+def summation(a: Tensor, axes: Axis | None = None, keepdims: bool = False) -> Tensor:
     return Summation(axes, keepdims)(a)
 
 
@@ -119,19 +117,12 @@ def relu(a: Tensor) -> Tensor:
 
 class SquareRoot(TensorOp):
     def compute(self, a: NDArray) -> NDArray:
-        # if any(x < 0 for x in a):
-        #     raise ValueError(
-        #         f"Square root of negative number is not supported., got {a}"
-        #     )
+        min = array_api.min(a).item()
+        if min < 0.0:
+            raise ValueError(
+                f"Square root of negative number is not supported., got {a} with {min=}"
+            )
 
-        # TODO: this does not work, because I don't have iterator over elements
-        # TODO: or min across the array
-        # for x in a:
-        #     if x < 0:
-        #         raise ValueError(
-        #             f"Square root of negative number is not supported., got {a} {x},
-        # {type(x)}"
-        #         )
         return a**0.5
 
     def gradient(self, out_grad: Tensor, node: Tensor) -> Tensor:
@@ -168,6 +159,10 @@ def sigmoid(a: Tensor) -> Tensor:
     return Sigmoid()(a)
 
 
-def mean(a: Tensor, axes: int = 0) -> Tensor:
-    # TODO: weird shapes
-    return summation(a, axes=(axes,)) / a.shape[axes]
+def mean(a: Tensor, axes: Axis | None = 0) -> Tensor:
+    if axes is None:
+        axes = tuple(range(a.ndim))
+    elif isinstance(axes, int):
+        axes = (axes,)
+    axes_size = sum(a.shape[axis] for axis in axes)
+    return summation(a, axes=axes) / axes_size

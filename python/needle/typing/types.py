@@ -17,7 +17,6 @@ type Scalar = float | int
 type Shape = tuple[int, ...]
 # TODO: default type values
 type Axis = int | tuple[int, ...]
-# TODO: Axes vs axis
 type Strides = Shape
 type NDArrayLike = (
     NDArray | np_ndarray | list[Scalar] | tuple[Scalar, ...] | Scalar | std_array
@@ -28,7 +27,7 @@ float32: DType = "float32"
 
 type BatchType = tuple[Tensor, ...]
 
-type SingleIndex = int | slice  # TODO: add Ellipsis
-type ListTupleIndex = list[int] | tuple[int, ...]
+type SingleIndex = int | slice
+type ListTupleIndex = tuple[int, ...] | tuple[slice, ...] | list[int]
 type ArrayIndex = ListTupleIndex | NDArray | np_ndarray
 type IndexType = SingleIndex | ArrayIndex

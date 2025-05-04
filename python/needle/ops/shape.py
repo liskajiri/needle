@@ -8,6 +8,7 @@ from needle.backend_selection import array_api
 
 # from needle.ops.mathematic import summation
 from needle.ops.op import TensorOp
+from needle.typing.types import Axis
 
 if TYPE_CHECKING:
     from needle.backend_selection import NDArray
@@ -16,8 +17,12 @@ if TYPE_CHECKING:
 
 
 class Transpose(TensorOp):
-    def __init__(self, axes: Shape = (-1, -2)) -> None:
-        self.axes = axes if axes else (-1, -2)
+    def __init__(self, axes: Axis | None = None) -> None:
+        if axes is None:
+            axes = (-1, -2)
+        elif isinstance(axes, int):
+            axes = (axes,)
+        self.axes = axes
 
     def compute(self, a: NDArray) -> NDArray:
         axes = tuple(ax if ax >= 0 else a.ndim + ax for ax in self.axes)
@@ -48,7 +53,7 @@ class Transpose(TensorOp):
         return transpose(out_grad, inverse_axes)
 
 
-def transpose(a: Tensor, axes: Shape = ()) -> Tensor:
+def transpose(a: Tensor, axes: Axis | None = None) -> Tensor:
     return Transpose(axes)(a)
 
 
@@ -100,6 +105,10 @@ def broadcast_to(a: Tensor, shape: Shape) -> Tensor:
     return BroadcastTo(shape)(a)
 
 
-def broadcast_to_new_axis(x: Tensor, new_axis: Shape, new_shape: Shape) -> Tensor:
+def broadcast_to_new_axis(x: Tensor, new_axis: Axis, new_shape: Shape) -> Tensor:
+    if new_axis is None:
+        return x
+    if isinstance(new_axis, int):
+        new_axis = (new_axis,)
     new_axes = tuple(1 if i in new_axis else ax for i, ax in enumerate(new_shape))
     return broadcast_to(reshape(x, new_axes), new_shape)

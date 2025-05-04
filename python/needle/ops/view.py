@@ -6,6 +6,7 @@ import needle.init as init
 from needle.backend_selection import NDArray, array_api
 from needle.ops.op import TensorOp, TensorTupleOp
 from needle.ops.ops_tuple import make_tuple
+from needle.typing.types import Axis
 
 if TYPE_CHECKING:
     from needle.backend_selection import NDArray
@@ -83,7 +84,9 @@ def concatenate(arr: tuple[Tensor, ...] | list[Tensor], axis: int) -> Tensor:
 
 
 class Flip(TensorOp):
-    def __init__(self, axes: tuple[int, ...] | int) -> None:
+    def __init__(self, axes: Axis) -> None:
+        if isinstance(axes, int):
+            axes = (axes,)
         self.axes = axes
 
     def compute(self, arr: NDArray) -> NDArray:
@@ -93,7 +96,7 @@ class Flip(TensorOp):
         return flip(out_grad, self.axes)
 
 
-def flip(arr: Tensor, axes: tuple[int, ...] | int) -> Tensor:
+def flip(arr: Tensor, axes: Axis) -> Tensor:
     return Flip(axes)(arr)
 
 
@@ -115,7 +118,11 @@ class Dilate(TensorOp):
         \\end{bmatrix}
     """
 
-    def __init__(self, axes: tuple[int, ...], dilation: int = 0) -> None:
+    def __init__(self, axes: Axis, dilation: int = 0) -> None:
+        if axes is None:
+            raise ValueError("Axes cannot be None.")
+        elif isinstance(axes, int):
+            axes = (axes,)
         self.axes = axes
         self.dilation = dilation
 
@@ -139,7 +146,7 @@ class Dilate(TensorOp):
         return undilate(out_grad, self.axes, self.dilation)
 
 
-def dilate(arr: Tensor, axes: tuple[int, ...], dilation: int = 0) -> Tensor:
+def dilate(arr: Tensor, axes: Axis, dilation: int = 0) -> Tensor:
     """
     Dilates a tensor along the given axes by inserting zeros between each element.
 
@@ -164,7 +171,11 @@ class UnDilate(TensorOp):
     Reverse operation to Dilate.
     """
 
-    def __init__(self, axes: tuple[int, ...], dilation: int) -> None:
+    def __init__(self, axes: Axis, dilation: int) -> None:
+        if axes is None:
+            raise ValueError("Axes cannot be None.")
+        elif isinstance(axes, int):
+            axes = (axes,)
         self.axes = axes
         self.dilation = dilation
 
@@ -173,8 +184,6 @@ class UnDilate(TensorOp):
         for axis in self.axes:
             new_shap[axis] = new_shap[axis] // (self.dilation + 1)
 
-        # TODO: does not have to reallocate memory - probably enough to shrink size and
-        # move around values
         indices = [slice(None)] * len(new_shap)
         for axis in self.axes:
             indices[axis] = slice(0, None, self.dilation + 1)
@@ -186,7 +195,7 @@ class UnDilate(TensorOp):
         return dilate(out_grad, self.axes, self.dilation)
 
 
-def undilate(a: Tensor, axes: tuple[int, ...], dilation: int) -> Tensor:
+def undilate(a: Tensor, axes: Axis = (), dilation: int = 0) -> Tensor:
     return UnDilate(axes, dilation)(a)
 
 

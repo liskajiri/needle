@@ -9,11 +9,8 @@ if TYPE_CHECKING:
 
     from needle.typing import IndexType
 
-# TODO: track device in dataset too and not only in dataloader?
 
-
-# TODO: figure out typing of generics
-class Dataset[NDArray](Sequence[NDArray], ABC):
+class Dataset[T](Sequence[T], ABC):
     """
     An abstract class representing a `Dataset`.
 
@@ -56,22 +53,18 @@ class Dataset[NDArray](Sequence[NDArray], ABC):
         8.0
     """
 
-    def __init__(
-        self, transforms: Sequence[Callable[[NDArray], NDArray]] | None = None
-    ) -> None:
+    def __init__(self, transforms: Sequence[Callable[[T], T]] | None = None) -> None:
         self._transforms = tuple(transforms) if transforms else ()
 
     @abstractmethod
-    def __getitem__(
-        self, index: IndexType
-    ) -> Sequence[NDArray] | tuple[Sequence[NDArray], int]:
+    def __getitem__(self, index: IndexType) -> Sequence[T] | tuple[Sequence[T], int]:
         raise NotImplementedError
 
     @abstractmethod
     def __len__(self) -> int:
         raise NotImplementedError
 
-    def apply_transforms(self, x: NDArray) -> NDArray:
+    def apply_transforms(self, x: T) -> T:
         for transform in self._transforms:
             x = transform(x)
         return x
