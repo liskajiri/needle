@@ -286,7 +286,7 @@ environments:
       - conda: https://prefix.dev/conda-forge/linux-64/mpc-1.3.1-h24ddda3_1.conda
       - conda: https://prefix.dev/conda-forge/linux-64/mpfr-4.2.1-h90cbb55_3.conda
       - conda: https://prefix.dev/conda-forge/noarch/mpmath-1.3.0-pyhd8ed1ab_1.conda
-      - conda: https://prefix.dev/conda-forge/noarch/narwhals-1.37.0-pyh29332c3_0.conda
+      - conda: https://prefix.dev/conda-forge/noarch/narwhals-1.38.0-pyhe01879c_0.conda
       - conda: https://prefix.dev/conda-forge/linux-64/ncurses-6.5-h2d0b736_3.conda
       - conda: https://prefix.dev/conda-forge/noarch/networkx-3.4.2-pyh267e887_2.conda
       - conda: https://prefix.dev/conda-forge/linux-64/numpy-2.2.5-py313h17eae1a_0.conda
@@ -1471,6 +1471,7 @@ packages:
   constrains:
   - openmp 20.1.4|20.1.4.*
   license: Apache-2.0 WITH LLVM-exception
+  license_family: APACHE
   size: 3322195
   timestamp: 1746134424442
 - conda: https://prefix.dev/conda-forge/linux-64/llvm-openmp-8.0.1-hc9558a2_0.tar.bz2
@@ -1611,16 +1612,15 @@ packages:
   license_family: BSD
   size: 177167
   timestamp: 1744953463220
-- conda: https://prefix.dev/conda-forge/noarch/narwhals-1.37.0-pyh29332c3_0.conda
-  sha256: 95b289ce33c20d3d6156d5562105c74e99b651514fb4a1130c272a2e19e0dd1a
-  md5: f9ae420fa431efd502a5d5c4c1f08263
+- conda: https://prefix.dev/conda-forge/noarch/narwhals-1.38.0-pyhe01879c_0.conda
+  sha256: 86f9fb94fa3d43d5c810e9292b3de131a593e1d44ed55515f99eba68689a2b3d
+  md5: 6d3bd92df4504d07c0ab7cfb81d7e4b1
   depends:
   - python >=3.9
   - python
   license: MIT
-  license_family: MIT
-  size: 211201
-  timestamp: 1745863572641
+  size: 215408
+  timestamp: 1746477152249
 - conda: https://prefix.dev/conda-forge/linux-64/ncurses-6.5-h2d0b736_3.conda
   sha256: 3fde293232fa3fca98635e1167de6b7c7fda83caf24b9d6c91ec9eefb4f4d586
   md5: 47e340acb35de30501a76c7c799c41d7
@@ -2425,6 +2425,7 @@ packages:
   depends:
   - python >=3.9
   license: MIT
+  license_family: MIT
   size: 13131
   timestamp: 1746039688416
 - conda: https://prefix.dev/conda-forge/linux-64/tk-8.6.13-noxft_h4845f30_101.conda
