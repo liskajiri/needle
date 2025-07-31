@@ -16,6 +16,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: jakebailey/pyright-action@v2
-        with:
-          version: 1.1.400
+      - name: Type check
+        uses: prefix-dev/setup-pixi@v0.8.5
+      - name: type-check
+        run: pixi run type_check

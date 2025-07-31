@@ -739,7 +739,7 @@ class NDArray:  # noqa: PLR0904 = too many public methods
             )
 
         missing_dim = size // other_dims_product
-        return new_shape[:neg_idx] + (missing_dim,) + new_shape[neg_idx + 1 :]
+        return (*new_shape[:neg_idx], missing_dim, *new_shape[neg_idx + 1 :])
 
     def permute(self, new_axes: Shape) -> NDArray:
         """
@@ -1475,7 +1475,7 @@ class NDArray:  # noqa: PLR0904 = too many public methods
 
         # reshape reduction axes to a single axis
         reduce_size = math.prod(self.shape[i] for i in axis)
-        view_shape = view.shape[: -len(axis)] + (reduce_size,)
+        view_shape = (*view.shape[: -len(axis)], reduce_size)
         view = view.compact().reshape(view_shape)
 
         return view, out
