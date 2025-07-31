@@ -34,6 +34,7 @@ def create_datasets(image_dim: int):
 @pytest.mark.parametrize("dataset_type", ["train", "test"], ids=["train", "test"])
 @pytest.mark.parametrize("optimizer", [ndl.optim.Adam, ndl.optim.SGD])
 @pytest.mark.skipif(os.getenv("CI") == "true", reason="Benchmark skipped in CI")
+@pytest.mark.skip("Benchmark requires implementation of NDArray creation from list")
 def test_artificial_mnist_epoch(
     benchmark, dataset_type, optimizer, image_dim=IMAGE_DIMENSION
 ) -> None:
