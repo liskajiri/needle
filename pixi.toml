@@ -118,8 +118,6 @@ basedpyright = ">=1.29.1,<2"
 lint = "pre-commit run --all-files --color=always --show-diff-on-failure"
 type_check = "pyright"
 
-# TODO: Train environment?
-# TODO: add train tasks
 [feature.dev.dependencies]
 cmake = ">=4.0.1,<5"
 ninja = ">=1.12.1,<2"
@@ -256,10 +254,13 @@ benchmark_matmul = { cmd = "pytest benchmarks/test_matmul.py --codspeed", depend
 tqdm = ">=4.67.1,<5"
 
 [feature.train.tasks]
-train_resnet = { cmd = "python -m apps.train_resnet --log=INFO", depends-on = [
+train_resnet_cifar = { cmd = "python -m apps.train_resnet --log=INFO --dataset=cifar", depends-on = [
+  "build",
+  "download_cifar",
+] }
+train_resnet_mnist = { cmd = "python -m apps.train_resnet --log=INFO --dataset=mnist", depends-on = [
   "build",
   "download_mnist",
-  "download_cifar",
 ] }
 train_tree_bank = { cmd = "python -m apps.tree_bank --log=INFO", depends-on = [
   "build",
