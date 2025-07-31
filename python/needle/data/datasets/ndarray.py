@@ -10,12 +10,13 @@ if TYPE_CHECKING:
 
 
 class NDArrayDataset(Dataset[NDArray]):
-    def __init__(self, *array: NDArray) -> None:
+    def __init__(self, x: NDArray, y: NDArray) -> None:
         super().__init__()
-        self.array = array
+        self.x = x
+        self.y = y
 
     def __len__(self) -> int:
-        return self.array[0].shape[0]
+        return self.x.shape[0]
 
-    def __getitem__(self, i: IndexType) -> tuple[NDArray, ...]:
-        return tuple([a[i] for a in self.array])
+    def __getitem__(self, i: IndexType) -> tuple[NDArray, NDArray]:
+        return self.x[i], self.y[i]

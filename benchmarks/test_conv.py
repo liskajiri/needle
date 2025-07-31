@@ -3,6 +3,7 @@ import numpy as np
 import pytest
 
 from tests.devices import all_devices
+from tests.utils import backward_forward
 
 rng = np.random.default_rng(0)
 
@@ -13,12 +14,6 @@ conv_configs = [
     # (32, 16, 32, 3, 1),  # Larger channels
     (64, 3, 16, 3, 2),  # Image-like dimensions
 ]
-
-
-def backward_forward():
-    return pytest.mark.parametrize(
-        "backward", [True, False], ids=["backward", "forward"]
-    )
 
 
 @pytest.mark.parametrize(

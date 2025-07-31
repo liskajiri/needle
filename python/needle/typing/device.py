@@ -4,21 +4,30 @@ from abc import ABC, abstractmethod
 from collections.abc import Callable
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
+from needle.typing.dlpack import DLPackDeviceId, DLPackDeviceType
+
 if TYPE_CHECKING:
+    from needle.backend_ndarray.ndarray import NDArray
     from needle.typing.types import DType, IndexType, Scalar, Shape, Strides, np_ndarray
 
 
-class AbstractBackend[T](ABC):
+class AbstractBackend(ABC):
     """
     A backend device, wraps the implementation module.
     """
 
-    def __init__(self, name: str, module: ModuleProtocol[T] | None = None) -> None:
+    def __init__(
+        self,
+        name: str,
+        module: ModuleProtocol[NDArray] | None = None,
+        tile_size: int = 1,
+        itemsize: int = 1,
+    ) -> None:
         self.name = name
         # A module that implements the backend.
         self.module = module
-        self.itemsize = 1
-        self.__tile_size__ = 1
+        self.__tile_size__ = tile_size
+        self.itemsize = itemsize
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, AbstractBackend):
@@ -41,31 +50,31 @@ class AbstractBackend[T](ABC):
         return self.module is not None
 
     @abstractmethod
-    def rand(self, shape: Shape, dtype: DType = "float32") -> T:
+    def rand(self, shape: Shape, dtype: DType = "float32") -> NDArray:
         raise NotImplementedError
 
     @abstractmethod
-    def randn(self, shape: Shape, dtype: DType) -> T:
+    def randn(self, shape: Shape, dtype: DType) -> NDArray:
         raise NotImplementedError
 
     @abstractmethod
-    def one_hot(self, n: int, i: IndexType, dtype: DType) -> T:
+    def one_hot(self, n: int, i: IndexType, dtype: DType) -> NDArray:
         raise NotImplementedError
 
     @abstractmethod
-    def zeros(self, shape: Shape, dtype: DType) -> T:
+    def zeros(self, shape: Shape, dtype: DType) -> NDArray:
         raise NotImplementedError
 
     @abstractmethod
-    def ones(self, shape: Shape, dtype: DType) -> T:
+    def ones(self, shape: Shape, dtype: DType) -> NDArray:
         raise NotImplementedError
 
     @abstractmethod
-    def empty(self, shape: Shape, dtype: DType) -> T:
+    def empty(self, shape: Shape, dtype: DType) -> NDArray:
         raise NotImplementedError
 
     @abstractmethod
-    def full(self, shape: Shape, fill_value: Scalar, dtype: DType) -> T:
+    def full(self, shape: Shape, fill_value: Scalar, dtype: DType) -> NDArray:
         raise NotImplementedError
 
 
@@ -127,3 +136,19 @@ class ModuleProtocol[T](Protocol):
     # Reduction operations
     def reduce_sum(self, a: T, out: T, size: int) -> None: ...
     def reduce_max(self, a: T, out: T, size: int) -> None: ...
+
+
+class NDArrayBackendProtocol(Protocol):
+    """
+    Protocol defining interface for backend NDArray objects.
+    """
+
+    def ptr(self) -> int: ...
+    def size(self) -> int: ...
+    def __dlpack__(
+        self,
+        shape: Shape,
+        strides: Strides,
+        offset: int,
+    ) -> NDArray: ...
+    def __dlpack_device__(self) -> tuple[DLPackDeviceType, DLPackDeviceId]: ...

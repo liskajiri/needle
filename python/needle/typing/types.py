@@ -15,7 +15,6 @@ type np_ndarray = NP_NDArray
 type DType = str
 type Scalar = float | int
 type Shape = tuple[int, ...]
-# TODO: default type values
 type Axis = int | tuple[int, ...]
 type Strides = Shape
 type NDArrayLike = (

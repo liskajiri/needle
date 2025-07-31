@@ -49,8 +49,8 @@ class CIFAR10Dataset(Dataset[NDArray]):
                 X.append(x)
                 Y.extend(y)
         # X: (5, 10_000, 3, 32, 32) -> (50_000, 3, 32, 32)
-        self.X = array_api.stack(tuple(X)).reshape(new_shape)
-        self.Y = array_api.array(Y)
+        self.x = array_api.stack(tuple(X)).reshape(new_shape)
+        self.y = array_api.array(Y)
 
     def __getitem__(self, index: IndexType) -> tuple[NDArray, NDArray]:
         """
@@ -60,13 +60,13 @@ class CIFAR10Dataset(Dataset[NDArray]):
         if isinstance(index, int):
             new_shape = CIFAR10Dataset.IMAGE_SHAPE
         elif isinstance(index, slice):
-            new_shape = (len(self.X[index]), *CIFAR10Dataset.IMAGE_SHAPE)
+            new_shape = (len(self.x[index]), *CIFAR10Dataset.IMAGE_SHAPE)
         else:
             new_shape = (len(index), *CIFAR10Dataset.IMAGE_SHAPE)
 
-        i = self.X[index].compact().reshape(new_shape)
+        i = self.x[index].compact().reshape(new_shape)
         x = self.apply_transforms(i)
-        y = self.Y[index]
+        y = self.y[index]
 
         assert x.shape == new_shape, f"Expected shape {new_shape}, got {x.shape}"
 
@@ -76,7 +76,7 @@ class CIFAR10Dataset(Dataset[NDArray]):
         """
         Returns the total number of examples in the dataset
         """
-        return self.Y.shape[0]
+        return self.y.shape[0]
 
     @staticmethod
     def _unpickle(file: Path) -> tuple[NDArray, list[int]]:
