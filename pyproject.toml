@@ -130,13 +130,13 @@ output = "reports/coverage.xml"
 
 [tool.pyright]
 include = ["python/needle"]
-exclude = ["python/needle/backend_ndarray/"]
 extraPaths = ["python/", "apps/"]
 
 reportIncompatibleMethodOverride = false
 # Based pyright
 reportUnannotatedClassAttribute = false
 reportImplicitOverride = false
+enableTypeIgnoreComments = true
 
 reportMissingImports = false
 reportMissingTypeStubs = false

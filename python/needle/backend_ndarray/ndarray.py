@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 import math
 from functools import cached_property
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, override
 
 import numpy as np
 
@@ -23,7 +23,7 @@ if TYPE_CHECKING:
         Strides,
         np_ndarray,
     )
-    from needle.typing.device import ModuleProtocol
+    from needle.typing.device import ModuleProtocol, NDArrayBackendProtocol
     from needle.typing.dlpack import DLPackDeviceId, DLPackDeviceType
 
 logger = logging.getLogger(__name__)
@@ -37,53 +37,49 @@ if True:
         def __init__(
             self, name: str, module: ModuleProtocol[NDArray] | None = None
         ) -> None:
-            self.name = name
-            self.module = module
-            self.__tile_size__ = module.__tile_size__ if module else -1
-            self.itemsize = module.itemsize if module else -1
+            if module is None:
+                super().__init__(name, module, -1, -1)
+            else:
+                super().__init__(
+                    name,
+                    module,
+                    tile_size=module.__tile_size__,
+                    itemsize=module.itemsize,
+                )
 
-        def enabled(self) -> bool:
-            return self.module is not None
-
-        def __eq__(self, other: object) -> bool:
-            if not isinstance(other, BackendDevice):
-                return False
-            return self.name == other.name
-
-        def __repr__(self) -> str:
-            return self.name + "()"
-
+        @override
         def randn(self, shape: Shape, dtype: DType = "float32") -> NDArray:
             if isinstance(shape, int):
                 shape = (shape,)
             return NDArray(np.random.randn(*shape).astype(dtype), device=self)
 
+        @override
         def rand(self, shape: Shape, dtype: DType = "float32") -> NDArray:
             if isinstance(shape, int):
                 shape = (shape,)
             return NDArray(np.random.rand(*shape).astype(dtype), device=self)
 
+        @override
         def one_hot(self, n: int, i: IndexType, dtype: DType) -> NDArray:
             return NDArray(np.eye(n, dtype=dtype)[i], device=self)
 
+        @override
         def zeros(self, shape: Shape, dtype: DType) -> NDArray:
             arr = self.empty(shape, dtype=dtype)
             arr.fill(0.0)
             return arr
 
+        @override
         def ones(self, shape: Shape, dtype: DType) -> NDArray:
             arr = self.empty(shape, dtype=dtype)
             arr.fill(1.0)
             return arr
 
-        def constant(self, shape: Shape, value: Scalar, dtype: DType) -> NDArray:
-            arr = self.empty(shape, dtype=dtype)
-            arr.fill(value)
-            return arr
-
+        @override
         def empty(self, shape: Shape, dtype: DType = "float32") -> NDArray:
             return make(shape, device=self)
 
+        @override
         def full(
             self, shape: Shape, fill_value: Scalar, dtype: DType = "float32"
         ) -> NDArray:
@@ -145,11 +141,6 @@ else:
             arr.fill(1.0)
             return arr
 
-        def constant(self, shape: Shape, value: Scalar, dtype: DType) -> NDArray:
-            arr = self.empty(shape, dtype=dtype)
-            arr.fill(value)
-            return arr
-
         def empty(self, shape: Shape, dtype: DType = "float32") -> NDArray:
             return make(shape, device=self)
 
@@ -205,7 +196,7 @@ def make(
     shape: Shape,
     strides: Strides | None = None,
     device: AbstractBackend = default_device,
-    handle: NDArray | None = None,
+    handle: NDArrayBackendProtocol | None = None,
     offset: int = 0,
 ) -> NDArray:
     """
@@ -347,7 +338,7 @@ class NDArray:  # noqa: PLR0904 = too many public methods
 
     def __init__(
         self,
-        other: NDArrayLike,
+        other: NDArrayLike | None = None,
         device: AbstractBackend = default_device,
         dtype: DType = "float32",
     ) -> None:
@@ -367,25 +358,21 @@ class NDArray:  # noqa: PLR0904 = too many public methods
                 logger.error(
                     f"Creating NDArray with different device {device} != {other.device}"
                 )
-            self._init(other.to(device) + 0.0)  # This creates a copy
+            # create a copy
+            array = other.to(device) + 0.0
         elif isinstance(other, np.ndarray):
-            # Create copy from numpy array
             array = make(other.shape, device=device)
             array.device.from_numpy(np.ascontiguousarray(other), array._handle)
-            self._init(array)
         else:
             # see if we can create a numpy array from input
             array = NDArray(np.array(other), device=device)
-            self._init(array)
 
-    # TODO: why is this not __init__?
-    def _init(self, other: NDArray) -> None:
-        self._shape = other._shape
-        self._strides = other._strides
+        self._shape: Shape = array._shape
+        self._strides: Strides = array._strides
         # TODO: clarify if this is items or bytes
-        self._offset = other._offset
-        self._device = other._device
-        self._handle = other._handle
+        self._offset: int = array._offset
+        self._device: AbstractBackend = array._device
+        self._handle: NDArrayBackendProtocol = array._handle
 
     # ==================== Properties and string representations
 
@@ -625,7 +612,7 @@ class NDArray:  # noqa: PLR0904 = too many public methods
         if dtype != "float32":
             logger.warning("Only support float32 for now", extra={"dtype": dtype})
             a = self.numpy().astype("float32")
-            dtype = a.dtype
+            dtype = f"{a.dtype}"
             logger.warning(
                 "Converting to numpy array with dtype",
                 extra={"dtype": dtype},
@@ -752,7 +739,7 @@ class NDArray:  # noqa: PLR0904 = too many public methods
             )
 
         missing_dim = size // other_dims_product
-        return new_shape[:neg_idx] + (missing_dim,) + new_shape[neg_idx + 1 :]
+        return (*new_shape[:neg_idx], missing_dim, *new_shape[neg_idx + 1 :])
 
     def permute(self, new_axes: Shape) -> NDArray:
         """
@@ -977,9 +964,10 @@ class NDArray:  # noqa: PLR0904 = too many public methods
         flat_idxs = idxs.numpy().flatten()
         padding = (slice(None),) * (self.ndim - 1)
         for i, idx in enumerate(flat_idxs):
-            src_idx = (int(idx), *padding)
+            idx = int(idx)
+            src_idx = (idx, *padding)
             dst_idx = (i, *padding)
-            out[dst_idx] = self[src_idx]
+            out[dst_idx] = self[src_idx]  # type: ignore
         return out.compact()
 
     def __getitem__(self, idxs: IndexType) -> NDArray:
@@ -1030,7 +1018,7 @@ class NDArray:  # noqa: PLR0904 = too many public methods
         if isinstance(idxs, list | NDArray | np.ndarray):
             # Convert to NDArray if needed
             if not isinstance(idxs, NDArray):
-                idxs = NDArray(idxs, device=self.device)
+                idxs = NDArray(idxs, device=self.device)  # type: ignore
             return self._handle_array_indexing(idxs)
 
         # Process indices and track which dimensions need squeezing
@@ -1158,8 +1146,13 @@ class NDArray:  # noqa: PLR0904 = too many public methods
     def ewise_or_scalar(
         self,
         other: NDArrayLike,
-        ewise_func: Callable[[NDArray, NDArray, NDArray], None],
-        scalar_func: Callable[[NDArray, Scalar, NDArray], None],
+        ewise_func: Callable[
+            [NDArrayBackendProtocol, NDArrayBackendProtocol, NDArrayBackendProtocol],
+            None,
+        ],
+        scalar_func: Callable[
+            [NDArrayBackendProtocol, Scalar, NDArrayBackendProtocol], None
+        ],
     ) -> NDArray:
         """
         Run either an element-wise or scalar version of a function,
@@ -1482,7 +1475,7 @@ class NDArray:  # noqa: PLR0904 = too many public methods
 
         # reshape reduction axes to a single axis
         reduce_size = math.prod(self.shape[i] for i in axis)
-        view_shape = view.shape[: -len(axis)] + (reduce_size,)
+        view_shape = (*view.shape[: -len(axis)], reduce_size)
         view = view.compact().reshape(view_shape)
 
         return view, out

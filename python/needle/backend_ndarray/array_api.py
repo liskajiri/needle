@@ -4,7 +4,6 @@ import itertools
 import logging
 from typing import TYPE_CHECKING
 
-# from needle.backend_ndarray.device import default_device
 from needle.backend_ndarray.ndarray import NDArray, default_device, make
 
 if TYPE_CHECKING:

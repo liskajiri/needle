@@ -65,6 +65,7 @@ class ArtificialMNIST(Dataset[NDArray]):
 
         self.x = array_api.stack(tuple(images))
         self.x = self.x.reshape((-1, self.image_dim, self.image_dim, 1))
+        # self.y = NDArray(self.y, device=device)
 
     def __getitem__(self, index: IndexType) -> tuple[NDArray, int]:
         if not isinstance(index, int):

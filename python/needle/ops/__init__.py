@@ -1,3 +1,4 @@
+from needle.ops import mathematic
 from needle.ops.conv import conv
 from needle.ops.elementwise import (
     add,
@@ -62,6 +63,7 @@ __all__ = [
     "logsoftmax",
     "logsumexp",
     "make_tuple",
+    "mathematic",
     "matmul",
     "mean",
     "mul_scalar",

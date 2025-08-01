@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from needle import ops
+import needle.ops as ops
 from needle.nn.core import Module
 
 if TYPE_CHECKING:

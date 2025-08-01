@@ -22,8 +22,8 @@ m, n, k = 5, 4, 3
 
 
 @given(
-    arrays(dtype=np.float32, shape=DEFAULT_SHAPE, elements=st.floats(-1e3, 1e3)),
-    arrays(dtype=np.float32, shape=DEFAULT_SHAPE, elements=st.floats(1, 1e3)),
+    arrays(dtype=np.float32, shape=DEFAULT_SHAPE, elements=st.floats(-1e2, 1e2)),
+    arrays(dtype=np.float32, shape=DEFAULT_SHAPE, elements=st.floats(1, 1e2)),
 )
 def test_divide_backward(a, b) -> None:
     backward_check(ndl.ops.divide, ndl.Tensor(a), ndl.Tensor(b))

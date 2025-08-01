@@ -57,7 +57,7 @@ class Dataset[T](Sequence[T], ABC):
         self._transforms = tuple(transforms) if transforms else ()
 
     @abstractmethod
-    def __getitem__(self, index: IndexType) -> Sequence[T] | tuple[Sequence[T], int]:
+    def __getitem__(self, index: IndexType) -> T | tuple[T, int]:
         raise NotImplementedError
 
     @abstractmethod

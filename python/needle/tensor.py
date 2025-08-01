@@ -139,7 +139,6 @@ class Tensor(Value):
     def matmul(self, other: Tensor) -> Tensor:
         return ndl.ops.matmul(self, other)
 
-    # TODO: Unify what is the null value for a Shape - () or None?
     def sum(self, axes: Axis | None = None, keepdims: bool = False) -> Tensor:
         return ndl.ops.summation(self, axes, keepdims)
 

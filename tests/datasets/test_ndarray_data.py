@@ -10,7 +10,11 @@ rng = np.random.default_rng(0)
 @pytest.mark.parametrize("batch_size", [1, 10, 100])
 def test_dataloader_batch(batch_size):
     arr = rng.standard_normal((100, 10, 10))
-    train_dataset = ndl.data.NDArrayDataset(arr)
+    arr = ndl.NDArray(arr)
+    y = rng.standard_normal((100, 10, 10))
+    y = ndl.NDArray(y)
+
+    train_dataset = ndl.data.NDArrayDataset(arr, y=y)
     train_dataloader = ndl.data.DataLoader(
         dataset=train_dataset, batch_size=batch_size, shuffle=False
     )
@@ -60,7 +64,9 @@ def test_dataloader_ndarray(batch_size, expected_values, value_extractor):
     """Test that DataLoader properly shuffles data and maintains expected values"""
     set_random_seeds(0)
 
-    train_dataset = ndl.data.NDArrayDataset(np.arange(100))
+    x = ndl.NDArray(np.arange(100))
+    y = ndl.NDArray(np.arange(100))
+    train_dataset = ndl.data.NDArrayDataset(x, y=y)
     train_dataloader = iter(
         ndl.data.DataLoader(dataset=train_dataset, batch_size=batch_size, shuffle=True)
     )
