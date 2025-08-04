@@ -1,5 +1,5 @@
 from needle.nn import activations, core, dropout, linear, norms, softmax
-from needle.nn.activations import ReLU, Tanh
+from needle.nn.activations import ReLU, Sigmoid, Tanh
 from needle.nn.conv import Conv
 from needle.nn.core import (
     Flatten,
@@ -34,6 +34,7 @@ __all__ = [
     "ReLU",
     "Residual",
     "Sequential",
+    "Sigmoid",
     "SoftmaxLoss",
     "Tanh",
     "activations",
