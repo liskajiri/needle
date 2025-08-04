@@ -76,6 +76,14 @@ def assert_gradients_close(needle_tensor, torch_tensor, name, rtol=RTOL, atol=AT
     )
 
 
+def check_backward_conv(needle_output, needle_input, torch_output, torch_input):
+    needle_loss = needle_output.sum()
+    torch_loss = torch_output.sum()
+    needle_loss.backward()
+    torch_loss.backward()
+    assert_gradients_close(needle_input, torch_input, "input")
+
+
 @given(params=conv_layer_parameters())
 @pytest.mark.parametrize("bias", [True, False])
 @all_devices()
@@ -137,13 +145,7 @@ def test_nn_conv(params, bias, device, backward):
     )
 
     if backward:
-        needle_loss = needle_output.sum()
-        torch_loss = torch_output.sum()
-
-        needle_loss.backward()
-        torch_loss.backward()
-
-        assert_gradients_close(needle_input, torch_input, "input")
+        check_backward_conv(needle_output, needle_input, torch_output, torch_input)
 
         needle_weight_grad = (
             needle_conv.weight.grad.realize_cached_data().numpy().transpose(3, 2, 0, 1)
@@ -207,14 +209,7 @@ def test_conv_op(params, device, backward):
     )
 
     if backward:
-        result_sum_ndl = result_ndl.sum()
-        result_sum_torch = result_torch.sum()
-
-        # Backward pass
-        result_sum_torch.backward()
-        result_sum_ndl.backward()
-
-        assert_gradients_close(input_ndl, input_torch, "input")
+        check_backward_conv(result_ndl, input_ndl, result_torch, input_torch)
         assert_gradients_close(kernel_ndl, kernel_torch, "kernel")
 
 
