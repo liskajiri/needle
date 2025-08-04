@@ -176,8 +176,6 @@ def test_sqrt(device, array):
     )
 
 
-# TODO
-@pytest.mark.skip(reason="Sqrt of negative number is not supported yet.")
 @all_devices()
 def test_sqrt_negative(device):
     array = np.array([-1.0], dtype=np.float32)
@@ -271,6 +269,8 @@ SUMMATION_PARAMETERS = [
 )
 @all_devices()
 def test_summation_fixed(shape, axes, device):
+    if axes is not None:
+        axes = (axes,)
     a = rng.standard_normal(shape, dtype=np.float32)
     A = ndl.Tensor(nd.array(a), device=device)
     np.testing.assert_allclose(
@@ -290,6 +290,8 @@ def test_summation_fixed(shape, axes, device):
 )
 @all_devices()
 def test_summation_backward_fixed(shape, axes, device):
+    if axes is not None:
+        axes = (axes,)
     a = rng.standard_normal(shape, dtype=np.float32)
     A = ndl.Tensor(nd.array(a), device=device)
     backward_check(ndl.summation, A, axes=axes)
@@ -301,13 +303,16 @@ def test_summation_backward_fixed(shape, axes, device):
         shape=SHAPE,
         elements=st.floats(-10, 10, allow_infinity=False, allow_nan=False),
     ),
-    axis=st.one_of(st.none(), st.integers(0, 1)),
+    axes=st.one_of(st.none(), st.integers(0, 1)),
 )
 @all_devices()
-def test_summation_hypothesis(device, array, axis):
+def test_summation_hypothesis(device, array, axes):
+    if axes is not None:
+        axes = (axes,)
+    print(axes)
     A = ndl.Tensor(nd.array(array), device=device)
     np.testing.assert_allclose(
-        np.sum(array, axis), ndl.summation(A, axes=axis).numpy(), atol=1e-5, rtol=1e-5
+        np.sum(array, axes), ndl.summation(A, axes=axes).numpy(), atol=1e-5, rtol=1e-5
     )
 
 
@@ -317,12 +322,14 @@ def test_summation_hypothesis(device, array, axis):
         shape=SHAPE,
         elements=st.floats(-10, 10, allow_infinity=False, allow_nan=False),
     ),
-    axis=st.one_of(st.none(), st.integers(0, 1)),
+    axes=st.one_of(st.none(), st.integers(0, 1)),
 )
 @all_devices()
-def test_summation_backward_hypothesis(device, array, axis):
+def test_summation_backward_hypothesis(device, array, axes):
+    if axes is not None:
+        axes = (axes,)
     A = ndl.Tensor(nd.array(array), device=device)
-    backward_check(ndl.summation, A, axes=axis)
+    backward_check(ndl.summation, A, axes=axes)
 
 
 BROADCAST_SHAPES = [

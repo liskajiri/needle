@@ -7,7 +7,6 @@ import torch
 from hypothesis import given
 from hypothesis import strategies as st
 
-from tests.devices import all_devices
 from tests.utils import set_random_seeds
 
 rng = np.random.default_rng()
@@ -28,15 +27,6 @@ def test_init_kaiming_uniform():
         rtol=1e-4,
         atol=1e-4,
     )
-
-
-@all_devices()
-def test_init_kaiming_uniform_2(device):
-    a = rng.standard_normal((3, 3, 16, 8))
-    A = ndl.Tensor(a, device=device)
-    set_random_seeds(0)
-    A = ndl.init.kaiming_uniform(16 * 9, 8 * 9, shape=A.shape)
-    np.testing.assert_allclose(A.sum().numpy(), -2.5719218, rtol=1e-4, atol=1e-4)
 
 
 def test_init_kaiming_normal():

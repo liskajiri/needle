@@ -61,6 +61,7 @@ export void Compact(const AlignedArray &a, AlignedArray *out,
 
 #pragma omp parallel for schedule(static)
     for (size_t i = 0; i < out->size; i++) {
+        // TODO: this looks dumb
         int32_t idx_offset =
             get_array_offset(strides, compact_strides, offset, i);
         out->ptr[i] = a.ptr[idx_offset];

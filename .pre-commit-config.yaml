@@ -38,7 +38,7 @@ repos:
       - id: yamllint
 
   - repo: https://github.com/crate-ci/typos
-    rev: v1
+    rev: v1.34.0
     hooks:
       - id: typos
 

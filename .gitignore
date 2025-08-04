@@ -155,6 +155,5 @@ data/tree_bank
 
 reports/
 
-backends/cpu_new
 backends/pixi.*
 backends/CMakeLists.txt

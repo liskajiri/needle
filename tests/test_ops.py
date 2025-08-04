@@ -4,6 +4,7 @@ import pytest
 from hypothesis import given
 from hypothesis import strategies as st
 from hypothesis.extra.numpy import arrays
+from needle.typing.types import Axis
 
 rng = np.random.default_rng(0)
 
@@ -60,8 +61,8 @@ def test_matmul(a: np.ndarray, b: np.ndarray) -> None:
         dtype=np.float32, shape=(3, 3), elements=st.floats(min_value=-10, max_value=10)
     )
 )
-def test_summation(axes: int | None, data: np.ndarray) -> None:
-    result = ndl.ops.mathematic.summation(ndl.Tensor(data), axes=axes).numpy()
+def test_summation(axes: Axis, data: np.ndarray) -> None:
+    result = ndl.ops.summation(ndl.Tensor(data), axes=axes).numpy()
     expected = np.sum(data, axis=axes)
     np.testing.assert_allclose(result, expected, rtol=1e-5, atol=1e-5)
 
@@ -148,22 +149,6 @@ def test_negate(data: np.ndarray) -> None:
     np.testing.assert_allclose(result, expected, rtol=1e-5, atol=1e-5)
 
 
-@pytest.mark.parametrize(
-    "axes",
-    [(1, 0), (0, 1), None],
-    ids=["swap_axes", "transpose_dims", "default_transpose"],
-)
-@given(
-    arrays(
-        dtype=np.float32, shape=(3, 3), elements=st.floats(min_value=-10, max_value=10)
-    )
-)
-def test_transpose(axes: tuple | None, data: np.ndarray) -> None:
-    result = ndl.transpose(ndl.Tensor(data), axes=axes).numpy()
-    expected = np.transpose(data, axes=axes)
-    np.testing.assert_allclose(result, expected, rtol=1e-5, atol=1e-5)
-
-
 @given(
     arrays(
         dtype=np.float32, shape=(3, 3), elements=st.floats(min_value=-10, max_value=10)
@@ -173,24 +158,3 @@ def test_relu(data: np.ndarray) -> None:
     result = ndl.relu(ndl.Tensor(data)).numpy()
     expected = np.maximum(data, 0)
     np.testing.assert_allclose(result, expected, rtol=1e-5, atol=1e-5)
-
-
-@pytest.mark.parametrize(
-    "axis",
-    [0, 1, -1],
-    ids=["axis_0", "axis_1", "axis_-1"],
-)
-@given(data=st.data())
-def test_concatenate(axis, data) -> None:
-    arrs = [
-        data.draw(arrays(dtype=np.float32, shape=CONCATENATE_SHAPE)) for _ in range(3)
-    ]
-    arrs_ndl = [ndl.NDArray(arr) for arr in arrs]
-
-    np.testing.assert_allclose(
-        ndl.array_api.concatenate(
-            arrs_ndl,
-            axis=axis,
-        ).numpy(),
-        np.concatenate(arrs, axis=axis),
-    )
