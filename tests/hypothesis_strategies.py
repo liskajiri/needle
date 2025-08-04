@@ -324,3 +324,104 @@ def flip_params(draw):
     )
 
     return {"shape": shape, "axes": axes}
+
+
+@st.composite
+def conv_parameters(
+    draw,
+    test_type="layer",
+    include_bias=None,
+    batch_size_range=(1, 4),
+    in_channels_range=(1, 8),
+    out_channels_range=(1, 8),
+    height_range=(8, 32),
+    width_range=(8, 32),
+    kernel_size_range=(1, 5),
+    stride_range=(1, 3),
+    padding_range=(0, 3),
+) -> dict[str, int | bool | tuple]:
+    """Generate valid parameters for convolution testing.
+
+    Args:
+        test_type: Type of test - "layer", "operation"
+        include_bias: Whether to include bias parameter (None for random choice)
+        batch_size_range: Range for batch size generation
+        in_channels_range: Range for input channels
+        out_channels_range: Range for output channels
+        height_range: Range for input height
+        width_range: Range for input width
+        kernel_size_range: Range for kernel size
+        stride_range: Range for stride values
+        padding_range: Range for padding values
+
+    Returns:
+        Dictionary with appropriate parameters for the specified test type
+    """
+    # Generate base parameters
+    batch_size = draw(
+        st.integers(min_value=batch_size_range[0], max_value=batch_size_range[1])
+    )
+    in_channels = draw(
+        st.integers(min_value=in_channels_range[0], max_value=in_channels_range[1])
+    )
+    out_channels = draw(
+        st.integers(min_value=out_channels_range[0], max_value=out_channels_range[1])
+    )
+    height = draw(st.integers(min_value=height_range[0], max_value=height_range[1]))
+    width = draw(st.integers(min_value=width_range[0], max_value=width_range[1]))
+    kernel_size = draw(
+        st.integers(min_value=kernel_size_range[0], max_value=kernel_size_range[1])
+    )
+    stride = draw(st.integers(min_value=stride_range[0], max_value=stride_range[1]))
+    padding = draw(st.integers(min_value=padding_range[0], max_value=padding_range[1]))
+
+    # Ensure output dimensions are positive
+    out_height = (height + 2 * padding - kernel_size) // stride + 1
+    out_width = (width + 2 * padding - kernel_size) // stride + 1
+    assume(out_height > 0 and out_width > 0)
+
+    if test_type == "layer":
+        # Parameters for nn.Conv layer testing
+        result = {
+            "batch_size": batch_size,
+            "in_channels": in_channels,
+            "out_channels": out_channels,
+            "height": height,
+            "width": width,
+            "kernel_size": kernel_size,
+            "stride": stride,
+            "padding": padding,
+        }
+
+        # Add bias parameter if specified or randomly choose
+        if include_bias is not None:
+            result["bias"] = include_bias
+        else:
+            result["bias"] = draw(st.booleans())
+
+        return result
+
+    elif test_type == "operation":
+        # Parameters for low-level conv operation testing (tensor shapes)
+        return {
+            "input_shape": (batch_size, height, width, in_channels),
+            "kernel_shape": (kernel_size, kernel_size, in_channels, out_channels),
+            "stride": stride,
+            "padding": padding,
+        }
+
+    else:
+        raise ValueError(f"Unknown test_type: {test_type}")
+
+
+# Convenience strategies for specific test types
+@st.composite
+def conv_layer_parameters(draw):
+    """Generate parameters for Conv layer testing."""
+    return draw(conv_parameters(test_type="layer"))
+
+
+@st.composite
+def conv_operation_parameters(draw):
+    """Generate parameters for low-level conv operation testing."""
+    return draw(conv_parameters(test_type="operation"))
