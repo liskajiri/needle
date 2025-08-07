@@ -74,7 +74,7 @@ args = [
   { "arg" = "download_path", "default" = "\"https://www.cs.toronto.edu/~kriz/cifar-10-python.tar.gz\"" },
   { "arg" = "unpack_path", "default" = "data/cifar-10/cifar-10-python.tar.gz" },
 ]
-cmd = "mkdir -p {{ save_dir }} && curl -o {{ unpack_path }}, {{ download_path }}"
+cmd = "mkdir -p {{ save_dir }} && curl -o {{ unpack_path }} {{ download_path }}"
 outputs = ["data/cifar-10/cifar-10-python.tar.gz"]
 
 [tasks.unpack_cifar]
@@ -254,7 +254,7 @@ benchmark_matmul = { cmd = "pytest benchmarks/test_matmul.py --codspeed", depend
 tqdm = ">=4.67.1,<5"
 
 [feature.train.tasks]
-train_resnet_cifar = { cmd = "python -m apps.train_resnet --log=INFO --dataset=cifar", depends-on = [
+train_resnet_cifar = { cmd = "python -m apps.train_resnet --log=INFO", depends-on = [
   "build",
   "download_cifar",
 ] }
