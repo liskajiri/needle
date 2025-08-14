@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from typing import TYPE_CHECKING
 
 from needle.backend_ndarray.ndarray import NDArray
@@ -159,10 +160,10 @@ def sigmoid(a: Tensor) -> Tensor:
     return Sigmoid()(a)
 
 
-def mean(a: Tensor, axes: Axis | None = 0) -> Tensor:
+def mean(a: Tensor, axes: Axis | None = None) -> Tensor:
     if axes is None:
         axes = tuple(range(a.ndim))
     elif isinstance(axes, int):
         axes = (axes,)
-    axes_size = sum(a.shape[axis] for axis in axes)
+    axes_size = math.prod(a.shape[axis] for axis in axes)
     return summation(a, axes=axes) / axes_size

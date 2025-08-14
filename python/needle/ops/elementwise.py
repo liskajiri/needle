@@ -5,10 +5,10 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from needle.ops.op import TensorOp
+from needle.tensor import Tensor
 
 if TYPE_CHECKING:
     from needle.backend_selection import NDArray
-    from needle.tensor import Tensor
 
 
 class EWiseAdd(TensorOp):
@@ -42,10 +42,10 @@ class EWisePow(TensorOp):
     def compute(self, a: NDArray, b: NDArray) -> NDArray:
         return a**b
 
-    def gradient(self, out_grad, node):
+    def gradient(self, out_grad: Tensor, node: Tensor) -> tuple[Tensor, Tensor]:
         a, b = node.inputs
         grad_a = out_grad * b * (a ** (b - 1))
-        grad_b = out_grad * (a**b) * a.log()
+        grad_b = out_grad * (a**b) * Tensor(a.realize_cached_data().log())
         return grad_a, grad_b
 
 

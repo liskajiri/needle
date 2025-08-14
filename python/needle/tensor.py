@@ -120,7 +120,9 @@ class Tensor(Value):
             return ndl.ops.multiply(self, other)
         return ndl.ops.mul_scalar(self, other)
 
-    def __pow__(self, other: Scalar) -> Tensor:
+    def __pow__(self, other: Tensor | Scalar) -> Tensor:
+        if isinstance(other, Tensor):
+            return ndl.ops.power(self, other)
         return ndl.ops.power_scalar(self, other)
 
     def __sub__(self, other: Tensor | Scalar) -> Tensor:

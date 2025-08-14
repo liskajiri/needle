@@ -829,6 +829,8 @@ class NDArray:  # noqa: PLR0904 = too many public methods
 
         new_size = math.prod(new_shape)
         if len(new_shape) < len(self._shape) or new_size % self.size != 0:
+            # TODO: Incompatible shapes for broadcasting: ((1,), ())
+            # TODO: Incompatible shapes for broadcasting: ((1, 1), (1,))
             raise BroadcastError((self._shape, new_shape))
 
         leading_dims = len(new_shape) - len(self._shape)

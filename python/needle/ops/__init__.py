@@ -36,8 +36,10 @@ from needle.ops.shape import (
 )
 from needle.ops.view import (
     GetItem,
+    concatenate,
     dilate,
     flip,
+    get_item,
     split,
     stack,
     undilate,
@@ -52,6 +54,7 @@ __all__ = [
     "add_scalar",
     "broadcast_to",
     "broadcast_to_new_axis",
+    "concatenate",
     "conv",
     "dilate",
     "divide",
@@ -59,6 +62,7 @@ __all__ = [
     "exp",
     "flip",
     "fused_add_scalars",
+    "get_item",
     "log",
     "logsoftmax",
     "logsumexp",

@@ -6,12 +6,12 @@ import needle.init as init
 from needle.backend_selection import NDArray, array_api
 from needle.ops.op import TensorOp, TensorTupleOp
 from needle.ops.ops_tuple import make_tuple
+from needle.tensor import Tensor
 from needle.typing.types import Axis
 
 if TYPE_CHECKING:
     from needle.backend_selection import NDArray
-    from needle.tensor import Tensor, TensorTuple
-    from needle.typing import IndexType
+    from needle.tensor import IndexType, TensorTuple
 
 
 class Stack(TensorOp):
@@ -79,7 +79,7 @@ class Concatenate(TensorOp):
         return Split(self.axis, sections=input_sizes)(out_grad)
 
 
-def concatenate(arr: tuple[Tensor, ...] | list[Tensor], axis: int) -> Tensor:
+def concatenate(arr: tuple[Tensor, ...] | list[Tensor], *, axis: int) -> Tensor:
     return Concatenate(axis)(make_tuple(*arr))
 
 
