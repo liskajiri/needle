@@ -18,6 +18,10 @@ def generic_op_test(ndl_op, torch_op, inputs, backward, device) -> None:
     torch_out = torch_op(*torch_inputs)
 
     # Forward check
+    if not isinstance(ndl_out, Tensor):
+        ndl_out = ndl_out[0]
+        torch_out = torch_out[0]
+
     np.testing.assert_allclose(
         ndl_out.numpy(), torch_out.detach().numpy(), rtol=RTOL, atol=ATOL
     )

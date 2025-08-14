@@ -1,3 +1,4 @@
+import hypothesis.extra.numpy as hnp
 import numpy as np
 import torch
 from hypothesis import assume
@@ -58,6 +59,18 @@ small_array_strategy = arrays(
         min_value=-2.0, max_value=2.0, allow_infinity=False, allow_nan=False
     ),
 )
+
+
+@st.composite
+def single_array(
+    draw,
+    dtype=DTYPE_FLOAT,
+    shape=None,
+    elements=safe_float_strategy,
+) -> list[np.ndarray]:
+    if shape is None:
+        shape = draw(array_shapes_strategy)
+    return [draw(arrays(dtype=dtype, shape=shape, elements=elements))]
 
 
 # Strategy for arrays of the same shape
@@ -210,6 +223,31 @@ def array_and_axis(draw):
 
 
 @st.composite
+def array_and_multiple_axes(draw):
+    # draw an array from your pre-existing generator
+    a_np = draw(array_strategy)
+
+    # now pick some dimensions at random
+    axes = draw(
+        st.lists(
+            st.integers(min_value=0, max_value=a_np.ndim - 1),
+            min_size=1,
+            max_size=a_np.ndim,
+            unique=True,
+        ).map(tuple)
+    )
+
+    return a_np, axes
+
+
+@st.composite
+def array_and_permutation(draw):
+    a_np = draw(array_strategy)
+    axes = draw(st.permutations(range(a_np.ndim)))
+    return a_np, tuple(axes)
+
+
+@st.composite
 def reshape_examples(draw):
     """Strategy to generate arrays and valid new shapes for reshape testing."""
     # Generate original array shape and data
@@ -243,6 +281,47 @@ def reshape_examples(draw):
     assume(new_shape != orig_shape)
 
     return array, new_shape
+
+
+@st.composite
+def array_and_reshape_shape(draw, min_dims=1, max_dims=4, min_side=1, max_side=4):
+    # Draw a random array
+    arr = draw(
+        hnp.arrays(
+            dtype=np.float32,
+            shape=hnp.array_shapes(
+                min_dims=min_dims,
+                max_dims=max_dims,
+                min_side=min_side,
+                max_side=max_side,
+            ),
+            elements=st.floats(-10, 10, allow_infinity=False, allow_nan=False),
+        )
+    )
+
+    # Draw a new shape with the same number of elements
+    size = arr.size
+    factors = [d for d in range(1, size + 1) if size % d == 0]
+
+    # Generate a random factorization into dimensions
+    def random_shape(n):
+        dims = []
+        remaining = n
+        while remaining > 1:
+            f = draw(
+                st.sampled_from(
+                    [x for x in factors if x <= remaining and remaining % x == 0]
+                )
+            )
+            dims.append(f)
+            remaining //= f
+        if not dims:
+            dims = [n]
+        return tuple(dims)
+
+    new_shape = random_shape(size)
+
+    return arr, new_shape
 
 
 @st.composite
