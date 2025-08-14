@@ -24,10 +24,14 @@ class Dropout(Module):
             p: probability of dropping out a unit.
         """
         super().__init__()
+        if not (0.0 <= p <= 1.0):
+            raise ValueError("Dropout probability must be in [0, 1]")
         self.p = p
 
     def forward(self, x: Tensor) -> Tensor:
-        if not self.training:
+        if not self.training or self.p == 0.0:
             return x
+        if self.p == 1.0:
+            return init.zeros(x.shape, dtype=x.dtype)
         mask = init.rand_binary(x.shape, p=1 - self.p)
         return (x * mask) / (1 - self.p)
