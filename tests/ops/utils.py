@@ -1,0 +1,37 @@
+import numpy as np
+import torch
+from needle import Tensor
+
+RTOL = 1e-5
+ATOL = 1e-5
+
+
+def generic_op_test(ndl_op, torch_op, inputs, backward, device) -> None:
+    # Create Needle tensors
+    ndl_inputs = [Tensor(arr, requires_grad=backward, device=device) for arr in inputs]
+    ndl_out = ndl_op(*ndl_inputs)
+
+    # Create Torch tensors
+    torch_inputs = [
+        torch.tensor(arr, dtype=torch.float32, requires_grad=backward) for arr in inputs
+    ]
+    torch_out = torch_op(*torch_inputs)
+
+    # Forward check
+    np.testing.assert_allclose(
+        ndl_out.numpy(), torch_out.detach().numpy(), rtol=RTOL, atol=ATOL
+    )
+
+    if backward:
+        ndl_out.sum().backward()
+        ndl_grads = [t.grad.numpy() for t in ndl_inputs]
+
+        # Backward Torch
+        grad_torch = torch.autograd.grad(outputs=torch_out.sum(), inputs=torch_inputs)
+        grad_torch = [g.detach().numpy() for g in grad_torch]
+
+        # Gradient checks
+        for g_ndl, g_torch in zip(ndl_grads, grad_torch):
+            print(g_ndl)
+            print(g_torch)
+            np.testing.assert_allclose(g_ndl, g_torch, rtol=RTOL, atol=ATOL)
