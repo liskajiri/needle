@@ -5,172 +5,17 @@ import torch
 from hypothesis import given
 from hypothesis import strategies as st
 from hypothesis.extra.numpy import (
-    array_shapes,
     arrays,
-    broadcastable_shapes,
 )
 
 from tests.gradient_check import backward_check
 
 rng = np.random.default_rng(0)
 
-
 DEFAULT_SHAPE = (5, 4)
 TRANSPOSE_SHAPES = (3, 5, 4)
 # matrix shapes
 m, n, k = 5, 4, 3
-
-
-@given(
-    arrays(dtype=np.float32, shape=DEFAULT_SHAPE, elements=st.floats(-1e2, 1e2)),
-    arrays(dtype=np.float32, shape=DEFAULT_SHAPE, elements=st.floats(1, 1e2)),
-)
-def test_divide_backward(a, b) -> None:
-    backward_check(ndl.ops.divide, ndl.Tensor(a), ndl.Tensor(b))
-
-
-@given(
-    arrays(dtype=np.float32, shape=DEFAULT_SHAPE, elements=st.floats(-1e3, 1e3)),
-    st.floats(1, 1e3),
-)
-def test_divide_scalar_backward(a, b) -> None:
-    backward_check(ndl.ops.divide_scalar, ndl.Tensor(a), b)
-
-
-@given(
-    arrays(dtype=np.float32, shape=DEFAULT_SHAPE, elements=st.floats(-1e2, 1e2)),
-    arrays(dtype=np.float32, shape=DEFAULT_SHAPE, elements=st.floats(-1e2, 1e2)),
-)
-def test_matmul_simple_backward(a, b) -> None:
-    backward_check(
-        ndl.matmul,
-        ndl.Tensor(a),
-        ndl.Tensor(b.T),
-    )
-
-
-@pytest.mark.parametrize(
-    "batch_shapes",
-    [
-        ((6, 6, 5, 4), (6, 6, 4, 3)),  # batched @ batched (same batch dims)
-        ((1, 2, 1, 2), (2, 1)),  # batched @ non-batched (smaller dims)
-        ((6, 6, 5, 4), (4, 3)),  # batched @ non-batched
-        ((5, 4), (6, 6, 4, 3)),  # non-batched @ batched
-    ],
-    ids=[
-        "batched @ batched",
-        "(batched @ non-batched)_small",
-        "batched @ non-batched",
-        "non-batched @ batched",
-    ],
-)
-def test_matmul_batched_backward(batch_shapes) -> None:
-    A_shape, B_shape = batch_shapes
-    A = ndl.Tensor(rng.standard_normal(A_shape))
-    B = ndl.Tensor(rng.standard_normal(B_shape))
-
-    # Run backward check
-    backward_check(ndl.matmul, A, B)
-
-
-@given(
-    arrays(dtype=np.float32, shape=DEFAULT_SHAPE),
-)
-def test_reshape_backward(a) -> None:
-    backward_check(ndl.reshape, ndl.Tensor(a), shape=DEFAULT_SHAPE)
-
-
-@given(arrays(dtype=np.float32, shape=DEFAULT_SHAPE))
-def test_negate_backward(a) -> None:
-    backward_check(ndl.negate, ndl.Tensor(a))
-
-
-@given(
-    arrays(dtype=np.float32, shape=DEFAULT_SHAPE, elements=st.floats(0.1, 10)),
-)
-def test_log_backward(a) -> None:
-    backward_check(ndl.log, ndl.Tensor(a))
-
-
-@given(arrays(dtype=np.float32, shape=DEFAULT_SHAPE, elements=st.floats(-10, 10)))
-def test_relu_backward(a) -> None:
-    backward_check(ndl.relu, ndl.Tensor(a))
-
-
-@pytest.mark.parametrize(
-    "axes",
-    [
-        (0, 1),
-        (1, 0),
-        (0, 2),
-        (2, 0),
-        (1, 2),
-        (2, 1),
-    ],
-    ids=lambda x: f"{x}",
-)
-@given(
-    arrays(dtype=np.float32, shape=TRANSPOSE_SHAPES),
-)
-def test_transpose_backward(axes, a) -> None:
-    backward_check(ndl.transpose, ndl.Tensor(a), axes=axes)
-
-
-@given(
-    data=st.data(),
-)
-def test_broadcast_to_backward_hypothesis(data) -> None:
-    """
-    Only tests sizes from 2, because there are some issues with broadcasting to (, 1)
-    """
-    base_shape = data.draw(array_shapes(min_dims=1, max_dims=5))
-
-    array = data.draw(arrays(dtype=np.float32, shape=base_shape))
-
-    target_shape = data.draw(
-        broadcastable_shapes(shape=base_shape, min_dims=1, min_side=2).filter(
-            # for some reason can generate smaller shapes
-            lambda x: np.prod(x) > np.prod(base_shape) and len(x) >= len(base_shape)
-        )
-    )
-
-    tensor = ndl.Tensor(array)
-    backward_check(ndl.broadcast_to, tensor, shape=target_shape)
-
-
-@pytest.mark.parametrize(
-    "input_shape,output_shape",
-    [
-        pytest.param((3, 1), (3, 3), id="broadcast_columns"),
-        pytest.param((1, 3), (3, 3), id="broadcast_rows"),
-        pytest.param((1,), (3, 3, 3), id="vector_to_3d"),
-        pytest.param((), (3, 3, 3), id="scalar_to_3d"),
-        pytest.param((5, 4, 1), (5, 4, 3), id="expand_last_dim"),
-        pytest.param((5,), (1, 5), id="add_dim_preserve"),
-        pytest.param((2, 3, 1, 5), (2, 3, 4, 5), id="expand_3d_to_4d"),
-    ],
-)
-def test_broadcast_to_backward(input_shape, output_shape) -> None:
-    input_data = rng.standard_normal(input_shape)
-    backward_check(ndl.broadcast_to, ndl.Tensor(input_data), shape=output_shape)
-
-
-@pytest.mark.parametrize(
-    "shape,axes",
-    [
-        pytest.param((5, 4), (1,), id="sum_along_columns"),
-        pytest.param((5, 4), (0,), id="sum_along_rows"),
-        pytest.param((5, 4), (0, 1), id="sum_all_dimensions"),
-        pytest.param((5, 4, 1), (0, 1), id="sum_first_two_dimensions"),
-    ],
-)
-def test_summation_backward(shape, axes) -> None:
-    tensor = ndl.Tensor(np.random.randn(*shape))
-    backward_check(
-        ndl.ops.mathematic.summation,
-        tensor,
-        axes=axes,
-    )
 
 
 # ##############################################################################

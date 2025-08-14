@@ -2,7 +2,6 @@
 Convolution tests
 
 - nn_conv
-- op_conv
 """
 
 import needle as ndl
@@ -12,7 +11,7 @@ import torch
 from hypothesis import given
 
 from tests.devices import all_devices
-from tests.hypothesis_strategies import conv_layer_parameters, conv_operation_parameters
+from tests.hypothesis_strategies import conv_layer_parameters
 from tests.utils import backward_forward, set_random_seeds
 
 # Global tolerance settings
@@ -167,50 +166,6 @@ def test_nn_conv(params, bias, device, backward):
         # Check bias gradients if bias is used
         if bias:
             assert_gradients_close(needle_conv.bias, torch_conv.bias, "bias")
-
-
-@given(params=conv_operation_parameters())
-@all_devices()
-@backward_forward()
-def test_conv_op(params, device, backward):
-    """Test low-level conv operation forward and backward pass."""
-    input_shape = params["input_shape"]
-    kernel_shape = params["kernel_shape"]
-    stride = params["stride"]
-    padding = params["padding"]
-
-    input_array = rng.standard_normal(input_shape, dtype=np.float32)
-    kernel_array = rng.standard_normal(kernel_shape, dtype=np.float32)
-
-    input_ndl = ndl.Tensor(input_array, device=device, requires_grad=backward)
-    kernel_ndl = ndl.Tensor(kernel_array, device=device, requires_grad=backward)
-
-    input_torch = torch.tensor(input_array, dtype=torch.float32, requires_grad=backward)
-    kernel_torch = torch.tensor(
-        kernel_array, dtype=torch.float32, requires_grad=backward
-    )
-
-    result_ndl = ndl.conv(input_ndl, kernel_ndl, padding=padding, stride=stride)
-
-    # Equivalent PyTorch operation with channel order adjustment
-    result_torch = torch.nn.functional.conv2d(
-        input_torch.permute(0, 3, 1, 2),
-        kernel_torch.permute(3, 2, 0, 1),
-        padding=padding,
-        stride=stride,
-    )
-
-    np.testing.assert_allclose(
-        result_ndl.numpy(),
-        result_torch.permute(0, 2, 3, 1).contiguous().detach().numpy(),
-        rtol=RTOL,
-        atol=ATOL,
-        err_msg="Conv operation forward pass results do not match",
-    )
-
-    if backward:
-        check_backward_conv(result_ndl, input_ndl, result_torch, input_torch)
-        assert_gradients_close(kernel_ndl, kernel_torch, "kernel")
 
 
 @pytest.mark.parametrize("bias", [True, False])

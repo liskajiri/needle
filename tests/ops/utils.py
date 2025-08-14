@@ -32,6 +32,4 @@ def generic_op_test(ndl_op, torch_op, inputs, backward, device) -> None:
 
         # Gradient checks
         for g_ndl, g_torch in zip(ndl_grads, grad_torch):
-            print(g_ndl)
-            print(g_torch)
             np.testing.assert_allclose(g_ndl, g_torch, rtol=RTOL, atol=ATOL)
