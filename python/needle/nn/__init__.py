@@ -10,9 +10,10 @@ from needle.nn.core import (
     Sequential,
 )
 from needle.nn.dropout import Dropout
+from needle.nn.embedding import Embedding
 from needle.nn.linear import Linear
 from needle.nn.norms import BatchNorm1d, BatchNorm2d, LayerNorm1d
-from needle.nn.sequence import LSTM, RNN, Embedding, LSTMCell, RNNCell
+from needle.nn.sequence import LSTM, RNN, LSTMCell, RNNCell
 from needle.nn.softmax import SoftmaxLoss
 
 __all__ = [
