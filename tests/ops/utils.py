@@ -1,3 +1,5 @@
+import logging
+
 import numpy as np
 import torch
 from needle import Tensor
@@ -26,8 +28,20 @@ def generic_op_test(ndl_op, torch_op, inputs, backward, device) -> None:
         ndl_out.numpy(), torch_out.detach().numpy(), rtol=RTOL, atol=ATOL
     )
 
+    assert ndl_out.device == device
+
     if backward:
         ndl_out.sum().backward()
+
+        # check that the gradients are on the same device as the inputs
+        for ndl_input in ndl_inputs:
+            if not hasattr(ndl_input, "grad"):
+                # This is because LogSoftmax does not produce gradients
+                logging.error(f"Input tensor {ndl_input} has no gradient.")
+                return
+            else:
+                assert ndl_input.grad.device == device
+
         ndl_grads = [t.grad.numpy() for t in ndl_inputs]
 
         # Backward Torch

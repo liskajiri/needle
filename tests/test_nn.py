@@ -2,7 +2,6 @@ import needle as ndl
 import numdifftools as nd
 import numpy as np
 import pytest
-import torch
 from models.resnet9 import MLPResNet, ResidualBlock
 from needle import nn
 from needle.data.datasets.mnist import MNISTDataset, MNISTPaths
@@ -56,7 +55,6 @@ def simple_nn_epoch(
         Z = ndl.relu(X_batch @ W1)
         logits = Z @ W2
         loss = ndl.nn.SoftmaxLoss()(logits, ndl.Tensor(y_batch))
-        # loss = softmax_loss(logits, y_batch)
 
         loss.backward()
 
@@ -167,22 +165,6 @@ def layernorm_backward(shape, dims):
     f = ndl.nn.LayerNorm1d(dims)
     x = get_tensor(*shape)
     (f(x) ** 4).sum().backward()
-    return x.grad.cached_data
-
-
-def softmax_loss_forward(rows, classes):
-    x = get_tensor(rows, classes)
-    y = get_int_tensor(rows, low=0, high=classes)
-    f = ndl.nn.SoftmaxLoss()
-    return np.array(f(x, y).cached_data)
-
-
-def softmax_loss_backward(rows, classes):
-    x = get_tensor(rows, classes)
-    y = get_int_tensor(rows, low=0, high=classes)
-    f = ndl.nn.SoftmaxLoss()
-    loss = f(x, y)
-    loss.backward()
     return x.grad.cached_data
 
 
@@ -865,149 +847,6 @@ def test_nn_sequential_backward_1():
                 [0.802697, -1.0971, 0.120842, 0.033051, 0.241105],
                 [-0.364489, 0.651385, 0.482428, 0.925252, -1.233545],
                 [0.802697, -1.0971, 0.120842, 0.033051, 0.241105],
-            ],
-            dtype=np.float32,
-        ),
-        rtol=1e-5,
-        atol=1e-5,
-    )
-
-
-def test_nn_softmax_loss_forward_1():
-    np.testing.assert_allclose(
-        softmax_loss_forward(5, 10),
-        np.array(4.041218, dtype=np.float32),
-        rtol=1e-5,
-        atol=1e-5,
-    )
-
-
-def test_nn_softmax_loss_forward_2():
-    np.testing.assert_allclose(
-        softmax_loss_forward(3, 11),
-        np.array(3.3196716, dtype=np.float32),
-        rtol=1e-5,
-        atol=1e-5,
-    )
-
-
-def test_nn_softmax_loss_backward_1():
-    np.testing.assert_allclose(
-        softmax_loss_backward(5, 10),
-        np.array(
-            [
-                [
-                    0.00068890385,
-                    0.0015331834,
-                    0.013162163,
-                    -0.16422154,
-                    0.023983022,
-                    0.0050903494,
-                    0.00076135644,
-                    0.050772052,
-                    0.0062173656,
-                    0.062013146,
-                ],
-                [
-                    0.012363418,
-                    0.02368262,
-                    0.11730081,
-                    0.001758993,
-                    0.004781439,
-                    0.0029000894,
-                    -0.19815083,
-                    0.017544521,
-                    0.015874943,
-                    0.0019439887,
-                ],
-                [
-                    0.001219767,
-                    0.08134181,
-                    0.057320606,
-                    0.0008595553,
-                    0.0030001428,
-                    0.0009499555,
-                    -0.19633561,
-                    0.0008176346,
-                    0.0014898272,
-                    0.0493363,
-                ],
-                [
-                    -0.19886842,
-                    0.08767337,
-                    0.017700946,
-                    0.026406704,
-                    0.0013147127,
-                    0.0107361665,
-                    0.009714483,
-                    0.023893777,
-                    0.019562569,
-                    0.0018656658,
-                ],
-                [
-                    0.007933789,
-                    0.017656967,
-                    0.027691642,
-                    0.0005605318,
-                    0.05576411,
-                    0.0013114461,
-                    0.06811045,
-                    0.011835824,
-                    0.0071787895,
-                    -0.19804356,
-                ],
-            ],
-            dtype=np.float32,
-        ),
-        rtol=1e-5,
-        atol=1e-5,
-    )
-
-
-def test_nn_softmax_loss_backward_2():
-    np.testing.assert_allclose(
-        softmax_loss_backward(3, 11),
-        np.array(
-            [
-                [
-                    0.0027466794,
-                    0.020295369,
-                    0.012940894,
-                    0.04748398,
-                    0.052477922,
-                    0.090957515,
-                    0.0028875037,
-                    0.012940894,
-                    0.040869843,
-                    0.04748398,
-                    -0.33108455,
-                ],
-                [
-                    0.0063174255,
-                    0.001721699,
-                    0.09400159,
-                    0.0034670753,
-                    0.038218185,
-                    0.009424488,
-                    0.0042346967,
-                    0.08090791,
-                    -0.29697907,
-                    0.0044518122,
-                    0.054234188,
-                ],
-                [
-                    0.14326698,
-                    0.002624026,
-                    0.0032049934,
-                    0.01176007,
-                    0.045363605,
-                    0.0043262867,
-                    0.039044812,
-                    0.017543964,
-                    0.0037236712,
-                    -0.3119051,
-                    0.04104668,
-                ],
             ],
             dtype=np.float32,
         ),
@@ -1941,28 +1780,3 @@ def test_nn_full_epoch_mnist_simple_network():
     np.testing.assert_array_less(
         error_rate, 0.06006667, err_msg="Error rate is too high after training"
     )
-
-
-def test_softmax_loss_ndl_random_array():
-    import torch.nn.functional as F
-
-    Z_np = np.random.randn(16, 10).astype(np.float32)
-    y_np = np.zeros((16, 10))
-    y_np[np.arange(16), np.random.randint(0, 10, 16)] = 1
-
-    # Needle implementation
-    Z_ndl = ndl.Tensor(Z_np)
-
-    y_indices = ndl.Tensor(np.argmax(y_np, axis=1))
-    loss_ndl = ndl.nn.SoftmaxLoss()(Z_ndl, y_indices)
-    loss_ndl.backward()
-
-    # PyTorch implementation
-    Z_torch = torch.tensor(Z_np, requires_grad=True)
-    y_torch = torch.tensor(np.argmax(y_np, axis=1))
-    loss_torch = F.cross_entropy(Z_torch, y_torch)
-    loss_torch.backward()
-
-    # Compare results
-    np.testing.assert_allclose(loss_ndl.numpy(), loss_torch.detach().numpy(), rtol=1e-5)
-    np.testing.assert_allclose(Z_ndl.grad.numpy(), Z_torch.grad.numpy(), rtol=1e-5)

@@ -32,7 +32,8 @@ def test_batchnorm_constant_input(input: float, device) -> None:
     """
     Test that BatchNorm1d output is zeros for constant input.
     """
-    x = nd.Tensor(np.full((8, 4), input, dtype=np.float32))
+    arr = np.full((2, 3), input, dtype=np.float32)
+    x = nd.Tensor(arr, device=device)
     layer = nn.BatchNorm1d(x.shape[1])
 
     y = layer.forward(x)

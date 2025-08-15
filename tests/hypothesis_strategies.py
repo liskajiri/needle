@@ -80,7 +80,7 @@ def same_shape_arrays(
     n=2,
     dtype=DTYPE_FLOAT,
     shape=None,
-    elements=safe_float_strategy,
+    elements=float_strategy,
 ) -> list[np.ndarray]:
     """Generate two arrays of the same shape."""
     # this ensures that shapes of all arrays are the same

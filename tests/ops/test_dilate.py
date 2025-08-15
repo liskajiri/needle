@@ -9,14 +9,8 @@ from tests.gradient_check import backward_check
 
 rng = np.random.default_rng()
 
-
-def backward_forward():
-    return pytest.mark.parametrize(
-        "backward", [True, False], ids=["backward", "forward"]
-    )
-
-
 # ====================== DILATE ======================
+# TODO
 
 
 @pytest.mark.parametrize(

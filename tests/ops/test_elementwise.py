@@ -3,7 +3,11 @@ import torch
 from hypothesis import given
 
 from tests.devices import all_devices
-from tests.hypothesis_strategies import division_arrays, same_shape_arrays
+from tests.hypothesis_strategies import (
+    division_arrays,
+    safe_float_strategy,
+    same_shape_arrays,
+)
 from tests.ops.utils import generic_op_test
 from tests.utils import backward_forward
 
@@ -34,7 +38,7 @@ def test_multiply(inputs, backward, device) -> None:
     )
 
 
-@given(inputs=same_shape_arrays())
+@given(inputs=same_shape_arrays(elements=safe_float_strategy))
 @backward_forward()
 @all_devices()
 def test_power(inputs, backward, device) -> None:
