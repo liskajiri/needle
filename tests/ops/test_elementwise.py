@@ -8,8 +8,7 @@ from tests.hypothesis_strategies import (
     safe_float_strategy,
     same_shape_arrays,
 )
-from tests.ops.utils import generic_op_test
-from tests.utils import backward_forward
+from tests.utils import backward_forward, generic_op_test
 
 
 @given(inputs=same_shape_arrays())

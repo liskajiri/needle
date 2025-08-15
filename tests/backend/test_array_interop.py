@@ -77,11 +77,17 @@ def test_dlpack_numpy_interop(lst_array):
 
 
 @given(
-    arrays(dtype=np.float32, shape=(3, 3), elements=st.floats(-10, 10)),  # TODO NaNs
+    arrays(
+        dtype=np.float32,
+        shape=(3, 3),
+        elements=st.floats(allow_nan=True, allow_infinity=True),
+    ),
 )
 def test_ndarray_to_numpy_conversion(arr):
     # Convert to NDArray
     nd_arr = NDArray(arr)
     np_arr_back = nd_arr.numpy()
 
-    assert np.array_equal(arr, np_arr_back), "Round-trip conversion failed"
+    np.testing.assert_array_equal(
+        arr, np_arr_back, "Conversion to NumPy failed", strict=True
+    )

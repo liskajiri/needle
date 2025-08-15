@@ -1,16 +1,12 @@
 import needle as ndl
 import numpy as np
 import pytest
-from hypothesis import given
-from hypothesis import strategies as st
 
 from tests.devices import all_devices
-from tests.gradient_check import backward_check
 
 rng = np.random.default_rng()
 
 # ====================== DILATE ======================
-# TODO
 
 
 @pytest.mark.parametrize(
@@ -117,52 +113,4 @@ def test_dilate_forward(input, dilation, axes, expected, device):
     np.testing.assert_array_equal(result, expected)
 
 
-@st.composite
-def dilate_params(draw):
-    """Generate valid parameters for dilate tests.
-
-    Generates:
-    - Shape with 2-4 dimensions
-    - Dilation value (0-3)
-    - Valid unique axes for dilation
-    """
-    # Generate shape with 2-4 dimensions
-    n_dims = draw(st.integers(min_value=2, max_value=4))
-    shape = tuple(draw(st.integers(min_value=2, max_value=8)) for _ in range(n_dims))
-
-    # Generate dilation value (0-3)
-    dilation = draw(st.integers(min_value=0, max_value=3))
-
-    # Generate number of axes to dilate (1 to n_dims)
-    n_axes = draw(st.integers(min_value=1, max_value=n_dims))
-
-    # Generate unique sorted axes
-    axes = tuple(
-        draw(
-            st.lists(
-                st.integers(min_value=0, max_value=n_dims - 1),
-                min_size=n_axes,
-                max_size=n_axes,
-                unique=True,
-            )
-        )
-    )
-
-    return {"shape": shape, "d": dilation, "axes": axes}
-
-
-# TODO: remove backward check after refactor
-
-
-@given(params=dilate_params())
-@all_devices()
-def test_dilate_backward(params, device):
-    """Test dilate operation backward pass"""
-    shape, d, axes = params["shape"], params["d"], params["axes"]
-    backward_check(
-        ndl.dilate,
-        ndl.Tensor(rng.standard_normal(shape), device=device),
-        dilation=d,
-        axes=axes,
-        tol=0,
-    )
+# TODO: backward

@@ -508,7 +508,7 @@ def test_broadcast_ops(data: tuple[np.ndarray, np.ndarray], device: Any) -> None
 
 @all_devices()
 @given(data=broadcastable_arrays())
-@pytest.mark.skip(reason="TODO: correctly fails, fix the issue with broadcasting.")
+@pytest.mark.skip(reason="Correctly fails, fix the issue with broadcasting.")
 def test_broadcast_to(device, data):
     arr1, arr2 = data
 

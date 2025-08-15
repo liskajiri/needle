@@ -11,8 +11,7 @@ from tests.hypothesis_strategies import (
     safe_float_strategy,
     single_array,
 )
-from tests.ops.utils import generic_op_test
-from tests.utils import backward_forward
+from tests.utils import backward_forward, generic_op_test
 
 
 @given(inputs=single_array(), scalar=float_strategy)

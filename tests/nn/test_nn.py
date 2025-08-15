@@ -11,6 +11,13 @@ from tests.utils import set_random_seeds
 
 rng = np.random.default_rng(0)
 
+# TODO
+# - replace with hypothesis tests
+# - remove random state
+# - use small ndarray dataset
+# - benchmark epoch speed
+# - move dataset tests to tests/data
+
 
 def simple_nn_epoch(
     X: np.ndarray,
@@ -63,7 +70,6 @@ def simple_nn_epoch(
     return W1, W2
 
 
-# TODO: replace with hypothesis tests
 def get_tensor(*shape, entropy=1) -> ndl.Tensor:
     np.random.seed(np.prod(shape) * len(shape) * entropy)
     return ndl.Tensor(np.random.randint(0, 100, size=shape) / 20, dtype="float32")
@@ -74,7 +80,6 @@ def get_int_tensor(*shape, low=0, high=10, entropy=1):
     return ndl.Tensor(np.random.randint(low, high, size=shape))
 
 
-# TODO: remove random state
 def check_prng(*shape):
     """Ensure that numpy generates random matrices on your machine/colab
     Such that our tests will make sense
@@ -352,9 +357,6 @@ def mlp_resnet_forward(dim, hidden_dim, num_blocks, num_classes, norm, drop_prob
     return output_tensor.numpy()
 
 
-# TODO: mark tests needing datasets
-# TODO: if not necessary, use ndarray random dataset
-# TODO: Test speed of epoch
 def train_epoch_1(hidden_dim, batch_size, optimizer, **kwargs):
     set_random_seeds(1)
     train_dataset = ndl.data.MNISTDataset(train=True)
@@ -380,7 +382,6 @@ def eval_epoch_1(hidden_dim, batch_size):
     return acc, loss
 
 
-# TODO: substitute for artificial dataset and move this to test_datasets
 # it currently fails if the datasets are not downloaded
 def train_mnist_1(
     batch_size, epochs: int, optimizer, lr, weight_decay, hidden_dim
@@ -1645,7 +1646,6 @@ def test_mlp_resnet_forward_2():
     )
 
 
-# TODO: Unify testing for train_epoch and eval_epoch, remove duplication and
 @pytest.mark.slow
 def test_mlp_train_epoch_1():
     acc, loss = train_epoch_1(5, 250, ndl.optim.Adam, lr=0.01, weight_decay=0.1)

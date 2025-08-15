@@ -10,8 +10,7 @@ from tests.hypothesis_strategies import (
     array_and_multiple_axes,
     single_array,
 )
-from tests.ops.utils import generic_op_test
-from tests.utils import backward_forward
+from tests.utils import backward_forward, generic_op_test
 
 
 @given(inputs=array_and_axis())

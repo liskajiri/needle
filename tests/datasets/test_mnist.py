@@ -289,9 +289,3 @@ def test_softmax_loss_ndl():
     )
     Z = ndl.Tensor(np.random.randn(y.shape[0], 10).astype(np.float32))
     np.testing.assert_allclose(softmax(Z, y).numpy(), 2.7291998, rtol=1e-6, atol=1e-6)
-
-    # TODO:
-    # # test softmax loss backward
-    # Zsmall = ndl.Tensor(np.random.randn(16, 10).astype(np.float32))
-    # ysmall = ndl.Tensor(y_one_hot[:16])
-    # backward_check(softmax_loss, Zsmall, ysmall, tol=0.01, backward=True)

@@ -7,8 +7,7 @@ from hypothesis import given
 
 from tests.devices import all_devices
 from tests.hypothesis_strategies import array_and_axis, single_array
-from tests.ops.utils import generic_op_test
-from tests.utils import backward_forward
+from tests.utils import backward_forward, generic_op_test
 
 rng = np.random.default_rng(0)
 
@@ -45,7 +44,6 @@ def test_logsoftmax_invalid(tensor):
 @pytest.mark.xfail(reason="Broadcasting issues", strict=False)
 def test_logsumexp(inputs, backward, device):
     arr, axis = inputs
-    print(arr.shape, axis)
     generic_op_test(
         ndl_op=lambda x: ops.logsumexp(x, axes=axis),
         torch_op=lambda x: torch.logsumexp(x, dim=axis),

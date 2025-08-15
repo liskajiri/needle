@@ -6,8 +6,7 @@ from hypothesis import strategies as st
 
 from tests.devices import all_devices
 from tests.hypothesis_strategies import matmul_arrays, single_array
-from tests.ops.utils import generic_op_test
-from tests.utils import backward_forward
+from tests.utils import backward_forward, generic_op_test
 
 # ========== Summation
 

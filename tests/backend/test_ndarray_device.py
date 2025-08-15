@@ -17,7 +17,6 @@ def get_backends():
         (backend_numpy.cpu(), "numpy"),
     ]
     if nd.cuda().enabled():
-        print(nd.cuda())
         backends.append((nd.cuda(), "cuda"))
     return backends
 

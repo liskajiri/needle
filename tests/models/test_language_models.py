@@ -81,6 +81,8 @@ def test_language_model_implementation(
     assert all(p.grad is not None for p in model.seq_model.parameters())
     assert all(p.grad is not None for p in model.linear.parameters())
     # TODO: Embedding layer is not being trained
+    # import logging
+
     # for p in model.embedding.parameters():
     #     logging.info(f"Embedding param: {p.__class__.__name__}")
     #     logging.info(f"Embedding param grad: {p.grad}")

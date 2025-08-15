@@ -7,8 +7,7 @@ from hypothesis import given
 
 from tests.devices import all_devices
 from tests.hypothesis_strategies import float_strategy
-from tests.ops.utils import generic_op_test
-from tests.utils import backward_forward
+from tests.utils import backward_forward, generic_op_test
 
 # Strategy to generate (rows, classes)
 softmax_shape_strategy = st.tuples(
