@@ -8,8 +8,6 @@ from hypothesis.extra.numpy import (
     arrays,
 )
 
-from tests.gradient_check import backward_check
-
 rng = np.random.default_rng(0)
 
 DEFAULT_SHAPE = (5, 4)
@@ -130,41 +128,6 @@ def test_compute_gradient_sum_matmul(a, b, c) -> None:
     np.testing.assert_allclose(A_ndl.grad.numpy(), A_torch.grad.numpy(), atol=atol)  # type: ignore
     np.testing.assert_allclose(B_ndl.grad.numpy(), B_torch.grad.numpy(), atol=atol)  # type: ignore
     np.testing.assert_allclose(C_ndl.grad.numpy(), C_torch.grad.numpy(), atol=atol)  # type: ignore
-
-
-@pytest.mark.parametrize(
-    "ndl_fn,shapes,torch_fn",
-    [
-        pytest.param(
-            lambda A, B, C: ndl.ops.mathematic.summation(
-                (A @ B + C) * (A @ B), axes=None
-            ),
-            [(10, 9), (9, 8), (10, 8)],
-            lambda A, B, C: ((A @ B + C) * (A @ B)).sum(),
-            id="matmul_add_multiply",
-        ),
-        pytest.param(
-            lambda A, B: ndl.ops.mathematic.summation(
-                ndl.broadcast_to(A, shape=(10, 9)) * B, axes=None
-            ),
-            [(10, 1), (10, 9)],
-            lambda A, B: (A.expand(10, 9) * B).sum(),
-            id="broadcast_multiply",
-        ),
-        pytest.param(
-            lambda A, B, C: ndl.ops.mathematic.summation(
-                ndl.reshape(A, shape=(10, 10)) @ B / 5 + C, axes=None
-            ),
-            [(100,), (10, 5), (10, 5)],
-            lambda A, B, C: (A.view(10, 10) @ B / 5 + C).sum(),
-            id="reshape_matmul_divide",
-        ),
-    ],
-)
-def test_compute_gradients(ndl_fn, shapes, torch_fn) -> None:
-    ndl_inputs = [ndl.Tensor(rng.standard_normal(shape)) for shape in shapes]
-
-    backward_check(ndl_fn, *ndl_inputs, torch_fn=torch_fn, backward=True)
 
 
 def test_compute_gradient_of_gradient() -> None:

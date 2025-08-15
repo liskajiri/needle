@@ -151,6 +151,9 @@ def dilate_params(draw):
     return {"shape": shape, "d": dilation, "axes": axes}
 
 
+# TODO: remove backward check after refactor
+
+
 @given(params=dilate_params())
 @all_devices()
 def test_dilate_backward(params, device):

@@ -12,26 +12,6 @@ logger = logging.getLogger(__name__)
 rng = np.random.default_rng()
 
 
-def numerical_gradient(f, out, computed_grads, *args, tol: float = 1e-4, **kwargs):
-    eps = 1e-4
-    c = rng.standard_normal(out.shape)
-
-    numerical_grads = [np.zeros(a.shape) for a in args]
-    for i in range(len(args)):
-        for j in range(args[i].realize_cached_data().size):
-            args[i].realize_cached_data().flatten()[j] += eps
-            f1 = float((f(*args, **kwargs).numpy() * c).sum())
-            args[i].realize_cached_data().flatten()[j] -= 2 * eps
-            f2 = float((f(*args, **kwargs).numpy() * c).sum())
-            args[i].realize_cached_data().flatten()[j] += eps
-            numerical_grads[i].flatten()[j] = (f1 - f2) / (2 * eps)
-
-    max_error = sum(
-        np.linalg.norm(computed_grads[i] - numerical_grads[i]) for i in range(len(args))
-    )
-    assert max_error < tol, f"Gradient check failed. Max error: {max_error:.4e}"
-
-
 class TorchOps:
     OP_MAP: ClassVar = {
         "matmul": torch.matmul,

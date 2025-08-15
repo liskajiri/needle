@@ -12,7 +12,6 @@ from tests.utils import set_random_seeds
 rng = np.random.default_rng(0)
 
 
-# TODO: rework this whole files
 def simple_nn_epoch(
     X: np.ndarray,
     y: np.ndarray,
@@ -931,7 +930,6 @@ def test_nn_layernorm_backward_1():
             ],
             dtype=np.float32,
         ),
-        # TODO: decrease tolerance, atol 1e-5 runs ok
         rtol=1e-2,
         atol=1e-5,
     )
