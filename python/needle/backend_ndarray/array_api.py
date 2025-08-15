@@ -4,7 +4,8 @@ import itertools
 import logging
 from typing import TYPE_CHECKING
 
-from needle.backend_ndarray.ndarray import NDArray, default_device, make
+from needle.backend_ndarray.ndarray import NDArray, cpu, cuda, default_device, make
+from needle.typing.dlpack import DLPackDeviceType
 
 if TYPE_CHECKING:
     from needle.typing import (
@@ -16,7 +17,6 @@ if TYPE_CHECKING:
         Strides,
         np_ndarray,
     )
-    from needle.typing.dlpack import DLPackDeviceType
 
 
 def from_numpy(a: np_ndarray) -> NDArray:
@@ -34,8 +34,13 @@ def from_dlpack[SupportsDLPack: NDArray](
     Returns:
         NDArray: Converted NDArray
     """
-    # TODO(GPU): add device
-    return NDArray(a)
+    array_device = default_device
+    if device == DLPackDeviceType.CPU:
+        array_device = cpu()
+    elif device == DLPackDeviceType.CUDA:
+        array_device = cuda()
+
+    return NDArray(a, device=array_device)
 
 
 def array(
@@ -195,7 +200,6 @@ def flip(a: NDArray, axis: Axis) -> NDArray:
         offset=offset,
     )
     return out
-    # return out.compact()
 
 
 def pad(a: NDArray, axes: tuple[tuple[int, int], ...]) -> NDArray:

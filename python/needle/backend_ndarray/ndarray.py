@@ -87,6 +87,32 @@ if True:
             arr.fill(fill_value)
             return arr
 
+        @staticmethod
+        def _tiled_matmul(
+            arr: NDArray, other: NDArray, m: int, n: int, p: int
+        ) -> NDArray:
+            def _tile(a: NDArray, tile: int) -> NDArray:
+                """
+                Transforms a matrix [k, n] into a
+                matrix [k // tile, n // tile, tile, tile].
+                """
+                return a.as_strided(
+                    (a.shape[0] // tile, a.shape[1] // tile, tile, tile),
+                    (a.shape[1] * tile, tile, a.shape[1], 1),
+                ).compact()
+
+            t = arr.device.__tile_size__
+            a = _tile(arr.compact(), t)
+            b = _tile(other.compact(), t)
+            out = make((a.shape[0], b.shape[1], t, t), device=arr.device)
+            arr.device.matmul_tiled(a._handle, b._handle, out._handle, m, n, p)
+
+            return (
+                out.permute((0, 2, 1, 3))
+                .compact()
+                .reshape((arr.shape[0], other.shape[1]))
+            )
+
 else:
     import random
 
@@ -150,6 +176,32 @@ else:
             arr = self.empty(shape, dtype=dtype)
             arr.fill(fill_value)
             return arr
+
+        @staticmethod
+        def _tiled_matmul(
+            arr: NDArray, other: NDArray, m: int, n: int, p: int
+        ) -> NDArray:
+            def _tile(a: NDArray, tile: int) -> NDArray:
+                """
+                Transforms a matrix [k, n] into a
+                matrix [k // tile, n // tile, tile, tile].
+                """
+                return a.as_strided(
+                    (a.shape[0] // tile, a.shape[1] // tile, tile, tile),
+                    (a.shape[1] * tile, tile, a.shape[1], 1),
+                ).compact()
+
+            t = arr.device.__tile_size__
+            a = _tile(arr.compact(), t)
+            b = _tile(other.compact(), t)
+            out = make((a.shape[0], b.shape[1], t, t), device=arr.device)
+            arr.device.matmul_tiled(a._handle, b._handle, out._handle, m, n, p)
+
+            return (
+                out.permute((0, 2, 1, 3))
+                .compact()
+                .reshape((arr.shape[0], other.shape[1]))
+            )
 
 
 def cuda() -> AbstractBackend:
@@ -1340,28 +1392,6 @@ class NDArray:  # noqa: PLR0904 = too many public methods
         # Restore batch dimensions
         return out.reshape((*batch_shape, m, n))
 
-    #  TODO: move this to the cpu backend
-    def _tiled_matmul(self, other: NDArray, m: int, n: int, p: int) -> NDArray:
-        def _tile(a: NDArray, tile: int) -> NDArray:
-            """
-            Transforms a matrix [k, n] into a
-            matrix [k // tile, n // tile, tile, tile].
-            """
-            return a.as_strided(
-                (a.shape[0] // tile, a.shape[1] // tile, tile, tile),
-                (a.shape[1] * tile, tile, a.shape[1], 1),
-            ).compact()
-
-        t = self.device.__tile_size__
-        a = _tile(self.compact(), t)
-        b = _tile(other.compact(), t)
-        out = make((a.shape[0], b.shape[1], t, t), device=self.device)
-        self.device.matmul_tiled(a._handle, b._handle, out._handle, m, n, p)
-
-        return (
-            out.permute((0, 2, 1, 3)).compact().reshape((self.shape[0], other.shape[1]))
-        )
-
     def __matmul__(self, other: NDArray) -> NDArray:
         """
         Matrix multiplication of two arrays.
@@ -1413,7 +1443,7 @@ class NDArray:  # noqa: PLR0904 = too many public methods
             and hasattr(self.device, "matmul_tiled")
             and all(d % self.device.__tile_size__ == 0 for d in (m, n, p))
         ):
-            return self._tiled_matmul(other, m, n, p)
+            return self.device._tiled_matmul(self, other, m, n, p)
 
         out = make((m, p), device=self.device)
         self.device.matmul(
