@@ -299,7 +299,7 @@ def make(
 
     array_size = prod(shape)
     if handle is None:
-        if array_size <= 0:
+        if array_size < 0:
             raise ValueError(f"Array size cannot be negative, Invalid shape: {shape}")
         array._handle = array.device.Array(array_size)
     else:
@@ -434,11 +434,12 @@ class NDArray:  # noqa: PLR0904 = too many public methods
         elif isinstance(other, np.ndarray):
             array = make(other.shape, device=device)
             array.device.from_numpy(np.ascontiguousarray(other), array._handle)
-        elif isinstance(other, list | tuple):
+        # TODO: from_tuple
+        elif isinstance(other, list):
             other, shape = NDArray._flatten_iterable(other)
 
             array = make(shape=shape, device=device)
-            # TODO: from_tuple
+            # empty tuple
             array.device.from_list(other, array._handle)
         else:
             # see if we can create a numpy array from input
@@ -976,20 +977,32 @@ class NDArray:  # noqa: PLR0904 = too many public methods
         if self.shape == new_shape:
             return self
 
-        new_size = math.prod(new_shape)
-        if len(new_shape) < len(self._shape) or new_size % self.size != 0:
-            # TODO: Incompatible shapes for broadcasting: ((1,), ())
-            # TODO: Incompatible shapes for broadcasting: ((1, 1), (1,))
-            raise BroadcastError((self._shape, new_shape))
+        # Cannot broadcast to a smaller shape
+        num_different_dims = len(new_shape) - len(self._shape)
+        if num_different_dims < 0:
+            raise BroadcastError(
+                f"Cannot broadcast shape {self._shape} to {new_shape}: "
+                f"target has fewer dimensions."
+            )
 
-        leading_dims = len(new_shape) - len(self._shape)
-        broadcast_strides = (0,) * leading_dims + self._strides
+        # Pad original shape/strides with size-1 dims at the front
+        padded_shape = (1,) * num_different_dims + self._shape
+        padded_strides = (0,) * num_different_dims + self._strides
 
-        # Zero out strides for dimensions with size 1
-        new_strides = list(broadcast_strides)
-        for i, dim_size in enumerate(reversed(self._shape)):
-            if dim_size == 1:
-                new_strides[-(i + 1)] = 0
+        # Validate broadcasting and adjust strides
+        new_strides = list(padded_strides)
+        for i, (orig_dim, target_dim) in enumerate(zip(padded_shape, new_shape)):
+            if orig_dim == target_dim:
+                continue
+            elif orig_dim == 1:
+                # Broadcasted dimension → stride becomes 0
+                new_strides[i] = 0
+            else:
+                raise BroadcastError(
+                    f"Cannot broadcast shape {self._shape} to {new_shape}: "
+                    f"size mismatch at dimension {i} (original: {orig_dim}, "
+                    f"target: {target_dim})"
+                )
 
         return self.as_strided(new_shape, tuple(new_strides))
 

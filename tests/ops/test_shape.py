@@ -1,13 +1,12 @@
 import needle.ops as ops
-import pytest
 import torch
 from hypothesis import given
+from hypothesis.extra.numpy import mutually_broadcastable_shapes
 
 from tests.devices import all_devices
 from tests.hypothesis_strategies import (
     array_and_permutation,
     array_and_reshape_shape,
-    broadcastable_arrays,
 )
 from tests.utils import backward_forward, generic_op_test
 
@@ -40,15 +39,18 @@ def test_reshape(inputs, backward, device):
     )
 
 
-@given(inputs=broadcastable_arrays())
+@given(mbs=mutually_broadcastable_shapes(num_shapes=1))
 @backward_forward()
 @all_devices()
-@pytest.mark.xfail(reason="Broadcasting issues", strict=False)
-def test_broadcast(inputs, backward, device):
+def test_broadcast_to(mbs, backward, device):
+    src = mbs.input_shapes[0]
+    dst = mbs.result_shape
+
     generic_op_test(
         ndl_op=lambda a, b: ops.broadcast_to(a, b.shape),
         torch_op=lambda a, b: torch.broadcast_to(a, b.shape),
-        inputs=inputs,
+        inputs=[src, dst],
         backward=backward,
         device=device,
+        sum=True,
     )
