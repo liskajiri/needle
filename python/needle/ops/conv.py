@@ -18,6 +18,39 @@ class Conv(TensorOp):
         self.stride = stride
         self.padding = padding
 
+    def _window_view(
+        self,
+        img: NDArray,
+        kernel_shape: Shape,
+        out_h: int,
+        out_w: int,
+    ) -> NDArray:
+        """
+        Create a sliding-window view of `img` using as_strided.
+
+        Returns view with shape: (N, out_h, out_w, kH, kW, C_in)
+        and dtype/view into the same buffer as img (no copy).
+        """
+        # img = img.compact()
+
+        n, _H, _W, C = img.shape
+        kH, kW, _, _ = kernel_shape
+
+        s_n, s_h, s_w, s_c = img.strides
+
+        # Stride for moving one output step in the H/W dims should jump `stride` input
+        out_h_stride = s_h * self.stride
+        out_w_stride = s_w * self.stride
+
+        # The window view shape and strides (so that indexing windows[n,i,j,a,b,c]
+        # the element img[n, i*stride + a, j*stride + b, c])
+        win_shape = (n, out_h, out_w, kH, kW, C)
+        win_strides = (s_n, out_h_stride, out_w_stride, s_h, s_w, s_c)
+
+        # Build and return the view. We only read from the view, so the overlap is ok.
+        windows = img.as_strided(shape=win_shape, strides=win_strides)
+        return windows
+
     @staticmethod
     def _im2col(
         img: NDArray,
@@ -69,19 +102,20 @@ class Conv(TensorOp):
 
     def compute(self, img: NDArray, kernel: NDArray) -> NDArray:
         """
-        Args:
-            img: Input tensor of shape (N, H, W, C_in)
-            kernel: Weight tensor of shape (kH, kW, C_in, C_out)
+        Forward conv using as_strided windows + per-sample matmul.
         """
-        n, in_height, in_width, _in_channels = img.shape
-        kernel_height, kernel_width, _in_c, out_channels = kernel.shape
+        img_data = img.compact()
+        kernel_data = kernel.compact()
 
-        out_height = (in_height + 2 * self.padding - kernel_height) // self.stride + 1
-        out_width = (in_width + 2 * self.padding - kernel_width) // self.stride + 1
+        n, in_h, in_w, _ = img_data.shape
+        kH, kW, _C_in, C_out = kernel_data.shape
+
+        out_h = (in_h + 2 * self.padding - kH) // self.stride + 1
+        out_w = (in_w + 2 * self.padding - kW) // self.stride + 1
 
         if self.padding > 0:
-            img = array_api.pad(
-                img,
+            img_data = array_api.pad(
+                img_data,
                 (
                     (0, 0),
                     (self.padding, self.padding),
@@ -90,14 +124,25 @@ class Conv(TensorOp):
                 ),
             )
 
-        patches = self._im2col(img, kernel.shape, out_height, out_width, self.stride)
-        reshaped_kernel = kernel.compact().reshape((-1, out_channels))
+        # sliding-window view
+        windows = self._window_view(img_data, kernel_data.shape, out_h, out_w)
+        # flatten kernel to (K, C_out)
+        kernel_flat = kernel_data.reshape((-1, C_out)).compact()
 
-        # Compute convolution as matrix multiplication
-        output = patches @ reshaped_kernel
+        # allocate output
+        out = array_api.empty((n, out_h, out_w, C_out))
 
-        # Reshape output to proper dimensions (N, H', W', C_out)
-        return output.reshape((n, out_height, out_width, out_channels))
+        # Process one sample at a time to limit temporary memory
+        for i in range(n):
+            # windows[i]: shape (out_h, out_w, kH, kW, C_in)
+            # reshape to (out_h*out_w, K) — may copy, but only for one sample at a time
+            patches = windows[i].compact().reshape((out_h * out_w, -1))
+            # (out_h*out_w, K) @ (K, C_out) -> (out_h*out_w, C_out)
+            out_i = patches @ kernel_flat
+            # reshape back to (out_h, out_w, C_out) and store
+            out[i] = out_i.reshape((out_h, out_w, C_out))
+
+        return out
 
     def gradient(self, out_grad: Tensor, node: Tensor) -> tuple[Tensor, Tensor]:
         """Compute gradients for the convolution operation.
