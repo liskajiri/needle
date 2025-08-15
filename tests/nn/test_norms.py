@@ -12,15 +12,17 @@ from tests.devices import all_devices
 from tests.hypothesis_strategies import single_array
 
 
-@given(arr=single_array())
+@given(arr=single_array(shape=(3, 3)))
 @all_devices()
 def test_batchnorm_shape(arr, device) -> None:
     """
     Test that BatchNorm1d output shape matches input shape.
     """
+    arr = arr[0]
     arr = nd.Tensor(arr, device=device)
 
-    layer = nn.BatchNorm1d(arr.shape[0])
+    # BatchNorm1d expects num_features = arr.shape[1] (feature dimension)
+    layer = nn.BatchNorm1d(arr.shape[1])
     y = layer.forward(arr)
 
     assert y.shape == arr.shape

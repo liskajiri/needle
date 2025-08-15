@@ -366,6 +366,7 @@ class NDArray:  # noqa: PLR0904 = too many public methods
 
     For now, for simplicity the class only supports float32 types.
 
+    # TODO: Create array from list, tuple, or scalar
     Examples:
         >>> # Create from Python list
         >>> arr = NDArray([[1, 2], [3, 4]])
@@ -403,6 +404,24 @@ class NDArray:  # noqa: PLR0904 = too many public methods
                 - A Python list/tuple that can be converted to ndarray
             device: The backend device to create the array on. Defaults to CPU.
             dtype: Data type for the array. Currently only float32 is supported.
+
+        >>> # Create from Python list
+        >>> arr = NDArray([1, 2])
+        >>> arr.shape
+        (2,)
+        >>> arr.ndim
+        1
+        >>> arr.size
+        2
+
+        >>> # Create from Python list
+        >>> arr = NDArray([[1, 2], [3, 4]])
+        >>> arr.shape
+        (2, 2)
+        >>> arr.ndim
+        2
+        >>> arr.size
+        4
         """
         if isinstance(other, NDArray):
             # Create a copy of existing NDArray
@@ -415,9 +434,16 @@ class NDArray:  # noqa: PLR0904 = too many public methods
         elif isinstance(other, np.ndarray):
             array = make(other.shape, device=device)
             array.device.from_numpy(np.ascontiguousarray(other), array._handle)
+        elif isinstance(other, list | tuple):
+            other, shape = NDArray._flatten_iterable(other)
+
+            array = make(shape=shape, device=device)
+            # TODO: from_tuple
+            array.device.from_list(other, array._handle)
         else:
             # see if we can create a numpy array from input
-            array = NDArray(np.array(other), device=device)
+            np_arr = np.array(other)
+            array = NDArray(np_arr, device=device)
 
         self._shape: Shape = array._shape
         self._strides: Strides = array._strides
@@ -425,6 +451,67 @@ class NDArray:  # noqa: PLR0904 = too many public methods
         self._offset: int = array._offset
         self._device: AbstractBackend = array._device
         self._handle: NDArrayBackendProtocol = array._handle
+
+    @staticmethod
+    def _flatten_iterable(lst: list | tuple) -> tuple[list, Shape]:
+        """
+        Recursively flattens a nested iterable and returns its flattened version
+        along with the original shape (dimensions).
+
+        Args:
+            lst (list | tuple): A nested iterable of arbitrary depth,
+            e.g., `[[1, 2], [3, 4]]`
+
+        Returns:
+            tuple: `(flat_list, shape)`, where
+                - flat_list is a `1D` list of all scalar elements
+                - shape is a list of integers representing the dimensions
+
+        Raises:
+            ValueError: If the input has inconsistent dimensions
+
+        Examples:
+            >>> NDArray._flatten_iterable([[1, 2], [3, 4]])
+            ([1, 2, 3, 4], (2, 2))
+
+            >>> NDArray._flatten_iterable([[[1], [2]], [[3], [4]]])
+            ([1, 2, 3, 4], (2, 2, 1))
+
+            >>> NDArray._flatten_iterable([1, 2, 3])
+            ([1, 2, 3], (3,))
+
+            >>> NDArray._flatten_iterable([])
+            ([], (0,))
+
+            >>> NDArray._flatten_iterable(
+            ...     [
+            ...         [1, 2],
+            ...         [3],
+            ...     ]
+            ... )  # doctest: +IGNORE_EXCEPTION_DETAIL
+            Traceback (most recent call last):
+            ValueError: Inconsistent dimensions
+        """
+        flat = []
+        shape = []
+
+        def _flatten(sublist: list | tuple) -> list:
+            if isinstance(sublist, list):
+                if not sublist:
+                    return [0]
+                dims = [_flatten(item) for item in sublist]
+
+                # Ensure all sub-dimensions match
+                if any(d != dims[0] for d in dims):
+                    raise ValueError("Inconsistent dimensions")
+                flat_shape = [len(sublist)] + dims[0]
+                return flat_shape
+            else:
+                flat.append(sublist)
+                return []
+
+        shape = _flatten(lst)
+        return flat, tuple(shape)
 
     # ==================== Properties and string representations
 
@@ -457,8 +544,18 @@ class NDArray:  # noqa: PLR0904 = too many public methods
     def __repr__(self) -> str:
         return self.__str__()
 
+    # TODO: implement __str__ to print the data in the array
     def __str__(self) -> str:
-        return self.numpy().__str__()
+        """String representation of the NDArray. (Inspired by numpy's __str__ method)
+
+        >>> arr = NDArray([[1, 2], [3, 4]])
+        >>> print(arr)
+        [[1. 2.]
+         [3. 4.]]
+        """
+        # TODO: Check that this is zero-copy
+        data = self.numpy()
+        return data.__str__()
 
     def __len__(self) -> int:
         """Returns the size of the first dimension.

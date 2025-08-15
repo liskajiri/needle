@@ -100,6 +100,19 @@ NB_MODULE(ndarray_backend_cpu, m) {
             out->numpy_handle = a.data();
         },
         nb::keep_alive<2, 1>());
+    m.def(
+        "from_list",
+        [](const nb::list &lst, AlignedArray *out) {
+            size_t size = lst.size();
+            out->ptr = new scalar_t[size];
+            out->size = size;
+            out->numpy_handle = nullptr; // Not a numpy array
+
+            for (size_t i = 0; i < size; i++) {
+                out->ptr[i] = nb::cast<scalar_t>(lst[i]);
+            }
+        },
+        nb::rv_policy::take_ownership, nb::keep_alive<2, 1>());
 
     m.def("fill", Fill);
     m.def("compact", Compact);
