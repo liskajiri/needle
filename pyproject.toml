@@ -41,7 +41,7 @@ testpaths = [
   "python/needle", # doctests
 ]
 addopts = [
-  "-ra",
+  "-rsX",
   "--strict-markers",
   "--strict-config",
   "--import-mode=importlib",
