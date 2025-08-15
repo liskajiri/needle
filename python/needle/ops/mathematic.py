@@ -160,8 +160,7 @@ def sigmoid(a: Tensor) -> Tensor:
     return Sigmoid()(a)
 
 
-# TODO(IMPORTANT): setting axes=None breaks a lot of tests
-def mean(a: Tensor, axes: Axis | None = 0) -> Tensor:
+def mean(a: Tensor, axes: Axis | None = None) -> Tensor:
     if axes is None:
         axes = tuple(range(a.ndim))
     elif isinstance(axes, int):

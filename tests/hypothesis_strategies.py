@@ -169,7 +169,7 @@ def matmul_arrays(draw, min_dims=2, max_dims=6):
 
 # Strategy for broadcasting with different ranks
 @st.composite
-def broadcastable_arrays(draw, num_shapes=2):
+def broadcastable_arrays(draw, num_shapes=1):
     """Generate arrays with different ranks that can be broadcast together."""
     # Get shapes that can be broadcast
     shapes = draw(

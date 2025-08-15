@@ -68,6 +68,7 @@ def generic_op_test(
     inputs: list[np.ndarray],
     backward: bool,
     device: AbstractBackend,
+    sum: bool = False,
 ) -> None:
     # Create Needle tensors
     ndl_inputs = [Tensor(arr, requires_grad=backward, device=device) for arr in inputs]
@@ -91,7 +92,10 @@ def generic_op_test(
     assert ndl_out.device == device
 
     if backward:
-        ndl_out.sum().backward()
+        if not sum:
+            ndl_out.backward()
+        else:
+            ndl_out.sum().backward()
 
         # check that the gradients are on the same device as the inputs
         for ndl_input in ndl_inputs:
@@ -102,11 +106,11 @@ def generic_op_test(
             else:
                 assert ndl_input.grad.device == device
 
-        ndl_grads = [t.grad.numpy() for t in ndl_inputs]
-
         # Backward Torch
         grad_torch = torch.autograd.grad(outputs=torch_out.sum(), inputs=torch_inputs)
         grad_torch = [g.detach().numpy() for g in grad_torch]
+
+        ndl_grads = [t.grad.numpy() for t in ndl_inputs]
 
         # Gradient checks
         for g_ndl, g_torch in zip(ndl_grads, grad_torch):

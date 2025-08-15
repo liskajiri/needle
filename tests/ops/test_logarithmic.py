@@ -41,7 +41,6 @@ def test_logsoftmax_invalid(tensor):
 @given(inputs=array_and_axis())
 @backward_forward()
 @all_devices()
-@pytest.mark.xfail(reason="Broadcasting issues", strict=False)
 def test_logsumexp(inputs, backward, device):
     arr, axis = inputs
     generic_op_test(

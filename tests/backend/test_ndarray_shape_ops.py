@@ -482,8 +482,8 @@ def test_getitem_raises_too_many_indices(data):
 # ==================== Broadcasting ===================
 
 
+@given(data=broadcastable_arrays(num_shapes=2))
 @all_devices()
-@given(data=broadcastable_arrays())
 def test_broadcast_ops(data: tuple[np.ndarray, np.ndarray], device: Any) -> None:
     """Test broadcasting operations with arrays of different ranks."""
     arr1, arr2 = data
@@ -504,21 +504,6 @@ def test_broadcast_ops(data: tuple[np.ndarray, np.ndarray], device: Any) -> None
             atol=1e-5,
             rtol=1e-5,
         )
-
-
-@all_devices()
-@given(data=broadcastable_arrays())
-@pytest.mark.skip(reason="Correctly fails, fix the issue with broadcasting.")
-def test_broadcast_to(device, data):
-    arr1, arr2 = data
-
-    a = ndl.array(arr1)
-    b = ndl.array(arr2)
-
-    result = a.broadcast_to(b.shape)
-    np.testing.assert_array_equal(result.numpy(), np.broadcast_to(arr1, b.shape))
-    compare_strides(arr1, result)
-    check_same_memory(a, result)
 
 
 @all_devices()

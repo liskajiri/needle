@@ -27,7 +27,6 @@ def test_summation_all(inputs, backward, device):
 @given(inputs=single_array())
 @backward_forward()
 @all_devices()
-@pytest.mark.xfail(reason="Broadcasting issue", strict=False)
 def test_summation_axis(inputs, backward, device):
     generic_op_test(
         ndl_op=lambda x: ops.summation(x, axes=0),
@@ -201,7 +200,6 @@ def test_sigmoid(inputs, backward, device):
 @given(inputs=single_array())
 @backward_forward()
 @all_devices()
-@pytest.mark.xfail(reason="Known issue with broadcasting", strict=False)
 def test_mean(inputs, backward, device):
     generic_op_test(
         ndl_op=ops.mean,

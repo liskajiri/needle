@@ -46,4 +46,5 @@ def test_softmax_loss(shape, Z, backward, device):
         inputs=(logits, labels),
         backward=backward,
         device=device,
+        sum=True,
     )

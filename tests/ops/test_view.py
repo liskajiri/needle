@@ -81,7 +81,6 @@ def test_flip(inputs, backward, device):
 @given(inputs=single_array(), data=st.data())
 @backward_forward()
 @all_devices()
-@pytest.mark.xfail(reason="Broadcasting issue", strict=False)
 def test_get_item(inputs, data, backward, device):
     idx = data.draw(st.integers(min_value=0, max_value=inputs[0].shape[0] - 1))
     generic_op_test(

@@ -53,9 +53,9 @@ class BatchNorm1d(Module):
         def _update_running_variables(var: Tensor, running_var: Tensor) -> Tensor:
             return (1 - self.momentum) * var + self.momentum * running_var
 
-        mean_x = ops.mean(x)
+        mean_x = ops.mean(x, axes=0)
         x_less_mean = x - mean_x.broadcast_to(x.shape)
-        var_x = ops.mean(x_less_mean**2)
+        var_x = ops.mean(x_less_mean**2, axes=0)
 
         weights = self.weight.broadcast_to(x.shape)
         biases = self.bias.broadcast_to(x.shape)
