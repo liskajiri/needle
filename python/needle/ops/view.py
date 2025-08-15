@@ -50,9 +50,18 @@ class Split(TensorTupleOp):
     def compute(self, arr: NDArray) -> list[NDArray]:
         return array_api.split(arr, self.sections, self.axis)
 
-    def gradient(self, out_grad: Tensor, node: Tensor) -> Tensor:
-        # return concatenate(out_grad, self.axis)
-        return Stack(self.axis)(out_grad)
+    def gradient(self, out_grad: TensorTuple, node: Tensor) -> Tensor:
+        # Ensure all tensors have enough dimensions for concatenation
+        grads = []
+        for t in out_grad:
+            arr = t
+            # If the tensor is 1D but we want to concat along axis=1, add a new axis
+            if arr.ndim <= self.axis:
+                # Add axes at the end until we have enough
+                shape = arr.shape + (1,) * (self.axis + 1 - arr.ndim)
+                arr = arr.reshape(shape)
+            grads.append(arr)
+        return concatenate(tuple(grads), axis=self.axis)
 
 
 def split(

@@ -302,31 +302,14 @@ class LSTMCell(Module):
             f"Expected gate size {4 * self.hidden_size}, got {gate_size}"
         )
 
-        # TODO: very slow
-        # gates_splits = ops.split(gates, axis=1, sections=4)
-        # i_gate, f_gate, g_gate, o_gate = gates_splits
-
-        gates_splits = ops.split(gates, axis=1).tuple()
-        gates = []
-        for i in range(4):
-            gates.append(
-                ops.stack(
-                    gates_splits[i * self.hidden_size : (i + 1) * self.hidden_size],  # type: ignore
-                    axis=1,
-                )
-            )
-        i_gate, f_gate, g_gate, o_gate = gates
+        gates_splits = ops.split(gates, axis=1, sections=4)
+        i_gate, f_gate, g_gate, o_gate = gates_splits
 
         # Apply non-linearities
-        i_gate = ops.sigmoid(i_gate)
-        f_gate = ops.sigmoid(f_gate)
-        g_gate = ops.tanh(g_gate)
-        o_gate = ops.sigmoid(o_gate)
-
-        # i_gate = i_gate.reshape((batch_size, self.hidden_size))
-        # f_gate = f_gate.reshape((batch_size, self.hidden_size))
-        # g_gate = g_gate.reshape((batch_size, self.hidden_size))
-        # o_gate = o_gate.reshape((batch_size, self.hidden_size))
+        i_gate = ops.sigmoid(i_gate).reshape((batch_size, self.hidden_size))
+        f_gate = ops.sigmoid(f_gate).reshape((batch_size, self.hidden_size))
+        g_gate = ops.tanh(g_gate).reshape((batch_size, self.hidden_size))
+        o_gate = ops.sigmoid(o_gate).reshape((batch_size, self.hidden_size))
 
         # Update cell state: c' = f_gate * c0 + i_gate * g_gate
         c_next = f_gate * c + i_gate * g_gate
