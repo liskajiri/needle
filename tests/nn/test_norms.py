@@ -9,10 +9,10 @@ from hypothesis import given
 from hypothesis import strategies as st
 
 from tests.devices import all_devices
-from tests.hypothesis_strategies import array_strategy
+from tests.hypothesis_strategies import single_array
 
 
-@given(arr=array_strategy)
+@given(arr=single_array())
 @all_devices()
 def test_batchnorm_shape(arr, device) -> None:
     """
@@ -20,18 +20,19 @@ def test_batchnorm_shape(arr, device) -> None:
     """
     arr = nd.Tensor(arr, device=device)
 
-    layer = nn.BatchNorm1d(arr.shape[1])
+    layer = nn.BatchNorm1d(arr.shape[0])
     y = layer.forward(arr)
 
     assert y.shape == arr.shape
 
 
-@given(st.floats(-10, 10))
-def test_batchnorm_constant_input(val: float, device) -> None:
+@given(input=st.floats(-10, 10))
+@all_devices()
+def test_batchnorm_constant_input(input: float, device) -> None:
     """
     Test that BatchNorm1d output is zeros for constant input.
     """
-    x = nd.Tensor(np.full((8, 4), val, dtype=np.float32))
+    x = nd.Tensor(np.full((8, 4), input, dtype=np.float32))
     layer = nn.BatchNorm1d(x.shape[1])
 
     y = layer.forward(x)

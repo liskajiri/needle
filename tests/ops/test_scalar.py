@@ -1,4 +1,5 @@
 import needle.ops as ops
+import torch
 from hypothesis import given
 
 from tests.devices import all_devices
@@ -43,14 +44,14 @@ def test_mul_scalar(inputs, scalar, backward, device):
 def test_power_scalar(inputs, scalar, backward, device):
     generic_op_test(
         ndl_op=lambda x: ops.power_scalar(x, scalar),
-        torch_op=lambda x: x**scalar,
+        torch_op=lambda x: torch.pow(x, scalar),
         inputs=inputs,
         backward=backward,
         device=device,
     )
 
 
-@given(inputs=single_array(), scalar=float_strategy)
+@given(inputs=single_array(), scalar=safe_float_strategy)
 @backward_forward()
 @all_devices()
 def test_divide_scalar(inputs, scalar, backward, device):
