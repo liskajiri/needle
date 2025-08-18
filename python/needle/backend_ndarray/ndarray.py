@@ -1127,19 +1127,49 @@ class NDArray:  # noqa: PLR0904 = too many public methods
 
     def _handle_array_indexing(self, idxs: NDArray) -> NDArray:
         """
-        Handle indexing with a list or NDArray
+        Handle advanced indexing with a NDArray of arbitrary shape.
+        Gathers elements at the specified indices along the first axis.
+
+        Examples
+        --------
+        >>> import needle as ndl
+        >>> x = ndl.backend_ndarray.NDArray(
+        ...     [
+        ...         [10, 11],
+        ...         [20, 21],
+        ...         [30, 31],
+        ...         [40, 41],
+        ...     ]
+        ... )
+        >>> idx = ndl.backend_ndarray.NDArray([[2, 0], [1, 3]])
+        >>> y = x._handle_array_indexing(idx)
+        >>> y.numpy()
+        array([[[30., 31.],
+                [10., 11.]],
+        <BLANKLINE>
+               [[20., 21.],
+                [40., 41.]]], dtype=float32)
         """
+        # idxs: shape (...), values are indices into axis 0
         out_shape = idxs.shape + self.shape[1:]
         out = make(out_shape, device=self.device)
 
-        # Copy selected elements
-        flat_idxs = idxs.numpy().flatten()
-        padding = (slice(None),) * (self.ndim - 1)
-        for i, idx in enumerate(flat_idxs):
-            idx = int(idx)
-            src_idx = (idx, *padding)
-            dst_idx = (i, *padding)
-            out[dst_idx] = self[src_idx]  # type: ignore
+        # Recursively iterate over all indices in idxs
+        def recursive_assign(idxs_array, prefix):
+            if len(idxs_array.shape) == 0:
+                idx = (
+                    int(idxs_array.item())
+                    if hasattr(idxs_array, "item")
+                    else int(idxs_array)
+                )
+                src_idx = (idx,) + (slice(None),) * (self.ndim - 1)
+                dst_idx = tuple(prefix) + (slice(None),) * (self.ndim - 1)
+                out[dst_idx] = self[src_idx]  # type: ignore
+            else:
+                for i in range(idxs_array.shape[0]):
+                    recursive_assign(idxs_array[i], [*prefix, i])
+
+        recursive_assign(idxs, [])
         return out.compact()
 
     def __getitem__(self, idxs: IndexType) -> NDArray:
@@ -1181,7 +1211,7 @@ class NDArray:  # noqa: PLR0904 = too many public methods
             [[2. 3.]
              [5. 6.]]
 
-            # TODO: Advanced indexing
+            # TODO: Advanced indexing with a NDArray
             # >>> x[[0, 1], [1, 2]]  # Advanced indexing
             # [2. 6.]
         """
