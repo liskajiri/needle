@@ -61,7 +61,15 @@ if True:
 
         @override
         def one_hot(self, n: int, i: IndexType, dtype: DType) -> NDArray:
-            return NDArray(np.eye(n, dtype=dtype)[i], device=self)
+            idx = np.asarray(i)
+            out = np.zeros((*idx.shape, n), dtype=dtype)
+
+            # Fill the hot positions efficiently
+            # (idx.size, n)
+            flat = out.reshape(-1, n)
+            flat[np.arange(idx.size), idx.ravel()] = 1
+
+            return NDArray(out, device=self)
 
         @override
         def zeros(self, shape: Shape, dtype: DType) -> NDArray:

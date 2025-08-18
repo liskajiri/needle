@@ -175,32 +175,21 @@ class RNN(Module):
                 device=X.device,
                 dtype=X.dtype,
             )
-        hs = []
-        outputs = []
+        hs = [h0[i] for i in range(self.num_layers)]
+        output = [X] * seq_len
 
         for t in range(seq_len):
             # x_t: (batch_size, input_size)
             x_t = X[t]
 
-            h_next = None
-            for layer in range(self.num_layers):
-                h_prev = h0[layer] if t == 0 else hs[layer]
-
-                if layer == 0:
-                    # First layer takes the input
-                    h_next = self.rnn_cells[layer](x_t, h_prev)
-                else:
-                    h_next = self.rnn_cells[layer](h_next, h_prev)
-
-                if t == 0:
-                    hs.append(h_next)
-                else:
-                    hs[layer] = h_next
-
-            outputs.append(h_next)
+            for layer, cell in enumerate(self.rnn_cells):
+                h_prev = hs[layer]
+                x_t = cell(x_t, h_prev)
+                hs[layer] = x_t
+            output[t] = x_t
 
         # Output: (seq_len, batch_size, hidden_size)
-        output = ops.stack(outputs, axis=0)
+        output = ops.stack(output, axis=0)
 
         # hs: (num_layers, batch_size, hidden_size)
         hs = ops.stack(hs, axis=0)

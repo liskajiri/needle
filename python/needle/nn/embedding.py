@@ -48,13 +48,15 @@ class Embedding(Module):
         Returns:
             Tensor: Tensor of shape (seq_len, bs, embedding_dim) containing embeddings
         """
-        seq_len, batch_size = x.shape
+        _seq_len, _batch_size = x.shape
 
+        # TODO: needs n-D array indexing
+        # return self.weight[x.realize_cached_data()]
         x_one_hot = init.one_hot(
             self.num_embeddings,
             x,
             device=self.device,
             dtype=self.dtype,
         )
-        out = x_one_hot @ self.weight
-        return out.reshape((seq_len, batch_size, self.embedding_dim))
+        return x_one_hot @ self.weight
+        # return out.reshape((seq_len, batch_size, self.embedding_dim))
