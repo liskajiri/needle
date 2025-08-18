@@ -21,4 +21,5 @@ class SoftmaxLoss(Module):
         diff = (logits * y_one_hot).sum(axes=(1,))
 
         lse = ops.logsumexp(logits, axes=(1,))
-        return (lse - diff).sum() / logits.shape[0]
+        return ops.mean(lse - diff)
+        # return (lse - diff).sum() / logits.shape[0]
