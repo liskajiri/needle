@@ -398,33 +398,25 @@ class LSTM(Module):
             assert h0.shape == (self.num_layers, batch_size, self.hidden_size)
             assert c0.shape == (self.num_layers, batch_size, self.hidden_size)
 
-        hs = []
-        cs = []
-        outputs = []
+        hs = [h0[i] for i in range(self.num_layers)]
+        cs = [c0[i] for i in range(self.num_layers)]
+        output = [X] * seq_len
+
         for t in range(seq_len):
             # x_t: (batch_size, input_size)
             x_t = X[t]
 
-            h_next = None
-            for layer in range(self.num_layers):
-                h_prev = h0[layer] if t == 0 else hs[layer]
-                c_prev = c0[layer] if t == 0 else cs[layer]
+            for layer, cell in enumerate(self.lstm_cells):
+                h_prev = hs[layer]
+                c_prev = cs[layer]
 
-                if layer == 0:
-                    h_next, c_next = self.lstm_cells[layer](x_t, (h_prev, c_prev))
-                else:
-                    h_next, c_next = self.lstm_cells[layer](h_next, (h_prev, c_prev))
+                x_t, c_t = cell(x_t, (h_prev, c_prev))
+                hs[layer] = x_t
+                cs[layer] = c_t
 
-                if t == 0:
-                    hs.append(h_next)
-                    cs.append(c_next)
-                else:
-                    hs[layer] = h_next
-                    cs[layer] = c_next
+            output[t] = x_t
 
-            outputs.append(h_next)
-
-        output = ops.stack(outputs, axis=0)
+        output = ops.stack(output, axis=0)
         hs = ops.stack(hs, axis=0)
         cs = ops.stack(cs, axis=0)
 
