@@ -267,22 +267,19 @@ def stack(arrays: tuple[NDArray] | list[NDArray], axis: int = 0) -> NDArray:
     if not arrays:
         raise AssertionError("Cannot stack empty list of arrays")
 
-    base_array = arrays[0]
-    if not all(array.shape == base_array.shape for array in arrays):
+    base_arr = arrays[0]
+    if not all(array.shape == base_arr.shape for array in arrays):
         raise AssertionError("All arrays must have identical shapes")
 
-    if axis < -(base_array.ndim + 1) or axis > base_array.ndim:
+    if axis < -(base_arr.ndim + 1) or axis > base_arr.ndim:
         raise ValueError(
-            f"Axis {axis} is out of bounds for arrays of dimension {base_array.ndim}"
+            f"Axis {axis} is out of bounds for arrays of dimension {base_arr.ndim}"
         )
     if axis < 0:
-        axis += base_array.ndim + 1
+        axis += base_arr.ndim + 1
 
-    output_shape = list(base_array.shape)
-    output_shape.insert(axis, len(arrays))
-    output_shape = tuple(output_shape)
-
-    out = empty(output_shape, device=base_array.device)
+    out_shape = (*base_arr.shape[:axis], len(arrays), *base_arr.shape[axis:])
+    out = empty(out_shape, device=base_arr.device)
 
     slice_spec: list = [slice(None)] * out.ndim
 
