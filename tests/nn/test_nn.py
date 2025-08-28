@@ -1767,7 +1767,7 @@ def test_nn_full_epoch_mnist_simple_network():
     model_output = ndl.relu(ndl.Tensor(X) @ W1) @ W2
 
     loss = ndl.nn.SoftmaxLoss()(model_output, ndl.Tensor(y))
-    loss = loss.numpy()[0]
+    loss = loss.numpy()
 
     error_rate = np.mean(model_output.numpy().argmax(axis=1) != y)
 
