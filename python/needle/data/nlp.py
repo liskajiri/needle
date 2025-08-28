@@ -174,9 +174,8 @@ def batchify(
         NDArray: The data as an NDArray of shape (num_batch, batch_size).
 
     Example:
-        >>> import numpy as np
         >>> from needle.backend_selection import NDArray, array_api, default_device
-        >>> alphabet = np.array([i for i in range(24)])  # 0-23
+        >>> alphabet = [i for i in range(24)]  # 0-23
         >>> alphabet_ndarray = NDArray(alphabet, device=default_device)
         >>> result = batchify(alphabet_ndarray, 4)
         >>> # Check shape is correct (6 batches of 4 elements each)
@@ -228,10 +227,9 @@ def get_batch(
             target: Tensor of shape (seq_len*batch_size,) with target sequences.
 
     Example:
-        >>> import numpy as np
         >>> from needle.backend_selection import NDArray, default_device
         >>> # Create a batched array similar to batchify example output
-        >>> batched = np.array([[0, 6, 12, 18], [1, 7, 13, 19], [2, 8, 14, 20]])
+        >>> batched = [[0, 6, 12, 18], [1, 7, 13, 19], [2, 8, 14, 20]]
         >>> batched_ndarray = NDArray(batched, device=default_device)
         >>> data, target = get_batch(batched_ndarray, i=0, seq_len=2)
         >>> data.shape

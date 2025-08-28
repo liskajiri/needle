@@ -109,8 +109,7 @@ def min(array: NDArray, axis: Axis | None = None, keepdims: bool = False) -> NDA
 
     Example:
         >>> import needle as ndl
-        >>> import numpy as np
-        >>> a = ndl.NDArray(np.array([[1, 2], [3, 4]]))
+        >>> a = ndl.NDArray([[1, 2], [3, 4]])
         >>> ndl.array_api.min(a, axis=0)
         [1. 2.]
         >>> ndl.array_api.min(a, axis=1)
@@ -222,8 +221,7 @@ def pad(a: NDArray, axes: tuple[tuple[int, int], ...]) -> NDArray:
         ValueError: If padding axes do not match array dimensions
 
     >>> import needle as ndl
-    >>> import numpy as np
-    >>> a = NDArray(np.array([[1, 2], [3, 4]]))
+    >>> a = NDArray([[1, 2], [3, 4]])
     >>> print(ndl.array_api.pad(a, ((1, 1), (1, 1))))
     [[0. 0. 0. 0.]
      [0. 1. 2. 0.]

@@ -10,7 +10,7 @@ from needle.backend_selection import NDArray
 from needle.data.dataset import Dataset
 
 if TYPE_CHECKING:
-    from needle.typing import IndexType, np_ndarray
+    from needle.typing import IndexType
 
 
 class MNISTPaths:
@@ -45,7 +45,7 @@ class MNISTDataset(Dataset[NDArray]):
             The loaded data will be stored as:
             - self.X: NDArray containing the images, reshaped to (-1, 28, 28, 1).
               Values are normalized to range [0.0, 1.0].
-            - self.y: numpy.ndarray[dtype=np.uint8] containing the labels (0-9).
+            - self.y: NDArray containing the labels (0-9).
         """
 
         super().__init__(**kwargs)
@@ -61,9 +61,8 @@ class MNISTDataset(Dataset[NDArray]):
         self.x = (
             NDArray(self.x).compact().reshape((-1, self.IMAGE_DIM * self.IMAGE_DIM))
         )
-        # self.y = NDArray(self.y)
 
-    def __getitem__(self, index: IndexType) -> tuple[NDArray, np_ndarray]:
+    def __getitem__(self, index: IndexType) -> tuple[NDArray, NDArray]:
         (x, y) = self.x[index], self.y[index]
         return self.apply_transforms(x), y
 
@@ -71,8 +70,8 @@ class MNISTDataset(Dataset[NDArray]):
         return self.x.shape[0]
 
     @staticmethod
-    def parse_mnist(images_file: Path, labels_file: Path) -> tuple[NDArray, np_ndarray]:
-        """Parse MNIST data without using numpy."""
+    def parse_mnist(images_file: Path, labels_file: Path) -> tuple[NDArray, NDArray]:
+        """Parse MNIST data."""
 
         def parse_images(file: Path) -> NDArray:
             with gzip.open(file, "rb") as f:
@@ -90,9 +89,7 @@ class MNISTDataset(Dataset[NDArray]):
                 X = NDArray(image_data) / 255.0
                 return X.reshape((num_images, MNISTDataset.IMAGE_SIZE))
 
-        def read_labels(file: Path) -> np_ndarray:
-            import numpy as np
-
+        def read_labels(file: Path) -> NDArray:
             with gzip.open(file, "rb") as f:
                 # Read header: magic number (4 bytes), number of items
                 magic, _num_labels = struct.unpack(">II", f.read(8))
@@ -102,8 +99,7 @@ class MNISTDataset(Dataset[NDArray]):
                 # Read label data
                 label_data = array.array("B")
                 label_data.frombytes(f.read())
-                y = np.array(label_data, dtype=np.uint8)
-                # y = NDArray(label_data)
+                y = NDArray(label_data)
                 return y
 
         try:

@@ -26,7 +26,6 @@ all = [
     #     ← needle.backend_ndarray.ndarray
     #     ← needle.backend_numpy
     #     ← [L] needle.backend_selection
-    #     ← [L] needle.data.datasets.mnist
     #     ← needle.typing.types
 ]
 
