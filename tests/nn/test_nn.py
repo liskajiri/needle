@@ -1688,40 +1688,40 @@ def test_mlp_train_mnist(
     assert test_loss <= target_test_loss
 
 
-@pytest.mark.slow
 def test_nn_backprop_random_data():
     set_random_seeds(0)
 
     X = np.random.randn(50, 5).astype(np.float32)
     y = np.random.randint(3, size=(50,)).astype(np.uint8)
 
-    W1 = np.random.randn(5, 10).astype(np.float32) / np.sqrt(10)
-    W2 = np.random.randn(10, 3).astype(np.float32) / np.sqrt(3)
-    W1_0, W2_0 = W1.copy(), W2.copy()
+    W1_init = np.random.randn(5, 10).astype(np.float32) / np.sqrt(10)
+    W2_init = np.random.randn(10, 3).astype(np.float32) / np.sqrt(3)
 
-    W1 = ndl.Tensor(W1)
-    W2 = ndl.Tensor(W2)
+    W1_ref, W2_ref = W1_init.copy(), W2_init.copy()
 
-    X_ = ndl.Tensor(X)
-    y_ = ndl.Tensor(y)
+    W1, W2 = ndl.Tensor(W1_init), ndl.Tensor(W2_init)
+    X_tensor, y_tensor = ndl.Tensor(X), ndl.Tensor(y)
 
-    dW1 = nd.Gradient(
-        lambda W1_: ndl.nn.SoftmaxLoss()(
-            ndl.relu(X_ @ ndl.Tensor(W1_).reshape((5, 10))) @ W2,
-            y_,
-        ).numpy()[0]
-    )(W1.numpy())
-    dW2 = nd.Gradient(
-        lambda W2_: ndl.nn.SoftmaxLoss()(
-            ndl.relu(X_ @ W1) @ ndl.Tensor(W2_).reshape((10, 3)), y_
-        ).numpy()[0]
-    )(W2.numpy())
+    def loss_with_W1(W1_candidate):
+        hidden = ndl.relu(X_tensor @ ndl.Tensor(W1_candidate).reshape((5, 10)))
+        logits = hidden @ W2
+        return ndl.nn.SoftmaxLoss()(logits, y_tensor).numpy()
+
+    def loss_with_W2(W2_candidate):
+        hidden = ndl.relu(X_tensor @ W1)
+        logits = hidden @ ndl.Tensor(W2_candidate).reshape((10, 3))
+        return ndl.nn.SoftmaxLoss()(logits, y_tensor).numpy()
+
+    dW1 = nd.Gradient(loss_with_W1)(W1.numpy())
+    dW2 = nd.Gradient(loss_with_W2)(W2.numpy())
+
     W1, W2 = simple_nn_epoch(X, y, W1, W2, lr=1.0, batch_size=50)
+
     np.testing.assert_allclose(
-        dW1.reshape(5, 10), W1_0 - W1.numpy(), rtol=1e-4, atol=1e-4
+        dW1.reshape(5, 10), W1_ref - W1.numpy(), rtol=1e-4, atol=1e-4
     )
     np.testing.assert_allclose(
-        dW2.reshape(10, 3), W2_0 - W2.numpy(), rtol=1e-4, atol=1e-4
+        dW2.reshape(10, 3), W2_ref - W2.numpy(), rtol=1e-4, atol=1e-4
     )
 
 
@@ -1767,7 +1767,7 @@ def test_nn_full_epoch_mnist_simple_network():
     model_output = ndl.relu(ndl.Tensor(X) @ W1) @ W2
 
     loss = ndl.nn.SoftmaxLoss()(model_output, ndl.Tensor(y))
-    loss = loss.numpy()[0]
+    loss = loss.numpy()
 
     error_rate = np.mean(model_output.numpy().argmax(axis=1) != y)
 
