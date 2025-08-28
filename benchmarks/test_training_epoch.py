@@ -12,7 +12,7 @@ NUM_CLASSES = 10
 BATCH_SIZE = 128
 HIDDEN_SIZE = 64
 LR = 0.01
-TRAIN_SAMPLES = 500
+TRAIN_SAMPLES = 200
 
 simple_mlp = nn.Sequential(
     nn.Flatten(),  # (N, C*H*W)
