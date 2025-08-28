@@ -6,7 +6,6 @@ from needle.data.datasets import (
     CIFARPath,
     MNISTDataset,
     MNISTPaths,
-    NDArrayDataset,
 )
 from needle.data.nlp import batchify, get_batch
 from needle.data.transforms import RandomCrop, RandomFlipHorizontal, Transform
@@ -18,7 +17,6 @@ __all__ = [
     "Dataset",
     "MNISTDataset",
     "MNISTPaths",
-    "NDArrayDataset",
     "RandomCrop",
     "RandomFlipHorizontal",
     "Transform",

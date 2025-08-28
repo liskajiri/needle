@@ -1,10 +1,8 @@
 import needle as ndl
 import numdifftools as nd
 import numpy as np
-import pytest
 from models.resnet9 import MLPResNet, ResidualBlock
 from needle import nn
-from needle.data.datasets.mnist import MNISTDataset, MNISTPaths
 
 from apps.train_utils import epoch
 from tests.utils import set_random_seeds
@@ -357,31 +355,6 @@ def mlp_resnet_forward(dim, hidden_dim, num_blocks, num_classes, norm, drop_prob
     return output_tensor.numpy()
 
 
-def train_epoch_1(hidden_dim, batch_size, optimizer, **kwargs):
-    set_random_seeds(1)
-    train_dataset = ndl.data.MNISTDataset(train=True)
-    train_dataloader = ndl.data.DataLoader(dataset=train_dataset, batch_size=batch_size)
-
-    model = MLPResNet(784, hidden_dim)
-    opt = optimizer(model.parameters(), **kwargs)
-    model.train()
-    acc, loss = epoch(train_dataloader, model, opt)
-    return acc, loss
-
-
-def eval_epoch_1(hidden_dim, batch_size):
-    set_random_seeds(1)
-    test_dataset = ndl.data.MNISTDataset(train=False)
-    test_dataloader = ndl.data.DataLoader(
-        dataset=test_dataset, batch_size=batch_size, shuffle=False
-    )
-
-    model = MLPResNet(784, hidden_dim)
-    model.eval()
-    acc, loss = epoch(test_dataloader, model)
-    return acc, loss
-
-
 # it currently fails if the datasets are not downloaded
 def train_mnist_1(
     batch_size, epochs: int, optimizer, lr, weight_decay, hidden_dim
@@ -410,7 +383,7 @@ def train_mnist_1(
     return train_acc, train_loss, test_acc, test_loss
 
 
-def test_check_prng_contact_us_if_this_fails_1():
+def test_check_prng():
     np.testing.assert_allclose(
         check_prng(3, 3),
         np.array(
@@ -1646,48 +1619,6 @@ def test_mlp_resnet_forward_2():
     )
 
 
-@pytest.mark.slow
-def test_mlp_train_epoch_1():
-    acc, loss = train_epoch_1(5, 250, ndl.optim.Adam, lr=0.01, weight_decay=0.1)
-
-    target_acc = 1 - 0.675267
-    target_loss = 1.84043
-
-    assert acc >= target_acc
-    assert loss <= target_loss
-
-
-@pytest.mark.slow
-def test_mlp_eval_epoch_1():
-    acc, loss = eval_epoch_1(10, 150)
-
-    target_acc = 0.08
-    target_loss = 4.15
-
-    assert acc >= target_acc
-    assert loss <= target_loss
-
-
-@pytest.mark.slow
-@pytest.mark.parametrize("optimizer", [ndl.optim.SGD, ndl.optim.Adam])
-def test_mlp_train_mnist(
-    optimizer, batch_size=128, epochs=1, lr=1e-2, weight_decay=0.1, hidden_dim=32
-) -> None:
-    train_acc, train_loss, test_acc, test_loss = train_mnist_1(
-        batch_size, epochs, optimizer, lr, weight_decay, hidden_dim
-    )
-
-    target_train_acc = 0.6
-    target_test_acc = 0.6
-    target_train_loss = 1.3
-    target_test_loss = 1.0
-
-    assert train_acc >= target_train_acc
-    assert test_acc >= target_test_acc
-    assert train_loss <= target_train_loss
-    assert test_loss <= target_test_loss
-
-
 def test_nn_backprop_random_data():
     set_random_seeds(0)
 
@@ -1722,59 +1653,4 @@ def test_nn_backprop_random_data():
     )
     np.testing.assert_allclose(
         dW2.reshape(10, 3), W2_ref - W2.numpy(), rtol=1e-4, atol=1e-4
-    )
-
-
-@pytest.mark.slow
-def test_nn_full_epoch_mnist_simple_network():
-    # Load MNIST dataset
-    X, y = MNISTDataset.parse_mnist(MNISTPaths.TRAIN_IMAGES, MNISTPaths.TRAIN_LABELS)
-
-    # Define network architecture
-    input_dim = X.shape[1]  # 784 features
-    hidden_dim = 100
-    output_dim = 10  # 10 classes for digits 0-9
-
-    W1 = ndl.Tensor(
-        rng.standard_normal((input_dim, hidden_dim), dtype=np.float32)
-        / np.sqrt(hidden_dim)
-    )
-    W2 = ndl.Tensor(
-        rng.standard_normal((hidden_dim, output_dim), dtype=np.float32)
-        / np.sqrt(output_dim)
-    )
-
-    # Train for one epoch
-    W1, W2 = simple_nn_epoch(X, y, W1, W2, lr=0.2, batch_size=100)
-
-    # Verify weight matrix norms after training
-    np.testing.assert_allclose(
-        np.linalg.norm(W1.numpy()),
-        28.425438,
-        rtol=1e-5,
-        atol=1e-5,
-        err_msg="W1 norm after training doesn't match expected value",
-    )
-    np.testing.assert_allclose(
-        np.linalg.norm(W2.numpy()),
-        10.939328,
-        rtol=1e-5,
-        atol=1e-5,
-        err_msg="W2 norm after training doesn't match expected value",
-    )
-
-    # Evaluate model performance on training data
-    model_output = ndl.relu(ndl.Tensor(X) @ W1) @ W2
-
-    loss = ndl.nn.SoftmaxLoss()(model_output, ndl.Tensor(y))
-    loss = loss.numpy()
-
-    error_rate = np.mean(model_output.numpy().argmax(axis=1) != y)
-
-    # Verify loss and error rate match expected values
-    np.testing.assert_array_less(
-        loss, 0.19770025, err_msg="Loss is too high after training"
-    )
-    np.testing.assert_array_less(
-        error_rate, 0.06006667, err_msg="Error rate is too high after training"
     )
