@@ -67,7 +67,7 @@ class SyntheticMNIST(Dataset[NDArray]):
         images = [self._generate_image_for_label(int(lbl)) for lbl in labels_list]
 
         # Stack into backend NDArray with shape (N, C, H, W) and store labels
-        self.x = array_api.stack(tuple(images)).astype("float32")
+        self.x = array_api.stack(images).astype("float32")
         self.y = array_api.array(labels_list, dtype="int64")
 
     def _generate_image_for_label(self, label: int) -> NDArray:

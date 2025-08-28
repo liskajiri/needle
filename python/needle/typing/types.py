@@ -1,3 +1,4 @@
+from collections.abc import Sequence
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -18,7 +19,7 @@ type Shape = tuple[int, ...]
 type Axis = int | tuple[int, ...]
 type Strides = Shape
 type NDArrayLike = (
-    NDArray | np_ndarray | list[Scalar] | tuple[Scalar, ...] | Scalar | std_array
+    NDArray | np_ndarray | Sequence[Scalar] | tuple[Scalar, ...] | Scalar | std_array
 )
 
 # TODO: proper type, this clashes with certain things, get something like nd.float32
