@@ -1426,6 +1426,13 @@ class NDArray:  # noqa: PLR0904 = too many public methods
             return out / self
         return NDArray(other, device=self.device) / self
 
+    def __rfloordiv__(self, other: NDArray | Scalar) -> NDArray:
+        if isinstance(other, int | float):
+            out = make(self.shape, device=self.device)
+            out.fill(other)
+            return out // self
+        return NDArray(other, device=self.device) // self
+
     def __neg__(self) -> NDArray:
         return self * (-1)
 
