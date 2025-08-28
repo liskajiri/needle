@@ -121,6 +121,10 @@ if True:
                 .reshape((arr.shape[0], other.shape[1]))
             )
 
+        def set_seed(self, seed: int | None = None):
+            if seed is not None:
+                np.random.seed(seed)
+
 else:
     import random
 
