@@ -38,6 +38,8 @@ def set_random_seeds(seed: int = 0):
         torch.backends.cudnn.deterministic = True
         torch.backends.cudnn.benchmark = False
         torch.backends.cudnn.enabled = False
+
+    ndl.cpu().set_seed(seed)
     os.environ["PYTHONHASHSEED"] = str(seed)
 
 
