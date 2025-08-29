@@ -44,6 +44,9 @@ def to_numpy(a, shape, strides, offset) -> NDArray:
 
 
 class NumpyBackend(AbstractBackend):
+    __tile_size__ = 1
+    itemsize = _datetype_size
+
     def randn(self, shape: Shape, dtype: DType = "float32") -> NDArray:
         return np.random.randn(*shape)
 
@@ -64,6 +67,10 @@ class NumpyBackend(AbstractBackend):
 
     def full(self, shape: Shape, fill_value: Scalar, dtype: DType) -> NDArray:
         return np.full(shape, fill_value, dtype=dtype)
+
+    def set_seed(self, seed: int | None = None) -> None:
+        if seed is not None:
+            np.random.seed(seed)
 
 
 # Devices
