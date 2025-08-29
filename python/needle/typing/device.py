@@ -74,19 +74,19 @@ class AbstractBackend(ABC):
 
     def zeros(self, shape: Shape, dtype: DType) -> NDArray:
         arr = self.empty(shape, dtype=dtype)
-        arr.fill(0.0)
+        arr._fill(0.0)
         return arr
 
     def ones(self, shape: Shape, dtype: DType) -> NDArray:
         arr = self.empty(shape, dtype=dtype)
-        arr.fill(1.0)
+        arr._fill(1.0)
         return arr
 
     def full(
         self, shape: Shape, fill_value: Scalar, dtype: DType = "float32"
     ) -> NDArray:
         arr = self.empty(shape, dtype=dtype)
-        arr.fill(fill_value)
+        arr._fill(fill_value)
         return arr
 
 
@@ -148,6 +148,7 @@ class ModuleProtocol[T](Protocol):
     # Reduction operations
     def reduce_sum(self, a: T, out: T, size: int) -> None: ...
     def reduce_max(self, a: T, out: T, size: int) -> None: ...
+    def reduce_argmax(self, a: T, out: T, size: int) -> None: ...
 
     # Random number generation (fill 'out' buffer in-place)
     def rand(self, out: T) -> None: ...

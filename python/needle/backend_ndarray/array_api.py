@@ -97,6 +97,28 @@ def max(array: NDArray, axis: Axis | None = None, keepdims: bool = False) -> NDA
     return array.max(axis=axis, keepdims=keepdims)
 
 
+def argmax(array: NDArray, axis: Axis | None = None, keepdims: bool = False) -> NDArray:
+    """
+    Returns the indices of the maximum values along an axis.
+
+    Parameters
+    ----------
+    array : NDArray
+        Input array.
+    axis : Axis | None, optional
+        Axis along which to find the maximum values.
+        If None, the flattened array is used.
+    keepdims : bool, optional
+        If True, the reduced dimensions are retained with length 1.
+
+    Returns
+    -------
+    NDArray
+        Indices of the maximum values along the specified axis.
+    """
+    return array.argmax(axis=axis, keepdims=keepdims)
+
+
 def min(array: NDArray, axis: Axis | None = None, keepdims: bool = False) -> NDArray:
     """
     Compute the minimum value of the array along the specified axis.
@@ -116,9 +138,7 @@ def min(array: NDArray, axis: Axis | None = None, keepdims: bool = False) -> NDA
         [1. 2.]
         >>> ndl.array_api.min(a, axis=1)
         [1. 3.]
-        >>> ndl.array_api.min(
-        ...     a, axis=None
-        ... )  # TODO: this should be a scalar, not ndarray
+        >>> ndl.array_api.min(a, axis=None)
         [1.]
         >>> ndl.array_api.min(a, axis=0, keepdims=True)
         [[1. 2.]]
@@ -429,7 +449,7 @@ def _as_strided(array: NDArray, shape: Shape, strides: Strides) -> NDArray:
         (2, 2)
     """
     elem_strides = tuple(s // array.device.itemsize for s in strides)
-    return array.as_strided(shape, elem_strides)
+    return array._as_strided(shape, elem_strides)
 
 
 def broadcast_shapes(*shapes: Shape) -> Shape:

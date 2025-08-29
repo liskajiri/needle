@@ -5,10 +5,16 @@ when using numpy as NDArray backend.
 
 from __future__ import annotations
 
+try:
+    import numpy as np
+except ImportError as e:
+    raise ImportError(
+        "The numpy backend requires numpy to be installed. "
+        "Please install numpy to use this backend."
+    ) from e
+
 import sys
 from typing import TYPE_CHECKING
-
-import numpy as np
 
 from needle.typing.device import AbstractBackend
 

@@ -6,7 +6,7 @@ import struct
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from needle.backend_selection import NDArray
+from needle.backend_selection import NDArray, array_api
 from needle.data.dataset import Dataset
 
 if TYPE_CHECKING:
@@ -85,20 +85,34 @@ class MNISTDataset(Dataset[NDArray]):
                 image_data = array.array("B")
                 image_data.frombytes(f.read())
 
+                # Convert to list for from_list
+                image_data = image_data.tolist()
+
+                X = array_api.make(
+                    shape=(num_images, MNISTDataset.IMAGE_DIM, MNISTDataset.IMAGE_DIM),
+                )
+                X.device.from_list(image_data, X._handle)
+
                 # Convert to float and normalize to [0.0, 1.0]
-                X = NDArray(image_data) / 255.0
+                X = X / 255.0
                 return X.reshape((num_images, MNISTDataset.IMAGE_SIZE))
 
         def read_labels(file: Path) -> NDArray:
             with gzip.open(file, "rb") as f:
                 # Read header: magic number (4 bytes), number of items
-                magic, _num_labels = struct.unpack(">II", f.read(8))
+                magic, num_labels = struct.unpack(">II", f.read(8))
                 if magic != 2049:  # Magic number for labels file
                     raise ValueError("Invalid magic number in labels file")
 
                 # Read label data
                 label_data = array.array("B")
                 label_data.frombytes(f.read())
+
+                label_data = label_data.tolist()
+
+                X = array_api.make(shape=(num_labels, 1))
+                X.device.from_list(label_data, X._handle)
+
                 y = NDArray(label_data)
                 return y
 

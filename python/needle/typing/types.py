@@ -13,14 +13,11 @@ if TYPE_CHECKING:
 
         np_ndarray = NP_NDArray
     except ImportError:
-        np_ndarray = object  # fallback if numpy is not installed
+        # fallback if numpy is not installed
+        np_ndarray = object
 
 else:
     np_ndarray = object
-
-# from numpy.typing import NDArray as NP_NDArray
-# type np_ndarray = NP_NDArray
-
 
 type DType = str
 type Scalar = float | int

@@ -18,8 +18,6 @@ if TYPE_CHECKING:
 
 
 class BackendDevice(AbstractBackend):
-    # TODO: dtype?
-
     def __init__(
         self, name: str, module: ModuleProtocol[NDArray] | None = None
     ) -> None:
@@ -113,14 +111,14 @@ class BackendDevice(AbstractBackend):
             Transforms a matrix [k, n] into a
             matrix [k // tile, n // tile, tile, tile].
             """
-            return a.as_strided(
+            return a._as_strided(
                 (a.shape[0] // tile, a.shape[1] // tile, tile, tile),
                 (a.shape[1] * tile, tile, a.shape[1], 1),
             ).compact()
 
         t = arr.device.__tile_size__
-        a = _tile(arr.compact(), t)
-        b = _tile(other.compact(), t)
+        a = _tile(arr, t)
+        b = _tile(other, t)
         out = make((a.shape[0], b.shape[1], t, t), device=arr.device)
         arr.device.matmul_tiled(a._handle, b._handle, out._handle, m, n, p)
 
@@ -219,7 +217,7 @@ def make(
 
     array = NDArray.__new__(NDArray)
     array._shape = shape
-    array._strides = NDArray.compact_strides(shape) if strides is None else strides
+    array._strides = NDArray._compact_strides(shape) if strides is None else strides
     array._offset = offset
     array._device = device
 

@@ -21,7 +21,6 @@ all = [
     "backends", # [L]
     #     ← [L] needle.backend_ndarray.backend
     "numpy",
-    #     ← [L] needle.backend_ndarray.ndarray
     #     ← needle.backend_numpy
     #     ← [L] needle.backend_selection
     #     ← [L] needle.typing.types

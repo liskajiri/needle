@@ -182,13 +182,13 @@ def batchify(
         >>> result.shape
         (6, 4)
 
-        # >>> print(result)
-        # [[ 0.  6. 12. 18.]
-        #  [ 1.  7. 13. 19.]
-        #  [ 2.  8. 14. 20.]
-        #  [ 3.  9. 15. 21.]
-        #  [ 4. 10. 16. 22.]
-        #  [ 5. 11. 17. 23.]]
+        >>> print(result)
+        [[0.  6. 12. 18.]
+         [1.  7. 13. 19.]
+         [2.  8. 14. 20.]
+         [3.  9. 15. 21.]
+         [4. 10. 16. 22.]
+         [5. 11. 17. 23.]]
     """
     n_batches = len(data) // batch_size
     data = data[: n_batches * batch_size]
@@ -243,9 +243,8 @@ def get_batch(
         >>> target.shape
         (8,)
 
-        # TODO:
-        # >>> print(target)  # next two rows
-        # [ 1.  7. 13. 19.  2.  8. 14. 20.]
+        >>> print(target)  # next two rows
+        [1. 7. 13. 19. 2. 8. 14. 20.]
     """
     # Calculate sequence length, ensuring we don't go beyond available data
     seq_len = min(seq_len, batches.shape[0] - 1 - i)

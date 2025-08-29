@@ -90,6 +90,9 @@ class Tensor(Value):
     def __str__(self) -> str:
         return self.realize_cached_data().__str__()
 
+    def array(self) -> NDArray:
+        return self.realize_cached_data()
+
     def numpy(self) -> np_ndarray:
         return self.realize_cached_data().numpy()
 

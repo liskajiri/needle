@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import math
+from collections.abc import Iterable
 from functools import cached_property
 from typing import TYPE_CHECKING
 
@@ -45,14 +46,13 @@ def _is_numpy_array(obj: object) -> bool:
     return type(obj).__module__ == "numpy" and type(obj).__name__ == "ndarray"
 
 
-class NDArray:  # noqa: PLR0904 = too many public methods
+class NDArray:
     """
     A generic ND array class that may contain multiple different backends
     i.e., a Numpy backend, a native CPU backend, or a GPU backend.
 
-    For now, for simplicity the class only supports float32 types.
+    For now the class only supports float32 types.
 
-    # TODO: Create array from list, tuple, or scalar
     """
 
     def __init__(
@@ -100,6 +100,10 @@ class NDArray:  # noqa: PLR0904 = too many public methods
         >>> arr = NDArray(np.zeros((3, 2)))  # doctest: +SKIP
         >>> arr.shape  # doctest: +SKIP
         (3, 2)
+
+        >>> arr = NDArray([()])
+        >>> arr
+        [[]]
         """
         if isinstance(other, NDArray):
             # Create a copy of existing NDArray
@@ -107,41 +111,41 @@ class NDArray:  # noqa: PLR0904 = too many public methods
                 logger.error(
                     f"Creating NDArray with different device {device} != {other.device}"
                 )
-            # create a copy
             array = other.to(device) + 0.0
+
         elif _is_numpy_array(other):
-            # elif isinstance(other, np.ndarray):
             array = make(other.shape, device=device)
             array.device.from_numpy(other, array._handle)
-        # TODO: from_tuple
-        elif isinstance(other, list):
+
+        # TODO: Check that array.array initialization works
+        elif isinstance(other, Iterable):
             other, shape = NDArray._flatten_iterable(other)
 
             array = make(shape=shape, device=device)
-            # empty tuple
             array.device.from_list(other, array._handle)
-        else:
-            # Try to create a numpy array from input, only if numpy is available
-            try:
-                import numpy as np
 
-                np_arr = np.array(other)
-                array = NDArray(np_arr, device=device)
-            except ImportError:
-                raise TypeError(
-                    "Input type not supported and "
-                    "numpy is not available for conversion."
-                )
+        elif isinstance(other, int | float):
+            array = make((), device=device)
+            array.device.fill(array._handle, float(other))
+
+        else:
+            raise TypeError(f"Unsupported type for NDArray: {type(other)}")
+
+        # elif isinstance(other, py_array):
+        #     array = make((1,), device=device)
+        #     array.device.from_array(other, array._handle)
+        # else:
+        #     array = make(other.shape, device=device)
+        #     array.device.from_numpy(other, array._handle)
 
         self._shape: Shape = array._shape
         self._strides: Strides = array._strides
-        # TODO: clarify if this is items or bytes
         self._offset: int = array._offset
         self._device: AbstractBackend = array._device
         self._handle: NDArrayBackendProtocol = array._handle
 
     @staticmethod
-    def _flatten_iterable(lst: list | tuple) -> tuple[list, Shape]:
+    def _flatten_iterable(lst: Iterable) -> tuple[list, Shape]:
         """
         Recursively flattens a nested iterable and returns its flattened version
         along with the original shape (dimensions).
@@ -181,10 +185,9 @@ class NDArray:  # noqa: PLR0904 = too many public methods
             ValueError: Inconsistent dimensions
         """
         flat = []
-        shape = []
 
-        def _flatten(sublist: list | tuple) -> list:
-            if isinstance(sublist, list):
+        def _flatten(sublist: Iterable) -> list:
+            if isinstance(sublist, list | tuple):
                 if not sublist:
                     return [0]
                 dims = [_flatten(item) for item in sublist]
@@ -194,9 +197,9 @@ class NDArray:  # noqa: PLR0904 = too many public methods
                     raise ValueError("Inconsistent dimensions")
                 flat_shape = [len(sublist)] + dims[0]
                 return flat_shape
-            else:
-                flat.append(sublist)
-                return []
+
+            flat.append(sublist)
+            return []
 
         shape = _flatten(lst)
         return flat, tuple(shape)
@@ -244,9 +247,9 @@ class NDArray:  # noqa: PLR0904 = too many public methods
         >>> print(arr)
         [1. 2. 3.]
 
-        >>> arr = NDArray(4)
+        >>> arr = NDArray([4])
         >>> print(arr)
-        4.0
+        [4.]
         """
         # 0-D scalar: one decimal
         if len(self.shape) == 0:
@@ -349,7 +352,7 @@ class NDArray:  # noqa: PLR0904 = too many public methods
 
     # ==================== Basic array manipulation
 
-    def fill(self, value: Scalar) -> None:
+    def _fill(self, value: Scalar) -> None:
         """Fill (in place) with a constant value."""
         self._device.fill(self._handle, value)
 
@@ -374,13 +377,6 @@ class NDArray:  # noqa: PLR0904 = too many public methods
         Returns:
             np.ndarray: A numpy array with the same shape and data as the NDArray.
         """
-        try:
-            import numpy as np  # noqa: F401
-        except ImportError:
-            raise RuntimeError(
-                "numpy is required to convert NDArray to numpy array, "
-                "but it is not installed."
-            )
         return self.device.to_numpy(
             self._handle, self.shape, self.strides, self._offset
         )
@@ -446,7 +442,7 @@ class NDArray:  # noqa: PLR0904 = too many public methods
     # ==================== Shapes and strides
 
     @staticmethod
-    def compact_strides(shape: Shape) -> Strides:
+    def _compact_strides(shape: Shape) -> Strides:
         """
         For a contiguous array, this calculates how many elements to skip to move
         one step along each dimension.
@@ -459,11 +455,11 @@ class NDArray:  # noqa: PLR0904 = too many public methods
             A tuple of strides, one for each dimension in the shape
 
         Examples:
-            >>> NDArray.compact_strides((2, 3, 4))
+            >>> NDArray._compact_strides((2, 3, 4))
             (12, 4, 1)
-            >>> NDArray.compact_strides((5,))
+            >>> NDArray._compact_strides((5,))
             (1,)
-            >>> NDArray.compact_strides(())
+            >>> NDArray._compact_strides(())
             ()
         """
         stride = 1
@@ -485,7 +481,7 @@ class NDArray:  # noqa: PLR0904 = too many public methods
             bool: True if the array is compact, False otherwise.
         """
         return (
-            self._strides == self.compact_strides(self._shape)
+            self._strides == self._compact_strides(self._shape)
             and self.size == self._handle.size
         )
 
@@ -508,7 +504,7 @@ class NDArray:  # noqa: PLR0904 = too many public methods
         )
         return out
 
-    def as_strided(self, shape: Shape, strides: Strides) -> NDArray:
+    def _as_strided(self, shape: Shape, strides: Strides) -> NDArray:
         """
         Re-stride the matrix without copying memory.
 
@@ -623,7 +619,7 @@ class NDArray:  # noqa: PLR0904 = too many public methods
             )
 
         # Create reshaped view with new strides
-        return self.as_strided(new_shape, self.compact_strides(new_shape))
+        return self._as_strided(new_shape, self._compact_strides(new_shape))
 
     def _is_1d_to_column_vector(self, new_shape: Shape) -> bool:
         """Check if reshaping from 1D array to column vector.
@@ -723,7 +719,7 @@ class NDArray:  # noqa: PLR0904 = too many public methods
         new_shape = tuple(self._shape[d] for d in new_axes)
         new_strides = tuple(self._strides[d] for d in new_axes)
 
-        return self.as_strided(new_shape, new_strides)
+        return self._as_strided(new_shape, new_strides)
 
     def broadcast_to(self, new_shape: Shape) -> NDArray:
         """
@@ -792,7 +788,7 @@ class NDArray:  # noqa: PLR0904 = too many public methods
                     f"target: {target_dim})"
                 )
 
-        return self.as_strided(new_shape, tuple(new_strides))
+        return self._as_strided(new_shape, tuple(new_strides))
 
     # ====================  Get and set elements
 
@@ -1110,8 +1106,7 @@ class NDArray:  # noqa: PLR0904 = too many public methods
         if isinstance(index, int):
             if not 0 <= index < self.size:
                 raise IndexError("Index out of bounds")
-            compact = self.compact()
-            return self.device.scalar_item(compact._handle, index)
+            return self.device.scalar_item(self._handle, index)
 
         if isinstance(index, tuple):
             if len(index) != len(self.shape):
@@ -1121,12 +1116,11 @@ class NDArray:  # noqa: PLR0904 = too many public methods
             offset = sum(i * s for i, s in zip(index, self.strides))
             if not 0 <= offset < self.size:
                 raise IndexError("Index out of bounds")
-            compact = self.compact()
-            return self.device.scalar_item(compact._handle, compact._offset + offset)
+            return self.device.scalar_item(self._handle, self._offset + offset)
 
     # ====================  Element-wise and scalar functions
 
-    def ewise_or_scalar(
+    def _ewise_or_scalar(
         self,
         other: NDArrayLike,
         ewise_func: Callable[
@@ -1169,7 +1163,7 @@ class NDArray:  # noqa: PLR0904 = too many public methods
             scalar_func(self.compact()._handle, other, out._handle)
         elif _is_numpy_array(other):
             # elif isinstance(other, np.ndarray):
-            return self.ewise_or_scalar(
+            return self._ewise_or_scalar(
                 NDArray(other, device=self.device), ewise_func, scalar_func
             )
         else:
@@ -1177,7 +1171,7 @@ class NDArray:  # noqa: PLR0904 = too many public methods
         return out
 
     def __add__(self, other: NDArray | Scalar) -> NDArray:
-        return self.ewise_or_scalar(
+        return self._ewise_or_scalar(
             other, self.device.ewise_add, self.device.scalar_add
         )
 
@@ -1190,28 +1184,28 @@ class NDArray:  # noqa: PLR0904 = too many public methods
         return other + (-self)
 
     def __mul__(self, other: NDArray | Scalar) -> NDArray:
-        return self.ewise_or_scalar(
+        return self._ewise_or_scalar(
             other, self.device.ewise_mul, self.device.scalar_mul
         )
 
     __rmul__ = __mul__
 
     def __truediv__(self, other: NDArray | Scalar) -> NDArray:
-        return self.ewise_or_scalar(
+        return self._ewise_or_scalar(
             other, self.device.ewise_div, self.device.scalar_div
         )
 
     def __rtruediv__(self, other: NDArray | Scalar) -> NDArray:
         if isinstance(other, int | float):
             out = make(self.shape, device=self.device)
-            out.fill(other)
+            out._fill(other)
             return out / self
         return NDArray(other, device=self.device) / self
 
     def __rfloordiv__(self, other: NDArray | Scalar) -> NDArray:
         if isinstance(other, int | float):
             out = make(self.shape, device=self.device)
-            out.fill(other)
+            out._fill(other)
             return out // self
         return NDArray(other, device=self.device) // self
 
@@ -1229,7 +1223,7 @@ class NDArray:  # noqa: PLR0904 = too many public methods
         return out
 
     def maximum(self, other: NDArrayLike) -> NDArray:
-        return self.ewise_or_scalar(
+        return self._ewise_or_scalar(
             other, self.device.ewise_maximum, self.device.scalar_maximum
         )
 
@@ -1252,18 +1246,16 @@ class NDArray:  # noqa: PLR0904 = too many public methods
 
     # ====================  Comparison operators
 
-    # def __hash__(self) -> int:
-    #     return hash(self._handle)
-
+    # TODO: array equality
     def __eq__(self, other: NDArrayLike) -> NDArray:
         # if isinstance(other, np.ndarray):
         #     return NDArray(np.equal(self.numpy(), other).astype("float32"))
-        return self.ewise_or_scalar(other, self.device.ewise_eq, self.device.scalar_eq)
+        return self._ewise_or_scalar(other, self.device.ewise_eq, self.device.scalar_eq)
 
     def __ge__(self, other: NDArrayLike) -> NDArray:
         # if isinstance(other, np.ndarray):
         #     return NDArray(np.greater_equal(self.numpy(), other).astype("float32"))
-        return self.ewise_or_scalar(other, self.device.ewise_ge, self.device.scalar_ge)
+        return self._ewise_or_scalar(other, self.device.ewise_ge, self.device.scalar_ge)
 
     def __ne__(self, other: NDArrayLike) -> NDArray:
         return 1.0 - (self == other)
@@ -1276,15 +1268,6 @@ class NDArray:  # noqa: PLR0904 = too many public methods
 
     def __le__(self, other: NDArrayLike) -> NDArray:
         return 1.0 - (self > other)
-
-    # TODO: breaks array interop
-    # def __bool__(self) -> bool:
-    #     """Convert array to boolean value (True or False)."""
-    #     if self.size == 1:
-    #         return bool(self.item())
-    #     raise ValueError(
-    #         "Truth value of NDArray with more than one element is ambiguous"
-    #     )
 
     # ====================  Matrix multiplication
     def _check_matrix_shapes(self, other: NDArray) -> None:
@@ -1391,7 +1374,7 @@ class NDArray:  # noqa: PLR0904 = too many public methods
 
     # ====================  Reductions over all element or over given axis
 
-    def reduce_view_out(
+    def _reduce_view_out(
         self, axis: Axis | None, *, keepdims: bool = False
     ) -> tuple[NDArray, NDArray]:
         """
@@ -1411,7 +1394,7 @@ class NDArray:  # noqa: PLR0904 = too many public methods
 
         Examples:
             >>> x = NDArray([[1, 2], [3, 4]])
-            >>> view, out = x.reduce_view_out(axis=0)
+            >>> view, out = x._reduce_view_out(axis=0)
             >>> view.shape
             (2, 2)
             >>> out.shape
@@ -1421,7 +1404,7 @@ class NDArray:  # noqa: PLR0904 = too many public methods
             raise ValueError("Empty axis in reduce")
 
         if axis is None:
-            view = self.compact().reshape((1,) * (self.ndim - 1) + (self.size,))
+            view = self.compat().reshape((1,) * (self.ndim - 1) + (self.size,))
             out_shape = (1,) * self.ndim if keepdims else (1,)
             out = make(out_shape, device=self.device)
             return view, out
@@ -1479,7 +1462,7 @@ class NDArray:  # noqa: PLR0904 = too many public methods
             >>> x.sum(axis=0, keepdims=True)
             [[4. 6.]]
         """  # noqa: DOC502
-        view, out = self.reduce_view_out(axis, keepdims=keepdims)
+        view, out = self._reduce_view_out(axis, keepdims=keepdims)
         self.device.reduce_sum(view.compact()._handle, out._handle, view.shape[-1])
         return out
 
@@ -1514,6 +1497,45 @@ class NDArray:  # noqa: PLR0904 = too many public methods
             >>> x.max(axis=0, keepdims=True)
             [[3. 4.]]
         """  # noqa: DOC502
-        view, out = self.reduce_view_out(axis, keepdims=keepdims)
+        view, out = self._reduce_view_out(axis, keepdims=keepdims)
         self.device.reduce_max(view.compact()._handle, out._handle, view.shape[-1])
+        return out
+
+    def argmax(self, axis: Axis | None = None, *, keepdims: bool = False) -> NDArray:
+        """
+        Find the indices of the maximum values in the array along the specified axis.
+
+        Args:
+            axis (Axis or None): Axes to find the maximum over.
+            If None, find the maximum of all elements.
+            keepdims (bool): If true, keep reduced dimensions with size 1.
+
+        Returns:
+            NDArray: The indices of the maximum values along the specified axis.
+
+        Raises:
+            ValueError: If axis is empty or invalid.
+
+        Examples:
+            >>> x = NDArray([[1, 2], [3, 4]])
+            >>> x.argmax(axis=0)
+            [1. 1.]
+
+            >>> x.argmax(axis=1)
+            [1. 1.]
+
+            >>> x.argmax()
+            [3.]
+
+            >>> x.argmax(axis=(0, 1))
+            3.0
+
+            >>> x.argmax(keepdims=True)
+            [[3.]]
+
+            >>> x.argmax(axis=0, keepdims=True)
+            [[1. 1.]]
+        """
+        view, out = self._reduce_view_out(axis, keepdims=keepdims)
+        self.device.reduce_argmax(view.compact()._handle, out._handle, view.shape[-1])
         return out

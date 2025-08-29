@@ -239,10 +239,10 @@ def test_train_dataloader(
         truth = mnist_train[i * batch_size : (i + 1) * batch_size]
         if isinstance(truth[0], NDArray):
             truth_x = truth[0].numpy()
-            truth_x = truth_x if truth_x.shape[0] > 1 else truth_x.reshape(-1)
+            truth_x = truth_x if truth_x.shape[0] > 1 else truth_x.flatten()
         else:
-            truth_x = truth[0] if truth[0].shape[0] > 1 else truth[0].reshape(-1)
-        truth_y = truth[1] if truth[1].shape[0] > 1 else truth[1].reshape(-1)
+            truth_x = truth[0] if truth[0].shape[0] > 1 else truth[0].flatten()
+        truth_y = truth[1] if truth[1].shape[0] > 1 else truth[1].flatten()
 
         np.testing.assert_allclose(truth_x, batch_x.flatten())
         np.testing.assert_allclose(batch_y, truth_y)
@@ -261,9 +261,6 @@ def test_test_dataloader(
 
         np.testing.assert_allclose(truth_x, batch_x)
         np.testing.assert_allclose(batch_y, truth_y)
-
-
-# TODO: investigate what tests should be marked slow (< 1s is ok?)
 
 
 @pytest.mark.slow
