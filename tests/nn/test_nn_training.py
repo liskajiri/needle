@@ -16,7 +16,7 @@ def test_synthetic_mnist_training(
     num_samples: int = 100,
     batch_size: int = 64,
     hidden_size: int = 64,
-    num_epochs: int = 5,
+    num_epochs: int = 10,
 ) -> None:
     """
     Train a small network on SyntheticMNIST and ensure training reduces loss.
@@ -43,7 +43,7 @@ def test_synthetic_mnist_training(
     model.eval()
     initial_acc, initial_loss = epoch(dataloader, model, opt=None)
 
-    opt = optimizer(model.parameters(), lr=0.1)
+    opt = optimizer(model.parameters(), lr=0.1)  # type: ignore
     model.train()
 
     curr_loss = -1

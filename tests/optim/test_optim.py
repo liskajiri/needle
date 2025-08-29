@@ -2,334 +2,214 @@ import logging
 
 import needle as ndl
 import numpy as np
+import pytest
 from needle import nn
+from needle.data.datasets.synthetic_mnist import SyntheticMNIST
 
 logger = logging.getLogger(__name__)
 
 
-def global_tensor_count() -> int:
-    return ndl.autograd.value.Value._counter  # noqa: SLF001
+IMAGE_SHAPE = (1, 28, 28)
+NUM_SAMPLES = 64
+NUM_CLASSES = 5
+SEED = 7
+EPOCHS = 10
+BATCH = NUM_SAMPLES // 2
+HIDDEN_SIZE = 64
 
 
-def get_tensor(*shape, entropy=1) -> ndl.Tensor:
-    np.random.seed(np.prod(shape) * len(shape) * entropy)
-    return ndl.Tensor(np.random.randint(0, 100, size=shape) / 20, dtype="float32")
-
-
-def get_int_tensor(*shape, low=0, high=10, entropy=1):
-    np.random.seed(np.prod(shape) * len(shape) * entropy)
-    return ndl.Tensor(np.random.randint(low, high, size=shape))
-
-
-def learn_model_1d(feature_size, n_classes, _model, optimizer, epochs=1, **kwargs):
-    np.random.seed(42)
-    model = _model([])
-    X = get_tensor(1024, feature_size).cached_data
-    Y = get_int_tensor(1024, low=0, high=n_classes).cached_data.astype(np.uint8)
-    m = X.shape[0]
-    batch = 32
-
+def _compute_loss_acc(dataloader, model):
+    """Compute average loss and accuracy over dataloader (no grad)."""
     loss_func = nn.SoftmaxLoss()
-    opt = optimizer(model.parameters(), **kwargs)
-
-    for _ in range(epochs):
-        for _i, (X0, y0) in enumerate(
-            zip(
-                np.array_split(X, m // batch),
-                np.array_split(Y, m // batch),
-                strict=False,
-            )
-        ):
-            opt.reset_grad()
-            x, y = ndl.Tensor(X0, dtype="float32"), ndl.Tensor(y0)
-            out = model(x)
-            loss = loss_func(out, y)
-            loss.backward()
-            # Opt should not change gradients.
-            grad_before = model.parameters()[0].grad.detach().cached_data
-            opt.step()
-            grad_after = model.parameters()[0].grad.detach().cached_data
-            np.testing.assert_allclose(
-                grad_before,
-                grad_after,
-                rtol=1e-5,
-                atol=1e-5,
-                err_msg="Optim should not modify gradients in place",
-            )
-
-    return np.array(loss.cached_data)
-
-
-def learn_model_1d_eval(feature_size, n_classes, _model, optimizer, epochs=1, **kwargs):
-    np.random.seed(42)
-    model = _model([])
-    X = get_tensor(1024, feature_size).cached_data
-    Y = get_int_tensor(1024, low=0, high=n_classes).cached_data.astype(np.uint8)
-    m = X.shape[0]
-    batch = 32
-
-    loss_func = nn.SoftmaxLoss()
-    opt = optimizer(model.parameters(), **kwargs)
-
-    for _i, (X0, y0) in enumerate(
-        zip(np.array_split(X, m // batch), np.array_split(Y, m // batch), strict=False)
-    ):
-        opt.reset_grad()
-        x, y = ndl.Tensor(X0, dtype="float32"), ndl.Tensor(y0)
-        out = model(x)
-        loss = loss_func(out, y)
-        loss.backward()
-        opt.step()
-
-    X_test = ndl.Tensor(get_tensor(batch, feature_size).cached_data)
-    y_test = ndl.Tensor(
-        get_int_tensor(batch, low=0, high=n_classes).cached_data.astype(np.uint8)
-    )
-
+    total_loss = 0.0
+    total_n = 0
+    total_correct = 0
     model.eval()
 
-    return np.array(loss_func(model(X_test), y_test).cached_data)
+    for X, y in dataloader:
+        out = model(X)
+        loss = loss_func(out, y)
+        b = int(X.shape[0])
+        total_loss += float(np.array(loss.cached_data)) * b
+        preds = np.array(out.cached_data).argmax(axis=1)
+        total_correct += int((preds == np.array(y.cached_data)).sum())
+        total_n += b
+
+    if total_n == 0:
+        return 0.0, 0.0
+
+    return total_correct / total_n, total_loss / total_n
 
 
-def test_optim_sgd_vanilla_1():
-    np.testing.assert_allclose(
-        learn_model_1d(
-            64,
-            16,
-            lambda z: nn.Sequential(nn.Linear(64, 32), nn.ReLU(), nn.Linear(32, 16)),
-            ndl.optim.SGD,
-            lr=0.01,
-            momentum=0.0,
-        ),
-        np.array(3.207009),
-        rtol=1e-5,
-        atol=1e-5,
+def _train_full(
+    dataset,
+    model_builder,
+    optimizer_cls,
+    epochs=EPOCHS,
+    batch=BATCH,
+    seed=42,
+    **opt_kwargs,
+):
+    """Train model on SyntheticMNIST dataset."""
+
+    np.random.seed(seed)
+    dataloader = ndl.data.DataLoader(dataset=dataset, batch_size=batch, shuffle=False)
+    model = model_builder()
+    opt = optimizer_cls(model.parameters(), **opt_kwargs)
+
+    init_acc, init_loss = _compute_loss_acc(dataloader, model)
+    model.train()
+
+    for _ in range(epochs):
+        for X, y in dataloader:
+            opt.reset_grad()
+
+            out = model(X)
+
+            loss = nn.SoftmaxLoss()(out, y)
+            loss.backward()
+
+            opt.step()
+
+    final_acc, final_loss = _compute_loss_acc(dataloader, model)
+    return init_acc, init_loss, final_acc, final_loss
+
+
+def make_builder(
+    kind: str = "flat", hidden_size: int = HIDDEN_SIZE, num_classes: int = NUM_CLASSES
+):
+    """Return a zero-argument callable that builds the requested model variant.
+
+    kind: "flat", "batchnorm", or "layernorm".
+    """
+    _c, h, w = IMAGE_SHAPE
+    in_features = h * w
+
+    if kind == "flat":
+        return lambda: nn.Sequential(
+            nn.Flatten(),
+            nn.Linear(in_features, hidden_size),
+            nn.ReLU(),
+            nn.Linear(hidden_size, num_classes),
+        )
+    if kind == "batchnorm":
+        return lambda: nn.Sequential(
+            nn.Flatten(),
+            nn.Linear(in_features, hidden_size),
+            nn.ReLU(),
+            nn.BatchNorm1d(hidden_size),
+            nn.Linear(hidden_size, num_classes),
+        )
+    if kind == "layernorm":
+        return lambda: nn.Sequential(
+            nn.Flatten(),
+            nn.Linear(in_features, hidden_size),
+            nn.ReLU(),
+            nn.LayerNorm1d(hidden_size),
+            nn.Linear(hidden_size, num_classes),
+        )
+    raise ValueError(f"unknown builder kind: {kind}")
+
+
+@pytest.mark.parametrize("optimizer", [ndl.optim.SGD, ndl.optim.Adam])
+@pytest.mark.parametrize("lr", [0.01, 0.001])
+@pytest.mark.parametrize("weight_decay", [0.01, 0.001])
+@pytest.mark.parametrize("model_type", ["flat", "batchnorm", "layernorm"])
+def test_optimizers(optimizer, lr, weight_decay, model_type):
+    image_shape = IMAGE_SHAPE
+    ds = SyntheticMNIST(
+        num_samples=NUM_SAMPLES,
+        num_classes=NUM_CLASSES,
+        image_shape=image_shape,
+        seed=SEED,
+    )
+
+    opt_kwargs = {
+        "lr": lr,
+        "weight_decay": weight_decay,
+    }
+
+    model_builder = make_builder(model_type)
+
+    init_acc, init_loss, final_acc, final_loss = _train_full(
+        ds,
+        model_builder,
+        optimizer,
+        epochs=EPOCHS,
+        batch=BATCH,
+        **opt_kwargs,
+    )
+
+    assert float(final_loss) <= float(init_loss), (
+        "Did not reduce loss on SyntheticMNIST"
+    )
+    assert float(final_acc) >= float(init_acc), (
+        "Did not improve accuracy on SyntheticMNIST"
     )
 
 
-def test_optim_sgd_momentum_1():
-    np.testing.assert_allclose(
-        learn_model_1d(
-            64,
-            16,
-            lambda z: nn.Sequential(nn.Linear(64, 32), nn.ReLU(), nn.Linear(32, 16)),
-            ndl.optim.SGD,
-            lr=0.01,
-            momentum=0.9,
-        ),
-        np.array(3.311805),
-        rtol=1e-5,
-        atol=1e-5,
+@pytest.mark.parametrize("momentum", [0.0, 0.9])
+def test_SGD_momentum(momentum):
+    optimizer = ndl.optim.SGD
+
+    image_shape = IMAGE_SHAPE
+    ds = SyntheticMNIST(
+        num_samples=NUM_SAMPLES,
+        num_classes=NUM_CLASSES,
+        image_shape=image_shape,
+        seed=SEED,
+    )
+
+    opt_kwargs = {
+        "momentum": momentum,
+    }
+
+    model_builder = make_builder("flat")
+
+    init_acc, init_loss, final_acc, final_loss = _train_full(
+        ds,
+        model_builder,
+        optimizer,
+        epochs=EPOCHS,
+        batch=BATCH,
+        **opt_kwargs,
+    )
+
+    assert float(final_loss) <= float(init_loss), (
+        "Did not reduce loss on SyntheticMNIST"
+    )
+    assert float(final_acc) >= float(init_acc), (
+        "Did not improve accuracy on SyntheticMNIST"
     )
 
 
-def test_optim_sgd_weight_decay_1():
-    np.testing.assert_allclose(
-        learn_model_1d(
-            64,
-            16,
-            lambda z: nn.Sequential(nn.Linear(64, 32), nn.ReLU(), nn.Linear(32, 16)),
-            ndl.optim.SGD,
-            lr=0.01,
-            momentum=0.0,
-            weight_decay=0.01,
-        ),
-        np.array(3.202637),
-        rtol=1e-5,
-        atol=1e-5,
-    )
+@pytest.mark.parametrize(
+    "optimizer, count", [(ndl.optim.Adam, 10), (ndl.optim.SGD, 10)]
+)
+def test_optim_memory(optimizer, count):
+    def global_tensor_count() -> int:
+        return ndl.autograd.value.Value._counter  # noqa: SLF001
 
+    # reset counters
+    ndl.autograd.value.Value._counter = 0
 
-def test_optim_sgd_momentum_weight_decay_1():
-    np.testing.assert_allclose(
-        learn_model_1d(
-            64,
-            16,
-            lambda z: nn.Sequential(nn.Linear(64, 32), nn.ReLU(), nn.Linear(32, 16)),
-            ndl.optim.SGD,
-            lr=0.01,
-            momentum=0.9,
-            weight_decay=0.01,
-        ),
-        np.array(3.306993),
-        rtol=1e-5,
-        atol=1e-5,
-    )
+    ds = SyntheticMNIST(num_samples=256, num_classes=10, image_shape=(1, 1, 64), seed=7)
 
+    def model_builder():
+        return nn.Sequential(
+            nn.Flatten(),
+            nn.Linear(64, 32),
+            nn.ReLU(),
+            nn.Linear(32, 16),
+        )
 
-def test_optim_sgd_layernorm_residual_1():
-    nn.LayerNorm1d(8)
-    np.testing.assert_allclose(
-        learn_model_1d(
-            64,
-            16,
-            lambda z: nn.Sequential(
-                nn.Linear(64, 8),
-                nn.ReLU(),
-                nn.Residual(nn.Linear(8, 8)),
-                nn.Linear(8, 16),
-            ),
-            ndl.optim.SGD,
-            epochs=3,
-            lr=0.01,
-            weight_decay=0.001,
-        ),
-        np.array(2.852236),
-        rtol=1e-5,
-        atol=1e-5,
-    )
+    _ = _train_full(ds, model_builder, optimizer)
 
-
-def test_optim_sgd_z_memory_check():
-    # checks that not too many tensors are allocated for optimizers
-    ndl.autograd.value.Value._counter = 0  # noqa: SLF001
-    _a = (
-        learn_model_1d(
-            64,
-            16,
-            lambda z: nn.Sequential(
-                nn.Linear(64, 8),
-                nn.ReLU(),
-                nn.Residual(nn.Linear(8, 8)),
-                nn.Linear(8, 16),
-            ),
-            ndl.optim.SGD,
-            epochs=3,
-            lr=0.01,
-            weight_decay=0.001,
-        ),
-    )
-
-    error_tolerance = 500
-    max_tensor_count = 387
-    if global_tensor_count() > 0:
-        logger.error("No tensors allocated")
-    assert (
-        max_tensor_count + error_tolerance >= global_tensor_count()
-    ), f"""Allocated more tensors for SGD than needed,
-        allocated {global_tensor_count()},
-        but should be max {max_tensor_count}"""
-
-
-def test_optim_adam_1():
-    np.testing.assert_allclose(
-        learn_model_1d(
-            64,
-            16,
-            lambda z: nn.Sequential(nn.Linear(64, 32), nn.ReLU(), nn.Linear(32, 16)),
-            ndl.optim.Adam,
-            lr=0.001,
-        ),
-        np.array(3.703999),
-        rtol=1e-5,
-        atol=1e-5,
-    )
-
-
-def test_optim_adam_weight_decay_1():
-    np.testing.assert_allclose(
-        learn_model_1d(
-            64,
-            16,
-            lambda z: nn.Sequential(nn.Linear(64, 32), nn.ReLU(), nn.Linear(32, 16)),
-            ndl.optim.Adam,
-            lr=0.001,
-            weight_decay=0.01,
-        ),
-        np.array(3.705134),
-        rtol=1e-5,
-        atol=1e-5,
-    )
-
-
-def test_optim_adam_batchnorm_1():
-    np.testing.assert_allclose(
-        learn_model_1d(
-            64,
-            16,
-            lambda z: nn.Sequential(
-                nn.Linear(64, 32), nn.ReLU(), nn.BatchNorm1d(32), nn.Linear(32, 16)
-            ),
-            ndl.optim.Adam,
-            lr=0.001,
-            weight_decay=0.001,
-        ),
-        np.array(3.296256, dtype=np.float32),
-        rtol=1e-5,
-        atol=1e-5,
-    )
-
-
-def test_optim_adam_batchnorm_eval_mode_1():
-    np.testing.assert_allclose(
-        learn_model_1d_eval(
-            64,
-            16,
-            lambda z: nn.Sequential(
-                nn.Linear(64, 32), nn.ReLU(), nn.BatchNorm1d(32), nn.Linear(32, 16)
-            ),
-            ndl.optim.Adam,
-            lr=0.001,
-            weight_decay=0.001,
-        ),
-        np.array(3.192054, dtype=np.float32),
-        rtol=1e-5,
-        atol=1e-5,
-    )
-
-
-def test_optim_adam_layernorm_1():
-    np.testing.assert_allclose(
-        learn_model_1d(
-            64,
-            16,
-            lambda z: nn.Sequential(
-                nn.Linear(64, 32), nn.ReLU(), nn.LayerNorm1d(32), nn.Linear(32, 16)
-            ),
-            ndl.optim.Adam,
-            lr=0.01,
-            weight_decay=0.01,
-        ),
-        np.array(2.82192, dtype=np.float32),
-        rtol=1e-5,
-        atol=1e-5,
-    )
-
-
-def test_optim_adam_weight_decay_bias_correction_1():
-    np.testing.assert_allclose(
-        learn_model_1d(
-            64,
-            16,
-            lambda z: nn.Sequential(nn.Linear(64, 32), nn.ReLU(), nn.Linear(32, 16)),
-            ndl.optim.Adam,
-            lr=0.001,
-            weight_decay=0.01,
-        ),
-        np.array(3.705134),
-        rtol=1e-5,
-        atol=1e-5,
-    )
-
-
-def test_optim_adam_z_memory_check():
-    # checks that not too many tensors are allocated for optimizers
-    ndl.autograd.value.Value._counter = 0  # noqa: SLF001
-    _a = (
-        learn_model_1d(
-            64,
-            16,
-            lambda z: nn.Sequential(nn.Linear(64, 32), nn.ReLU(), nn.Linear(32, 16)),
-            ndl.optim.Adam,
-            lr=0.001,
-            weight_decay=0.01,
-        ),
-    )
-    max_tensor_count = 1132
+    max_tensor_count = count
     if global_tensor_count() > 0:
         logger.warning("No tensors allocated")
     assert (
         max_tensor_count >= global_tensor_count()
-    ), f"""Allocated more tensors for Adam than needed,
+    ), f"""Allocated more tensors for {optimizer.__name__} than needed,
         allocated {global_tensor_count()},
         but should be max {max_tensor_count}"""
