@@ -21,7 +21,7 @@ dependencies = [
 all = [
     # [AUTOGEN] by pydependence resolver 'all' **DO NOT EDIT** [AUTOGEN]
     "backends", # [L]
-    #     ← [L] needle.backend_ndarray.ndarray
+    #     ← [L] needle.backend_ndarray.backend
     "numpy",
     #     ← needle.backend_ndarray.ndarray
     #     ← needle.backend_numpy

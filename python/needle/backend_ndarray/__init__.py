@@ -1,3 +1,4 @@
+import needle.backend_ndarray.array_api as array_api
 from needle.backend_ndarray.array_api import (
     _as_strided,
     array,
@@ -21,16 +22,18 @@ from needle.backend_ndarray.array_api import (
     transpose,
     zeros,
 )
-from needle.backend_ndarray.ndarray import (
+from needle.backend_ndarray.backend import (
     BackendDevice,
-    NDArray,
     all_devices,
-    broadcast_shapes,
     cpu,
     cpu_numpy,
     cuda,
     default_device,
     make,
+)
+from needle.backend_ndarray.ndarray import (
+    NDArray,
+    broadcast_shapes,
 )
 
 __all__ = [
@@ -39,6 +42,7 @@ __all__ = [
     "_as_strided",
     "all_devices",
     "array",
+    "array_api",
     "broadcast_shapes",
     "broadcast_to",
     "concatenate",
@@ -55,6 +59,7 @@ __all__ = [
     "make",
     "max",
     "maximum",
+    "needle",
     "ones",
     "pad",
     "reshape",

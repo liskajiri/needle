@@ -4,7 +4,8 @@ import itertools
 import logging
 from typing import TYPE_CHECKING
 
-from needle.backend_ndarray.ndarray import NDArray, cpu, cuda, default_device, make
+from needle.backend_ndarray.backend import cpu, cuda, default_device, make
+from needle.backend_ndarray.ndarray import NDArray
 from needle.typing.dlpack import DLPackDeviceType
 
 if TYPE_CHECKING:
