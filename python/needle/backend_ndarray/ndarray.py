@@ -5,8 +5,6 @@ import math
 from functools import cached_property
 from typing import TYPE_CHECKING
 
-import numpy as np
-
 import needle.backend_ndarray.array_api as array_api
 from needle.backend_ndarray.backend import default_device, make
 from needle.errors import BroadcastError
@@ -55,27 +53,6 @@ class NDArray:  # noqa: PLR0904 = too many public methods
     For now, for simplicity the class only supports float32 types.
 
     # TODO: Create array from list, tuple, or scalar
-    Examples:
-        >>> # Create from Python list
-        >>> arr = NDArray([[1, 2], [3, 4]])
-        >>> arr.shape
-        (2, 2)
-        >>> arr.ndim
-        2
-        >>> arr.size
-        4
-
-        >>> # Create from numpy array
-        >>> import numpy as np
-        >>> arr = NDArray(np.zeros((3, 2)))
-        >>> arr.shape
-        (3, 2)
-
-        >>> from needle.backend_selection import cpu
-        >>> # Create copy on specific device
-        >>> cpu_arr = NDArray([1, 2, 3], device=cpu())
-        >>> cpu_arr.device
-        cpu()
     """
 
     def __init__(
@@ -111,6 +88,18 @@ class NDArray:  # noqa: PLR0904 = too many public methods
         2
         >>> arr.size
         4
+
+        >>> from needle.backend_selection import cpu
+        >>> # Create copy on specific device
+        >>> cpu_arr = NDArray([1, 2, 3], device=cpu())
+        >>> cpu_arr.device
+        cpu()
+
+        >>> # Create from numpy array
+        >>> import numpy as np  # doctest: +SKIP
+        >>> arr = NDArray(np.zeros((3, 2)))  # doctest: +SKIP
+        >>> arr.shape  # doctest: +SKIP
+        (3, 2)
         """
         if isinstance(other, NDArray):
             # Create a copy of existing NDArray
@@ -132,9 +121,17 @@ class NDArray:  # noqa: PLR0904 = too many public methods
             # empty tuple
             array.device.from_list(other, array._handle)
         else:
-            # see if we can create a numpy array from input
-            np_arr = np.array(other)
-            array = NDArray(np_arr, device=device)
+            # Try to create a numpy array from input, only if numpy is available
+            try:
+                import numpy as np
+
+                np_arr = np.array(other)
+                array = NDArray(np_arr, device=device)
+            except ImportError:
+                raise TypeError(
+                    "Input type not supported and "
+                    "numpy is not available for conversion."
+                )
 
         self._shape: Shape = array._shape
         self._strides: Strides = array._strides
@@ -235,18 +232,110 @@ class NDArray:  # noqa: PLR0904 = too many public methods
     def __repr__(self) -> str:
         return self.__str__()
 
-    # TODO: implement __str__ to print the data in the array
     def __str__(self) -> str:
-        """String representation of the NDArray. (Inspired by numpy's __str__ method)
+        """String representation of the NDArray.
 
         >>> arr = NDArray([[1, 2], [3, 4]])
         >>> print(arr)
         [[1. 2.]
          [3. 4.]]
+
+        >>> arr = NDArray([1, 2, 3])
+        >>> print(arr)
+        [1. 2. 3.]
+
+        >>> arr = NDArray(4)
+        >>> print(arr)
+        4.0
         """
-        # TODO: Check that this is zero-copy
-        data = self.numpy()
-        return data.__str__()
+        # 0-D scalar: one decimal
+        if len(self.shape) == 0:
+            return f"{float(self.item()):.1f}"
+
+        # work on a compact contiguous view to read logical order safely
+        comp = self.compact()
+        shape = comp.shape
+        strides = comp._strides  # contiguous strides in elements
+
+        def read_float_at(idx: list[int]) -> float:
+            flat = 0
+            for i, v in enumerate(idx):
+                flat += v * strides[i]
+            return float(comp.device.scalar_item(comp._handle, comp._offset + flat))
+
+        def fmt_elem(x: float) -> str:
+            # integer-valued floats inside arrays -> "N."
+            if x == math.inf:
+                return "inf."
+            elif x == -math.inf:
+                return "-inf."
+            if abs(x - round(x)) < 1e-6:
+                return f"{round(x)}."
+            return str(x)
+
+        ndim = len(shape)
+
+        # 1-D
+        if ndim == 1:
+            elems = [fmt_elem(read_float_at([i])) for i in range(shape[0])]
+            return "[" + " ".join(elems) + "]"
+
+        # 2-D: align columns
+        if ndim == 2:
+            rows = [
+                [fmt_elem(read_float_at([r, c])) for c in range(shape[1])]
+                for r in range(shape[0])
+            ]
+            col_widths = [
+                max(len(rows[r][c]) for r in range(shape[0])) for c in range(shape[1])
+            ]
+
+            def format_row(r: int) -> str:
+                return " ".join(
+                    rows[r][c].rjust(col_widths[c]) for c in range(shape[1])
+                )
+
+            lines = []
+            for r in range(shape[0]):
+                if r == 0:
+                    lines.append("[" + "[" + format_row(r) + "]")
+                else:
+                    lines.append(" " + "[" + format_row(r) + "]")
+            return "\n".join(lines) + "]"
+
+        # ND (N>2): recursively build blocks; format last two dims as 2-D blocks
+        def build(prefix: list[int], dim: int) -> str:
+            if dim == ndim - 2:
+                rows = []
+                for r in range(shape[dim]):
+                    row = [
+                        fmt_elem(read_float_at([*prefix, r, c]))
+                        for c in range(shape[dim + 1])
+                    ]
+                    rows.append(row)
+                col_widths = [
+                    max(len(rows[r][c]) for r in range(shape[dim]))
+                    for c in range(shape[dim + 1])
+                ]
+
+                def fmt_row_local(r: int) -> str:
+                    return " ".join(
+                        rows[r][c].rjust(col_widths[c]) for c in range(shape[dim + 1])
+                    )
+
+                block_lines = []
+                for r in range(shape[dim]):
+                    if r == 0:
+                        block_lines.append("[" + "[" + fmt_row_local(r) + "]")
+                    else:
+                        block_lines.append(" " + "[" + fmt_row_local(r) + "]")
+                return "\n".join(block_lines) + "]"
+            else:
+                parts = [build([*prefix, i], dim + 1) for i in range(shape[dim])]
+                joined = "\n ".join(parts)
+                return "[" + joined + "]"
+
+        return build([], 0)
 
     def __len__(self) -> int:
         """Returns the size of the first dimension.
@@ -285,6 +374,13 @@ class NDArray:  # noqa: PLR0904 = too many public methods
         Returns:
             np.ndarray: A numpy array with the same shape and data as the NDArray.
         """
+        try:
+            import numpy as np  # noqa: F401
+        except ImportError:
+            raise RuntimeError(
+                "numpy is required to convert NDArray to numpy array, "
+                "but it is not installed."
+            )
         return self.device.to_numpy(
             self._handle, self.shape, self.strides, self._offset
         )

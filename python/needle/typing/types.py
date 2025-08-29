@@ -8,9 +8,18 @@ if TYPE_CHECKING:
     from needle.backend_ndarray.ndarray import NDArray
     from needle.tensor import Tensor
 
-from numpy.typing import NDArray as NP_NDArray
+    try:
+        from numpy.typing import NDArray as NP_NDArray
 
-type np_ndarray = NP_NDArray
+        np_ndarray = NP_NDArray
+    except ImportError:
+        np_ndarray = object  # fallback if numpy is not installed
+
+else:
+    np_ndarray = object
+
+# from numpy.typing import NDArray as NP_NDArray
+# type np_ndarray = NP_NDArray
 
 
 type DType = str
