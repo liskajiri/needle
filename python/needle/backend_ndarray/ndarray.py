@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import math
+import random
 from functools import cached_property
 from typing import TYPE_CHECKING, override
 
@@ -31,189 +32,142 @@ logger = logging.getLogger(__name__)
 # TODO: reference hw3.ipynb for future optimizations
 # TODO: investigate usage of __slots__, Python's array.array for NDArray class
 
-if True:
 
-    class BackendDevice(AbstractBackend):
-        def __init__(
-            self, name: str, module: ModuleProtocol[NDArray] | None = None
-        ) -> None:
-            if module is None:
-                super().__init__(name, module, -1, -1)
-            else:
-                super().__init__(
-                    name,
-                    module,
-                    tile_size=module.__tile_size__,
-                    itemsize=module.itemsize,
-                )
+class BackendDevice(AbstractBackend):
+    # TODO: dtype?
 
-        @override
-        def randn(self, shape: Shape, dtype: DType = "float32") -> NDArray:
-            if isinstance(shape, int):
-                shape = (shape,)
-            return NDArray(np.random.randn(*shape).astype(dtype), device=self)
-
-        @override
-        def rand(self, shape: Shape, dtype: DType = "float32") -> NDArray:
-            if isinstance(shape, int):
-                shape = (shape,)
-            return NDArray(np.random.rand(*shape).astype(dtype), device=self)
-
-        @override
-        def one_hot(self, n: int, i: IndexType, dtype: DType) -> NDArray:
-            idx = np.asarray(i)
-            out = np.zeros((*idx.shape, n), dtype=dtype)
-
-            # Fill the hot positions efficiently
-            # (idx.size, n)
-            flat = out.reshape(-1, n)
-            flat[np.arange(idx.size), idx.ravel()] = 1
-
-            return NDArray(out, device=self)
-
-        @override
-        def zeros(self, shape: Shape, dtype: DType) -> NDArray:
-            arr = self.empty(shape, dtype=dtype)
-            arr.fill(0.0)
-            return arr
-
-        @override
-        def ones(self, shape: Shape, dtype: DType) -> NDArray:
-            arr = self.empty(shape, dtype=dtype)
-            arr.fill(1.0)
-            return arr
-
-        @override
-        def empty(self, shape: Shape, dtype: DType = "float32") -> NDArray:
-            return make(shape, device=self)
-
-        @override
-        def full(
-            self, shape: Shape, fill_value: Scalar, dtype: DType = "float32"
-        ) -> NDArray:
-            arr = self.empty(shape, dtype=dtype)
-            arr.fill(fill_value)
-            return arr
-
-        @staticmethod
-        def _tiled_matmul(
-            arr: NDArray, other: NDArray, m: int, n: int, p: int
-        ) -> NDArray:
-            def _tile(a: NDArray, tile: int) -> NDArray:
-                """
-                Transforms a matrix [k, n] into a
-                matrix [k // tile, n // tile, tile, tile].
-                """
-                return a.as_strided(
-                    (a.shape[0] // tile, a.shape[1] // tile, tile, tile),
-                    (a.shape[1] * tile, tile, a.shape[1], 1),
-                ).compact()
-
-            t = arr.device.__tile_size__
-            a = _tile(arr.compact(), t)
-            b = _tile(other.compact(), t)
-            out = make((a.shape[0], b.shape[1], t, t), device=arr.device)
-            arr.device.matmul_tiled(a._handle, b._handle, out._handle, m, n, p)
-
-            return (
-                out.permute((0, 2, 1, 3))
-                .compact()
-                .reshape((arr.shape[0], other.shape[1]))
+    def __init__(
+        self, name: str, module: ModuleProtocol[NDArray] | None = None
+    ) -> None:
+        if module is None:
+            super().__init__(name, module, -1, -1)
+        else:
+            super().__init__(
+                name,
+                module,
+                tile_size=module.__tile_size__,
+                itemsize=module.itemsize,
             )
 
-        def set_seed(self, seed: int | None = None):
-            if seed is not None:
-                np.random.seed(seed)
+    def randn(self, shape: Shape, dtype: DType = "float32") -> NDArray:
+        """
+        Generate random array from standard normal distribution
+        Uses native backend implementation when available, falls back to Python RNG.
+        """
+        if isinstance(shape, int):
+            shape = (shape,)
 
-else:
-    import random
+        size = (math.prod(shape),)
+        arr = self.empty(size, dtype=dtype)
 
-    class BackendDevice(AbstractBackend):
-        # TODO: dtype?
-        def randn(self, shape: Shape, dtype: DType = "float32") -> NDArray:
-            """
-            Generate random array from standard normal distribution
-            """
+        # Use native backend RNG if available
+        if self.enabled():
+            # backend.randn expects an AlignedArray/handle and fills it in-place
+            self.module.randn(arr._handle)
+        else:
+            # deterministic fallback for tests / platforms without native backend
             random.seed(0)
-
-            size = (math.prod(shape),)
-            arr = self.empty(size, dtype=dtype)
             for i in range(arr.size):
                 arr[i] = random.gauss(0.0, 1.0)
-            return arr.reshape(shape)
 
-        def rand(self, shape: Shape, dtype: DType = "float32") -> NDArray:
-            """
-            Generate random samples from uniform distribution [0,1).
-            """
+        return arr.reshape(shape)
+
+    def rand(self, shape: Shape, dtype: DType = "float32") -> NDArray:
+        """
+        Generate random samples from uniform distribution [0,1).
+        Uses native backend implementation when available, falls back to Python RNG.
+        """
+        if isinstance(shape, int):
+            shape = (shape,)
+
+        size = (math.prod(shape),)
+        arr = self.empty(size, dtype=dtype)
+
+        if self.enabled():
+            self.module.rand(arr._handle)
+        else:
             random.seed(0)
-
-            size = (math.prod(shape),)
-            arr = self.empty(size, dtype=dtype)
             for i in range(arr.size):
                 arr[i] = random.uniform(0.0, 1.0)
-            return arr.reshape(shape)
 
-        def one_hot(self, n: int, i: IndexType, dtype: DType) -> NDArray:
-            """Create a one-hot vector.
+        return arr.reshape(shape)
 
-            Args:
-                n (int): Length of the vector.
-                i (int): Index of the one-hot element.
-                dtype (DType): Data type of the array.
+    @override
+    def one_hot(self, n: int, i: IndexType, dtype: DType) -> NDArray:
+        if self.enabled():
+            # allocate output on device with shape (*idx.shape, n)
+            i = NDArray(i, device=self)
+            i_shape = (*i.shape, n)
+            out = make(i_shape, device=self)
 
-            Returns:
-                NDArray: A one-hot vector.
+            assert self.module is not None
+            self.module.one_hot(out._handle, i._handle, n)
+            return out
+        else:
+            raise NotImplementedError()
+
+        # # Fallback: pure-python / numpy implementation
+        # idx = np.asarray(i)
+        # out = np.zeros((*idx.shape, n), dtype=dtype)
+
+        # # Fill the hot positions efficiently
+        # # (idx.size, n)
+        # flat = out.reshape(-1, n)
+        # flat[np.arange(idx.size), idx.ravel()] = 1
+
+        # return NDArray(out, device=self)
+
+    # def one_hot(self, n: int, i: IndexType, dtype: DType) -> NDArray:
+    #     """Create a one-hot vector.
+
+    #     Args:
+    #         n (int): Length of the vector.
+    #         i (int): Index of the one-hot element.
+    #         dtype (DType): Data type of the array.
+
+    #     Returns:
+    #         NDArray: A one-hot vector.
+    #     """
+    #     arr = self.zeros((n,), dtype)
+    #     arr[i] = 1.0
+    #     return arr
+
+    @override
+    def empty(self, shape: Shape, dtype: DType = "float32") -> NDArray:
+        return make(shape, device=self)
+
+    @override
+    def set_seed(self, seed: int | None = None) -> None:
+        # Set Python RNGs
+        random.seed(seed)
+        if seed is not None:
+            np.random.seed(seed)
+        # Propagate seed to native backend if available
+        if seed is not None and self.enabled():
+            # backend.set_seed expects an unsigned int
+            self.module.set_seed(int(seed))
+
+    @staticmethod
+    def _tiled_matmul(arr: NDArray, other: NDArray, m: int, n: int, p: int) -> NDArray:
+        def _tile(a: NDArray, tile: int) -> NDArray:
             """
-            arr = self.zeros((n,), dtype)
-            arr[i] = 1.0
-            return arr
+            Transforms a matrix [k, n] into a
+            matrix [k // tile, n // tile, tile, tile].
+            """
+            return a.as_strided(
+                (a.shape[0] // tile, a.shape[1] // tile, tile, tile),
+                (a.shape[1] * tile, tile, a.shape[1], 1),
+            ).compact()
 
-        def zeros(self, shape: Shape, dtype: DType) -> NDArray:
-            arr = self.empty(shape, dtype=dtype)
-            arr.fill(0.0)
-            return arr
+        t = arr.device.__tile_size__
+        a = _tile(arr.compact(), t)
+        b = _tile(other.compact(), t)
+        out = make((a.shape[0], b.shape[1], t, t), device=arr.device)
+        arr.device.matmul_tiled(a._handle, b._handle, out._handle, m, n, p)
 
-        def ones(self, shape: Shape, dtype: DType) -> NDArray:
-            arr = self.empty(shape, dtype=dtype)
-            arr.fill(1.0)
-            return arr
-
-        def empty(self, shape: Shape, dtype: DType = "float32") -> NDArray:
-            return make(shape, device=self)
-
-        def full(
-            self, shape: Shape, fill_value: Scalar, dtype: DType = "float32"
-        ) -> NDArray:
-            arr = self.empty(shape, dtype=dtype)
-            arr.fill(fill_value)
-            return arr
-
-        @staticmethod
-        def _tiled_matmul(
-            arr: NDArray, other: NDArray, m: int, n: int, p: int
-        ) -> NDArray:
-            def _tile(a: NDArray, tile: int) -> NDArray:
-                """
-                Transforms a matrix [k, n] into a
-                matrix [k // tile, n // tile, tile, tile].
-                """
-                return a.as_strided(
-                    (a.shape[0] // tile, a.shape[1] // tile, tile, tile),
-                    (a.shape[1] * tile, tile, a.shape[1], 1),
-                ).compact()
-
-            t = arr.device.__tile_size__
-            a = _tile(arr.compact(), t)
-            b = _tile(other.compact(), t)
-            out = make((a.shape[0], b.shape[1], t, t), device=arr.device)
-            arr.device.matmul_tiled(a._handle, b._handle, out._handle, m, n, p)
-
-            return (
-                out.permute((0, 2, 1, 3))
-                .compact()
-                .reshape((arr.shape[0], other.shape[1]))
-            )
+        return (
+            out.permute((0, 2, 1, 3)).compact().reshape((arr.shape[0], other.shape[1]))
+        )
 
 
 def cuda() -> AbstractBackend:
