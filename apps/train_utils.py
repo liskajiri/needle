@@ -2,7 +2,6 @@ import logging
 from typing import NewType
 
 import needle as ndl
-import numpy as np
 from needle import nn
 
 try:
@@ -56,27 +55,34 @@ def epoch(
         tqdm(dataloader, desc=f"{mode} batch: ") if TQDM_AVAILABLE else dataloader  # type: ignore
     )
     for batch_idx, (x, y) in enumerate(progress_bar):
+        batch_size = y.shape[0]
+
         logits = model(x)
         loss = loss_fn(logits, y)
-
-        predictions = logits.numpy().argmax(axis=1)
-        batch_correct = np.count_nonzero(predictions == y.numpy())
-        batch_size = y.shape[0]
-        batch_acc = batch_correct / batch_size
-
-        total_correct += batch_correct
-        total_samples += batch_size
-        total_loss += loss.numpy() * batch_size
-
-        # Update progress bar with current metrics
-        avg_acc = total_correct / total_samples
-        curr_loss = (total_loss / total_samples).item()
 
         if opt:
             opt.zero_grad()
             # loss is a tensor
             loss.backward()
             opt.step()
+
+        predictions = logits.array().argmax(axis=1)
+        y = y.array()
+
+        batch_correct = 0
+        for i in range(batch_size):
+            if predictions[i].item() == y[i].item():
+                batch_correct += 1
+
+        batch_acc = batch_correct / batch_size
+
+        total_correct += batch_correct
+        total_samples += batch_size
+        total_loss += loss.array().item() * batch_size
+
+        # Update progress bar with current metrics
+        avg_acc = total_correct / total_samples
+        curr_loss = total_loss / total_samples
 
         if TQDM_AVAILABLE:
             progress_bar.set_postfix(

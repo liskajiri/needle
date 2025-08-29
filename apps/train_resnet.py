@@ -24,7 +24,7 @@ def parse_args() -> argparse.Namespace:
         help="Dataset to use (default: cifar10)",
     )
     parser.add_argument(
-        "--batch-size",
+        "--batch_size",
         type=int,
         default=512,
         help="Batch size for training (default: 10)",

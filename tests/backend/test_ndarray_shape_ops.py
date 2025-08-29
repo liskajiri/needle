@@ -48,7 +48,7 @@ def test_array_creation(data: np.ndarray, device: Any) -> None:
 def test_fill(data: np.ndarray, scalar: float, device: Any) -> None:
     """Test array fill operation."""
     arr_nd = ndl.array(data, device=device)
-    arr_nd.fill(scalar)
+    arr_nd._fill(scalar)
 
     expected = np.full_like(data, scalar)
     np.testing.assert_allclose(arr_nd.numpy(), expected, atol=1e-5, rtol=1e-5)

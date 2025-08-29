@@ -56,7 +56,7 @@ class LanguageModel(nn.Module):
             dtype=dtype,
         )
 
-    def forward(self, x: Tensor, h: Tensor | None = None) -> Tensor:
+    def forward(self, x: Tensor, h: Tensor | None = None) -> tuple[Tensor, Tensor]:
         """
         Given sequence (and the previous hidden state if given),
         returns probabilities of next word

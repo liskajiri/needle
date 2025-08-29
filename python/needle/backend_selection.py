@@ -59,12 +59,12 @@ def set_backend(backend_name: str) -> None:
 
     # Only reload if backend has changed
     if _loaded_backend != backend:
-        # TODO: this is temporary to avoid type checking issues
-        if True:
+        if backend == BACKENDS.NEEDLE:
             logging.info("Using needle backend")
             import needle.backend_ndarray.array_api as array_api
-            from needle.backend_ndarray.ndarray import BackendDevice as Device
-            from needle.backend_ndarray.ndarray import NDArray, all_devices, cpu, cuda
+            from needle.backend_ndarray.backend import BackendDevice as Device
+            from needle.backend_ndarray.backend import all_devices, cpu, cuda
+            from needle.backend_ndarray.ndarray import NDArray
 
             default_device = cpu()
 

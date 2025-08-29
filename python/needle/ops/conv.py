@@ -48,7 +48,7 @@ class Conv(TensorOp):
         win_strides = (s_n, out_h_stride, out_w_stride, s_h, s_w, s_c)
 
         # Build and return the view. We only read from the view, so the overlap is ok.
-        windows = img.as_strided(shape=win_shape, strides=win_strides)
+        windows = img._as_strided(shape=win_shape, strides=win_strides)
         return windows
 
     @staticmethod

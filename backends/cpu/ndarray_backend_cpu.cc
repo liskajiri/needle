@@ -4,7 +4,9 @@ module;
 #include <nanobind/ndarray.h>
 
 #include <algorithm>
+#include <cstdint>
 #include <memory>
+#include <random>
 
 import ndarray;
 import elementwise;
@@ -19,6 +21,8 @@ export module ndarray_backend_cpu;
 
 // TODO: Dtypes in nanobind:
 // https://nanobind.readthedocs.io/en/latest/ndarray.html#ndarray-nonstandard
+
+static std::mt19937 cpu_rng(std::random_device{}());
 
 NB_MODULE(ndarray_backend_cpu, m) {
     namespace nb = nanobind;
@@ -114,8 +118,48 @@ NB_MODULE(ndarray_backend_cpu, m) {
         },
         nb::rv_policy::take_ownership, nb::keep_alive<2, 1>());
 
+    // one_hot: fill an aligned output array with one-hot rows for provided
+    // indices out: preallocated AlignedArray with size = count * n where count
+    // = indices.size() indices are provided as an AlignedArray of scalar_t
+    // (float) but represent integer indices; we cast to int when indexing.
+    m.def("one_hot", [](AlignedArray *out, AlignedArray *indices, size_t n) {
+        // zero output
+        for (size_t i = 0; i < out->size; ++i) {
+            out->ptr[i] = (scalar_t)0;
+        }
+        const size_t count = indices->size;
+        // Obtain pointer to indices data (stored as scalar_t)
+        const scalar_t *idx_ptr = indices->ptr;
+        for (size_t k = 0; k < count; ++k) {
+            int32_t v = static_cast<int32_t>(idx_ptr[k]);
+            if (v < 0 || (size_t)v >= n) {
+                continue;
+            }
+            out->ptr[k * n + (size_t)v] = (scalar_t)1;
+        }
+    });
+
     m.def("fill", Fill);
     m.def("compact", Compact);
+
+    // Random number generation: uniform [0,1)
+    m.def("rand", [](AlignedArray *out) {
+        std::uniform_real_distribution<scalar_t> dist(0.0f, 1.0f);
+        for (size_t i = 0; i < out->size; ++i) {
+            out->ptr[i] = dist(cpu_rng);
+        }
+    });
+
+    // Random number generation: standard normal (0,1)
+    m.def("randn", [](AlignedArray *out) {
+        std::normal_distribution<scalar_t> dist(0.0f, 1.0f);
+        for (size_t i = 0; i < out->size; ++i) {
+            out->ptr[i] = dist(cpu_rng);
+        }
+    });
+
+    // Seed the CPU RNG
+    m.def("set_seed", [](unsigned int seed) { cpu_rng.seed(seed); });
 
     m.def("ewise_setitem", EwiseSetitem);
     m.def("ewise_add", EwiseAdd);
@@ -142,6 +186,7 @@ NB_MODULE(ndarray_backend_cpu, m) {
     m.def("matmul_tiled", MatmulTiled);
 
     m.def("reduce_max", ReduceMax);
+    m.def("reduce_argmax", ReduceArgmax);
     m.def("reduce_sum", ReduceSum);
     m.def("scalar_item", ScalarItem);
 }

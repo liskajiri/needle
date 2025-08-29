@@ -32,7 +32,7 @@ class Tensor(Value):
                 cached_data = array.realize_cached_data()
             else:
                 # fall back, copy through numpy conversion
-                cached_data = array_api.array(array.numpy(), device=device, dtype=dtype)
+                cached_data = array_api.array(array, device=device, dtype=dtype)
         elif isinstance(array, NDArray):
             cached_data = array
         else:
@@ -89,6 +89,9 @@ class Tensor(Value):
 
     def __str__(self) -> str:
         return self.realize_cached_data().__str__()
+
+    def array(self) -> NDArray:
+        return self.realize_cached_data()
 
     def numpy(self) -> np_ndarray:
         return self.realize_cached_data().numpy()

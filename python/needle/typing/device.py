@@ -26,6 +26,9 @@ class AbstractBackend(ABC):
         self.name = name
         # A module that implements the backend.
         self.module = module
+        if module is None:
+            tile_size, itemsize = -1, -1
+
         self.__tile_size__ = tile_size
         self.itemsize = itemsize
 
@@ -62,20 +65,29 @@ class AbstractBackend(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def zeros(self, shape: Shape, dtype: DType) -> NDArray:
-        raise NotImplementedError
-
-    @abstractmethod
-    def ones(self, shape: Shape, dtype: DType) -> NDArray:
-        raise NotImplementedError
-
-    @abstractmethod
     def empty(self, shape: Shape, dtype: DType) -> NDArray:
         raise NotImplementedError
 
     @abstractmethod
-    def full(self, shape: Shape, fill_value: Scalar, dtype: DType) -> NDArray:
+    def set_seed(self, seed: int | None = None) -> None:
         raise NotImplementedError
+
+    def zeros(self, shape: Shape, dtype: DType) -> NDArray:
+        arr = self.empty(shape, dtype=dtype)
+        arr._fill(0.0)
+        return arr
+
+    def ones(self, shape: Shape, dtype: DType) -> NDArray:
+        arr = self.empty(shape, dtype=dtype)
+        arr._fill(1.0)
+        return arr
+
+    def full(
+        self, shape: Shape, fill_value: Scalar, dtype: DType = "float32"
+    ) -> NDArray:
+        arr = self.empty(shape, dtype=dtype)
+        arr._fill(fill_value)
+        return arr
 
 
 @runtime_checkable
@@ -136,6 +148,13 @@ class ModuleProtocol[T](Protocol):
     # Reduction operations
     def reduce_sum(self, a: T, out: T, size: int) -> None: ...
     def reduce_max(self, a: T, out: T, size: int) -> None: ...
+    def reduce_argmax(self, a: T, out: T, size: int) -> None: ...
+
+    # Random number generation (fill 'out' buffer in-place)
+    def rand(self, out: T) -> None: ...
+    def randn(self, out: T) -> None: ...
+    def set_seed(self, seed: int) -> None: ...
+    def one_hot(self, n: int, i: T, dtype: DType) -> T: ...
 
 
 class NDArrayBackendProtocol(Protocol):

@@ -8,10 +8,16 @@ if TYPE_CHECKING:
     from needle.backend_ndarray.ndarray import NDArray
     from needle.tensor import Tensor
 
-from numpy.typing import NDArray as NP_NDArray
+    try:
+        from numpy.typing import NDArray as NP_NDArray
 
-type np_ndarray = NP_NDArray
+        np_ndarray = NP_NDArray
+    except ImportError:
+        # fallback if numpy is not installed
+        np_ndarray = object
 
+else:
+    np_ndarray = object
 
 type DType = str
 type Scalar = float | int

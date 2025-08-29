@@ -5,10 +5,16 @@ when using numpy as NDArray backend.
 
 from __future__ import annotations
 
+try:
+    import numpy as np
+except ImportError as e:
+    raise ImportError(
+        "The numpy backend requires numpy to be installed. "
+        "Please install numpy to use this backend."
+    ) from e
+
 import sys
 from typing import TYPE_CHECKING
-
-import numpy as np
 
 from needle.typing.device import AbstractBackend
 
@@ -44,6 +50,9 @@ def to_numpy(a, shape, strides, offset) -> NDArray:
 
 
 class NumpyBackend(AbstractBackend):
+    __tile_size__ = 1
+    itemsize = _datetype_size
+
     def randn(self, shape: Shape, dtype: DType = "float32") -> NDArray:
         return np.random.randn(*shape)
 
@@ -64,6 +73,10 @@ class NumpyBackend(AbstractBackend):
 
     def full(self, shape: Shape, fill_value: Scalar, dtype: DType) -> NDArray:
         return np.full(shape, fill_value, dtype=dtype)
+
+    def set_seed(self, seed: int | None = None) -> None:
+        if seed is not None:
+            np.random.seed(seed)
 
 
 # Devices

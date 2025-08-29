@@ -172,7 +172,7 @@ def one_hot(
     """
     assert isinstance(i, Tensor), "Input must be a Tensor"
     return Tensor(
-        device.one_hot(n, i.numpy().astype("int32"), dtype=dtype),
+        device.one_hot(n, i.realize_cached_data(), dtype=dtype),
         device=device,
         requires_grad=requires_grad,
     )

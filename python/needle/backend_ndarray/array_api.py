@@ -4,7 +4,9 @@ import itertools
 import logging
 from typing import TYPE_CHECKING
 
-from needle.backend_ndarray.ndarray import NDArray, cpu, cuda, default_device, make
+from needle.backend_ndarray.backend import cpu, cuda, default_device, make
+from needle.backend_ndarray.ndarray import NDArray
+from needle.errors import BroadcastError
 from needle.typing.dlpack import DLPackDeviceType
 
 if TYPE_CHECKING:
@@ -95,6 +97,28 @@ def max(array: NDArray, axis: Axis | None = None, keepdims: bool = False) -> NDA
     return array.max(axis=axis, keepdims=keepdims)
 
 
+def argmax(array: NDArray, axis: Axis | None = None, keepdims: bool = False) -> NDArray:
+    """
+    Returns the indices of the maximum values along an axis.
+
+    Parameters
+    ----------
+    array : NDArray
+        Input array.
+    axis : Axis | None, optional
+        Axis along which to find the maximum values.
+        If None, the flattened array is used.
+    keepdims : bool, optional
+        If True, the reduced dimensions are retained with length 1.
+
+    Returns
+    -------
+    NDArray
+        Indices of the maximum values along the specified axis.
+    """
+    return array.argmax(axis=axis, keepdims=keepdims)
+
+
 def min(array: NDArray, axis: Axis | None = None, keepdims: bool = False) -> NDArray:
     """
     Compute the minimum value of the array along the specified axis.
@@ -109,15 +133,12 @@ def min(array: NDArray, axis: Axis | None = None, keepdims: bool = False) -> NDA
 
     Example:
         >>> import needle as ndl
-        >>> import numpy as np
-        >>> a = ndl.NDArray(np.array([[1, 2], [3, 4]]))
+        >>> a = ndl.NDArray([[1, 2], [3, 4]])
         >>> ndl.array_api.min(a, axis=0)
         [1. 2.]
         >>> ndl.array_api.min(a, axis=1)
         [1. 3.]
-        >>> ndl.array_api.min(
-        ...     a, axis=None
-        ... )  # TODO: this should be a scalar, not ndarray
+        >>> ndl.array_api.min(a, axis=None)
         [1.]
         >>> ndl.array_api.min(a, axis=0, keepdims=True)
         [[1. 2.]]
@@ -222,8 +243,7 @@ def pad(a: NDArray, axes: tuple[tuple[int, int], ...]) -> NDArray:
         ValueError: If padding axes do not match array dimensions
 
     >>> import needle as ndl
-    >>> import numpy as np
-    >>> a = NDArray(np.array([[1, 2], [3, 4]]))
+    >>> a = NDArray([[1, 2], [3, 4]])
     >>> print(ndl.array_api.pad(a, ((1, 1), (1, 1))))
     [[0. 0. 0. 0.]
      [0. 1. 2. 0.]
@@ -429,4 +449,59 @@ def _as_strided(array: NDArray, shape: Shape, strides: Strides) -> NDArray:
         (2, 2)
     """
     elem_strides = tuple(s // array.device.itemsize for s in strides)
-    return array.as_strided(shape, elem_strides)
+    return array._as_strided(shape, elem_strides)
+
+
+def broadcast_shapes(*shapes: Shape) -> Shape:
+    """
+    Return broadcasted shape for multiple input shapes.
+
+    Broadcasting rules (numpy-style):
+        1. Start with the trailing (rightmost) dimensions and continue left.
+        2. Two dimensions are compatible when:
+           - They are equal
+           - One of them is 1
+
+    Args:
+        *shapes: one or more shapes as tuples
+
+    Returns:
+        tuple: broadcast-compatible shape
+
+    Raises:
+        BroadcastError: If shapes cannot be broadcast together
+
+
+    Examples:
+        >>> broadcast_shapes((2, 3), (1, 3))
+        (2, 3)
+        >>> broadcast_shapes((2, 3), (3,))
+        (2, 3)
+        >>> broadcast_shapes((8, 1, 6, 1), (7, 1, 5), (8, 7, 6, 5))
+        (8, 7, 6, 5)
+        >>> broadcast_shapes((2, 3), (2, 4))
+        Traceback (most recent call last):
+        ...
+        BroadcastError: Incompatible shapes for broadcasting: ((2, 3), (2, 4))
+    """
+    # If only one shape provided, return it
+    if len(shapes) == 1:
+        return shapes[0]
+
+    # import standard python max
+    from builtins import max as py_max
+
+    max_dims = py_max(len(shape) for shape in shapes)
+    # Left-pad shorter shapes with 1s to align dimensions
+    aligned_shapes = [(1,) * (max_dims - len(s)) + s for s in shapes]
+
+    # Determine output dimension for each position
+    result = []
+    for dims in zip(*aligned_shapes, strict=False):
+        max_dim = py_max(dims)
+        for d in dims:
+            if d != 1 and d != max_dim:
+                raise BroadcastError(shapes)
+        result.append(max_dim)
+
+    return tuple(result)
