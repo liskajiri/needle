@@ -2,6 +2,7 @@ import needle.backend_ndarray.array_api as array_api
 from needle.backend_ndarray.array_api import (
     _as_strided,
     array,
+    broadcast_shapes,
     broadcast_to,
     concatenate,
     empty,
@@ -33,7 +34,6 @@ from needle.backend_ndarray.backend import (
 )
 from needle.backend_ndarray.ndarray import (
     NDArray,
-    broadcast_shapes,
 )
 
 __all__ = [

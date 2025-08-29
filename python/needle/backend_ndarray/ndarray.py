@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
+import needle.backend_ndarray.array_api as array_api
 from needle.backend_ndarray.backend import default_device, make
 from needle.errors import BroadcastError
 from needle.typing import AbstractBackend
@@ -33,56 +34,17 @@ logger = logging.getLogger(__name__)
 # TODO: investigate usage of __slots__, Python's array.array for NDArray class
 
 
-def broadcast_shapes(*shapes: Shape) -> Shape:
+def _is_numpy_array(obj: object) -> bool:
     """
-    Return broadcasted shape for multiple input shapes.
-
-    Broadcasting rules (numpy-style):
-        1. Start with the trailing (rightmost) dimensions and continue left.
-        2. Two dimensions are compatible when:
-           - They are equal
-           - One of them is 1
+    Check if the object is a NumPy ndarray without importing numpy globally.
 
     Args:
-        *shapes: one or more shapes as tuples
+        obj (object): Object to check.
 
     Returns:
-        tuple: broadcast-compatible shape
-
-    Raises:
-        BroadcastError: If shapes cannot be broadcast together
-
-
-    Examples:
-        >>> broadcast_shapes((2, 3), (1, 3))
-        (2, 3)
-        >>> broadcast_shapes((2, 3), (3,))
-        (2, 3)
-        >>> broadcast_shapes((8, 1, 6, 1), (7, 1, 5), (8, 7, 6, 5))
-        (8, 7, 6, 5)
-        >>> broadcast_shapes((2, 3), (2, 4))
-        Traceback (most recent call last):
-        ...
-        BroadcastError: Incompatible shapes for broadcasting: ((2, 3), (2, 4))
+        bool: True if obj is a NumPy ndarray, False otherwise.
     """
-    # If only one shape provided, return it
-    if len(shapes) == 1:
-        return shapes[0]
-
-    max_dims = max(len(shape) for shape in shapes)
-    # Left-pad shorter shapes with 1s to align dimensions
-    aligned_shapes = [(1,) * (max_dims - len(s)) + s for s in shapes]
-
-    # Determine output dimension for each position
-    result = []
-    for dims in zip(*aligned_shapes, strict=False):
-        max_dim = max(dims)
-        for d in dims:
-            if d != 1 and d != max_dim:
-                raise BroadcastError(shapes)
-        result.append(max_dim)
-
-    return tuple(result)
+    return type(obj).__module__ == "numpy" and type(obj).__name__ == "ndarray"
 
 
 class NDArray:  # noqa: PLR0904 = too many public methods
@@ -158,7 +120,8 @@ class NDArray:  # noqa: PLR0904 = too many public methods
                 )
             # create a copy
             array = other.to(device) + 0.0
-        elif isinstance(other, np.ndarray):
+        elif _is_numpy_array(other):
+            # elif isinstance(other, np.ndarray):
             array = make(other.shape, device=device)
             array.device.from_numpy(other, array._handle)
         # TODO: from_tuple
@@ -938,7 +901,7 @@ class NDArray:  # noqa: PLR0904 = too many public methods
         """
 
         # Indexing with an Array
-        if isinstance(idxs, list | NDArray | np.ndarray):
+        if isinstance(idxs, list | NDArray) or _is_numpy_array(idxs):
             # Convert to NDArray if needed
             if not isinstance(idxs, NDArray):
                 idxs = NDArray(idxs, device=self.device)  # type: ignore
@@ -994,7 +957,8 @@ class NDArray:  # noqa: PLR0904 = too many public methods
              [3. 7.]]
         """
         view = self.__getitem__(idxs)
-        if isinstance(other, np.ndarray):
+        if _is_numpy_array(other):
+            # if isinstance(other, np.ndarray):
             other = NDArray(other, device=self.device)
 
         if isinstance(other, NDArray):
@@ -1097,7 +1061,7 @@ class NDArray:  # noqa: PLR0904 = too many public methods
         if isinstance(other, NDArray):
             if other.shape != self.shape:
                 # Broadcast to the larger shape
-                larger_shape = broadcast_shapes(self.shape, other.shape)
+                larger_shape = array_api.broadcast_shapes(self.shape, other.shape)
                 other = other.broadcast_to(larger_shape)
                 self = self.broadcast_to(larger_shape)
 
@@ -1107,7 +1071,8 @@ class NDArray:  # noqa: PLR0904 = too many public methods
         elif isinstance(other, float | int):
             out = make(self.shape, device=self.device)
             scalar_func(self.compact()._handle, other, out._handle)
-        elif isinstance(other, np.ndarray):
+        elif _is_numpy_array(other):
+            # elif isinstance(other, np.ndarray):
             return self.ewise_or_scalar(
                 NDArray(other, device=self.device), ewise_func, scalar_func
             )
@@ -1248,7 +1213,7 @@ class NDArray:  # noqa: PLR0904 = too many public methods
         a_batch_shape = self.shape[:-2] if self.ndim > 2 else (1,)
         b_batch_shape = other.shape[:-2] if other.ndim > 2 else (1,)
 
-        batch_shape = broadcast_shapes(a_batch_shape, b_batch_shape)
+        batch_shape = array_api.broadcast_shapes(a_batch_shape, b_batch_shape)
         batch_size = math.prod(batch_shape)
 
         # broadcast shapes of axis
