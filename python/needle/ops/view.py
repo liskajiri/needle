@@ -215,7 +215,7 @@ class GetItem(TensorOp):
     def _convert_to_numpy(self, index: IndexType) -> IndexType | tuple:
         """Convert tensor indices to numpy arrays for indexing"""
         if isinstance(index, (Tensor | NDArray)):
-            return index.numpy()
+            return index
         if isinstance(index, tuple):
             return tuple(self._convert_to_numpy(idx) for idx in index)
         return index

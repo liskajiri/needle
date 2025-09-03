@@ -2,11 +2,12 @@ from __future__ import annotations
 
 import logging
 import math
+from collections.abc import Iterable
 from functools import cached_property
-from typing import TYPE_CHECKING, override
+from typing import TYPE_CHECKING
 
-import numpy as np
-
+import needle.backend_ndarray.array_api as array_api
+from needle.backend_ndarray.backend import default_device, make
 from needle.errors import BroadcastError
 from needle.typing import AbstractBackend
 
@@ -23,7 +24,7 @@ if TYPE_CHECKING:
         Strides,
         np_ndarray,
     )
-    from needle.typing.device import ModuleProtocol, NDArrayBackendProtocol
+    from needle.typing.device import NDArrayBackendProtocol
     from needle.typing.dlpack import DLPackDeviceId, DLPackDeviceType
 
 logger = logging.getLogger(__name__)
@@ -31,374 +32,27 @@ logger = logging.getLogger(__name__)
 # TODO: reference hw3.ipynb for future optimizations
 # TODO: investigate usage of __slots__, Python's array.array for NDArray class
 
-if True:
 
-    class BackendDevice(AbstractBackend):
-        def __init__(
-            self, name: str, module: ModuleProtocol[NDArray] | None = None
-        ) -> None:
-            if module is None:
-                super().__init__(name, module, -1, -1)
-            else:
-                super().__init__(
-                    name,
-                    module,
-                    tile_size=module.__tile_size__,
-                    itemsize=module.itemsize,
-                )
-
-        @override
-        def randn(self, shape: Shape, dtype: DType = "float32") -> NDArray:
-            if isinstance(shape, int):
-                shape = (shape,)
-            return NDArray(np.random.randn(*shape).astype(dtype), device=self)
-
-        @override
-        def rand(self, shape: Shape, dtype: DType = "float32") -> NDArray:
-            if isinstance(shape, int):
-                shape = (shape,)
-            return NDArray(np.random.rand(*shape).astype(dtype), device=self)
-
-        @override
-        def one_hot(self, n: int, i: IndexType, dtype: DType) -> NDArray:
-            idx = np.asarray(i)
-            out = np.zeros((*idx.shape, n), dtype=dtype)
-
-            # Fill the hot positions efficiently
-            # (idx.size, n)
-            flat = out.reshape(-1, n)
-            flat[np.arange(idx.size), idx.ravel()] = 1
-
-            return NDArray(out, device=self)
-
-        @override
-        def zeros(self, shape: Shape, dtype: DType) -> NDArray:
-            arr = self.empty(shape, dtype=dtype)
-            arr.fill(0.0)
-            return arr
-
-        @override
-        def ones(self, shape: Shape, dtype: DType) -> NDArray:
-            arr = self.empty(shape, dtype=dtype)
-            arr.fill(1.0)
-            return arr
-
-        @override
-        def empty(self, shape: Shape, dtype: DType = "float32") -> NDArray:
-            return make(shape, device=self)
-
-        @override
-        def full(
-            self, shape: Shape, fill_value: Scalar, dtype: DType = "float32"
-        ) -> NDArray:
-            arr = self.empty(shape, dtype=dtype)
-            arr.fill(fill_value)
-            return arr
-
-        @staticmethod
-        def _tiled_matmul(
-            arr: NDArray, other: NDArray, m: int, n: int, p: int
-        ) -> NDArray:
-            def _tile(a: NDArray, tile: int) -> NDArray:
-                """
-                Transforms a matrix [k, n] into a
-                matrix [k // tile, n // tile, tile, tile].
-                """
-                return a.as_strided(
-                    (a.shape[0] // tile, a.shape[1] // tile, tile, tile),
-                    (a.shape[1] * tile, tile, a.shape[1], 1),
-                ).compact()
-
-            t = arr.device.__tile_size__
-            a = _tile(arr.compact(), t)
-            b = _tile(other.compact(), t)
-            out = make((a.shape[0], b.shape[1], t, t), device=arr.device)
-            arr.device.matmul_tiled(a._handle, b._handle, out._handle, m, n, p)
-
-            return (
-                out.permute((0, 2, 1, 3))
-                .compact()
-                .reshape((arr.shape[0], other.shape[1]))
-            )
-
-        def set_seed(self, seed: int | None = None):
-            if seed is not None:
-                np.random.seed(seed)
-
-else:
-    import random
-
-    class BackendDevice(AbstractBackend):
-        # TODO: dtype?
-        def randn(self, shape: Shape, dtype: DType = "float32") -> NDArray:
-            """
-            Generate random array from standard normal distribution
-            """
-            random.seed(0)
-
-            size = (math.prod(shape),)
-            arr = self.empty(size, dtype=dtype)
-            for i in range(arr.size):
-                arr[i] = random.gauss(0.0, 1.0)
-            return arr.reshape(shape)
-
-        def rand(self, shape: Shape, dtype: DType = "float32") -> NDArray:
-            """
-            Generate random samples from uniform distribution [0,1).
-            """
-            random.seed(0)
-
-            size = (math.prod(shape),)
-            arr = self.empty(size, dtype=dtype)
-            for i in range(arr.size):
-                arr[i] = random.uniform(0.0, 1.0)
-            return arr.reshape(shape)
-
-        def one_hot(self, n: int, i: IndexType, dtype: DType) -> NDArray:
-            """Create a one-hot vector.
-
-            Args:
-                n (int): Length of the vector.
-                i (int): Index of the one-hot element.
-                dtype (DType): Data type of the array.
-
-            Returns:
-                NDArray: A one-hot vector.
-            """
-            arr = self.zeros((n,), dtype)
-            arr[i] = 1.0
-            return arr
-
-        def zeros(self, shape: Shape, dtype: DType) -> NDArray:
-            arr = self.empty(shape, dtype=dtype)
-            arr.fill(0.0)
-            return arr
-
-        def ones(self, shape: Shape, dtype: DType) -> NDArray:
-            arr = self.empty(shape, dtype=dtype)
-            arr.fill(1.0)
-            return arr
-
-        def empty(self, shape: Shape, dtype: DType = "float32") -> NDArray:
-            return make(shape, device=self)
-
-        def full(
-            self, shape: Shape, fill_value: Scalar, dtype: DType = "float32"
-        ) -> NDArray:
-            arr = self.empty(shape, dtype=dtype)
-            arr.fill(fill_value)
-            return arr
-
-        @staticmethod
-        def _tiled_matmul(
-            arr: NDArray, other: NDArray, m: int, n: int, p: int
-        ) -> NDArray:
-            def _tile(a: NDArray, tile: int) -> NDArray:
-                """
-                Transforms a matrix [k, n] into a
-                matrix [k // tile, n // tile, tile, tile].
-                """
-                return a.as_strided(
-                    (a.shape[0] // tile, a.shape[1] // tile, tile, tile),
-                    (a.shape[1] * tile, tile, a.shape[1], 1),
-                ).compact()
-
-            t = arr.device.__tile_size__
-            a = _tile(arr.compact(), t)
-            b = _tile(other.compact(), t)
-            out = make((a.shape[0], b.shape[1], t, t), device=arr.device)
-            arr.device.matmul_tiled(a._handle, b._handle, out._handle, m, n, p)
-
-            return (
-                out.permute((0, 2, 1, 3))
-                .compact()
-                .reshape((arr.shape[0], other.shape[1]))
-            )
-
-
-def cuda() -> AbstractBackend:
-    """Return cuda device."""
-    try:
-        from needle.backend_ndarray import ndarray_backend_cuda  # type: ignore
-
-        return BackendDevice("cuda", ndarray_backend_cuda)
-    except ImportError:
-        return BackendDevice("cuda", None)
-
-
-def cpu_numpy() -> AbstractBackend:
-    """Return numpy device."""
-    try:
-        from needle import backend_numpy
-        from needle.backend_numpy import NumpyBackend
-
-        return NumpyBackend("cpu_numpy", backend_numpy)  # type: ignore
-    except ImportError:
-        raise ImportError("Numpy backend not available")
-
-
-def cpu() -> AbstractBackend:
-    """Return cpu device."""
-    try:
-        from backends.cpu import ndarray_backend_cpu  # type: ignore
-        # import ndarray_backend_cpu
-
-        return BackendDevice("cpu", ndarray_backend_cpu)  # type: ignore
-    except ImportError:
-        raise ImportError("CPU backend not available")
-
-
-def all_devices() -> list[AbstractBackend]:
-    """Return a list of all available devices."""
-    return [cpu(), cuda(), cpu_numpy()]
-
-
-default_device = cpu()
-
-
-def make(
-    shape: Shape,
-    strides: Strides | None = None,
-    device: AbstractBackend = default_device,
-    handle: NDArrayBackendProtocol | None = None,
-    offset: int = 0,
-) -> NDArray:
+def _is_numpy_array(obj: object) -> bool:
     """
-    Create a new NDArray with the given properties.
-    Allocates a new array if handle is not provided.
+    Check if the object is a NumPy ndarray without importing numpy globally.
 
     Args:
-        shape: Tuple specifying dimensions of the array
-        strides: Optional tuple specifying stride for each dimension
-        device: Device backend for the array (defaults to CPU)
-        handle: Existing handle to use for memory (allocates new if None)
-        offset: Memory offset for the array (default: 0)
+        obj (object): Object to check.
 
     Returns:
-        NDArray: New array with requested properties
-
-    Raises:
-        ValueError: If shape contains invalid dimensions
-
-    Examples:
-        >>> make((2, 3)).shape
-        (2, 3)
-        >>> make((2, 3), strides=(1, 2)).strides
-        (1, 2)
-        >>> make((2, 3), strides=(1, 2))._offset
-        0
-        >>> make((2, 3), strides=(1, 2), offset=5)._offset
-        5
-        >>> make((2, 3), strides=(1, 2), device=cpu()).device
-        cpu()
+        bool: True if obj is a NumPy ndarray, False otherwise.
     """
-
-    def prod(shape: Shape) -> int:
-        """Calculate product of shape tuple, handling nested tuples."""
-        result = 1
-        for dim in shape:
-            if isinstance(dim, tuple):
-                result *= prod(dim)
-            else:
-                result *= dim
-        return result
-
-    array = NDArray.__new__(NDArray)
-    array._shape = shape
-    array._strides = NDArray.compact_strides(shape) if strides is None else strides
-    array._offset = offset
-    array._device = device
-
-    array_size = prod(shape)
-    if handle is None:
-        if array_size < 0:
-            raise ValueError(f"Array size cannot be negative, Invalid shape: {shape}")
-        array._handle = array.device.Array(array_size)
-    else:
-        array._handle = handle
-    return array
+    return type(obj).__module__ == "numpy" and type(obj).__name__ == "ndarray"
 
 
-def broadcast_shapes(*shapes: Shape) -> Shape:
-    """
-    Return broadcasted shape for multiple input shapes.
-
-    Broadcasting rules (numpy-style):
-        1. Start with the trailing (rightmost) dimensions and continue left.
-        2. Two dimensions are compatible when:
-           - They are equal
-           - One of them is 1
-
-    Args:
-        *shapes: one or more shapes as tuples
-
-    Returns:
-        tuple: broadcast-compatible shape
-
-    Raises:
-        BroadcastError: If shapes cannot be broadcast together
-
-
-    Examples:
-        >>> broadcast_shapes((2, 3), (1, 3))
-        (2, 3)
-        >>> broadcast_shapes((2, 3), (3,))
-        (2, 3)
-        >>> broadcast_shapes((8, 1, 6, 1), (7, 1, 5), (8, 7, 6, 5))
-        (8, 7, 6, 5)
-        >>> broadcast_shapes((2, 3), (2, 4))
-        Traceback (most recent call last):
-        ...
-        BroadcastError: Incompatible shapes for broadcasting: ((2, 3), (2, 4))
-    """
-    # If only one shape provided, return it
-    if len(shapes) == 1:
-        return shapes[0]
-
-    max_dims = max(len(shape) for shape in shapes)
-    # Left-pad shorter shapes with 1s to align dimensions
-    aligned_shapes = [(1,) * (max_dims - len(s)) + s for s in shapes]
-
-    # Determine output dimension for each position
-    result = []
-    for dims in zip(*aligned_shapes, strict=False):
-        max_dim = max(dims)
-        for d in dims:
-            if d != 1 and d != max_dim:
-                raise BroadcastError(shapes)
-        result.append(max_dim)
-
-    return tuple(result)
-
-
-class NDArray:  # noqa: PLR0904 = too many public methods
+class NDArray:
     """
     A generic ND array class that may contain multiple different backends
     i.e., a Numpy backend, a native CPU backend, or a GPU backend.
 
-    For now, for simplicity the class only supports float32 types.
+    For now the class only supports float32 types.
 
-    # TODO: Create array from list, tuple, or scalar
-    Examples:
-        >>> # Create from Python list
-        >>> arr = NDArray([[1, 2], [3, 4]])
-        >>> arr.shape
-        (2, 2)
-        >>> arr.ndim
-        2
-        >>> arr.size
-        4
-
-        >>> # Create from numpy array
-        >>> import numpy as np
-        >>> arr = NDArray(np.zeros((3, 2)))
-        >>> arr.shape
-        (3, 2)
-
-        >>> # Create copy on specific device
-        >>> cpu_arr = NDArray([1, 2, 3], device=cpu())
-        >>> cpu_arr.device
-        cpu()
     """
 
     def __init__(
@@ -434,6 +88,22 @@ class NDArray:  # noqa: PLR0904 = too many public methods
         2
         >>> arr.size
         4
+
+        >>> from needle.backend_selection import cpu
+        >>> # Create copy on specific device
+        >>> cpu_arr = NDArray([1, 2, 3], device=cpu())
+        >>> cpu_arr.device
+        cpu()
+
+        >>> # Create from numpy array
+        >>> import numpy as np  # doctest: +SKIP
+        >>> arr = NDArray(np.zeros((3, 2)))  # doctest: +SKIP
+        >>> arr.shape  # doctest: +SKIP
+        (3, 2)
+
+        >>> arr = NDArray([()])
+        >>> arr
+        [[]]
         """
         if isinstance(other, NDArray):
             # Create a copy of existing NDArray
@@ -441,32 +111,41 @@ class NDArray:  # noqa: PLR0904 = too many public methods
                 logger.error(
                     f"Creating NDArray with different device {device} != {other.device}"
                 )
-            # create a copy
             array = other.to(device) + 0.0
-        elif isinstance(other, np.ndarray):
-            array = make(other.shape, device=device)
-            array.device.from_numpy(np.ascontiguousarray(other), array._handle)
-        # TODO: from_tuple
-        elif isinstance(other, list):
+
+        elif _is_numpy_array(other):
+            array = make(other.shape, device=device)  # type: ignore
+            array.device.from_numpy(other, array._handle)
+
+        # TODO: Check that array.array initialization works
+        elif isinstance(other, Iterable):
             other, shape = NDArray._flatten_iterable(other)
 
             array = make(shape=shape, device=device)
-            # empty tuple
             array.device.from_list(other, array._handle)
+
+        elif isinstance(other, int | float):
+            array = make((), device=device)
+            array.device.fill(array._handle, float(other))
+
         else:
-            # see if we can create a numpy array from input
-            np_arr = np.array(other)
-            array = NDArray(np_arr, device=device)
+            raise TypeError(f"Unsupported type for NDArray: {type(other)}")
+
+        # elif isinstance(other, py_array):
+        #     array = make((1,), device=device)
+        #     array.device.from_array(other, array._handle)
+        # else:
+        #     array = make(other.shape, device=device)
+        #     array.device.from_numpy(other, array._handle)
 
         self._shape: Shape = array._shape
         self._strides: Strides = array._strides
-        # TODO: clarify if this is items or bytes
         self._offset: int = array._offset
         self._device: AbstractBackend = array._device
         self._handle: NDArrayBackendProtocol = array._handle
 
     @staticmethod
-    def _flatten_iterable(lst: list | tuple) -> tuple[list, Shape]:
+    def _flatten_iterable(lst: Iterable) -> tuple[list, Shape]:
         """
         Recursively flattens a nested iterable and returns its flattened version
         along with the original shape (dimensions).
@@ -506,10 +185,9 @@ class NDArray:  # noqa: PLR0904 = too many public methods
             ValueError: Inconsistent dimensions
         """
         flat = []
-        shape = []
 
-        def _flatten(sublist: list | tuple) -> list:
-            if isinstance(sublist, list):
+        def _flatten(sublist: Iterable) -> list:
+            if isinstance(sublist, list | tuple):
                 if not sublist:
                     return [0]
                 dims = [_flatten(item) for item in sublist]
@@ -519,9 +197,9 @@ class NDArray:  # noqa: PLR0904 = too many public methods
                     raise ValueError("Inconsistent dimensions")
                 flat_shape = [len(sublist)] + dims[0]
                 return flat_shape
-            else:
-                flat.append(sublist)
-                return []
+
+            flat.append(sublist)
+            return []
 
         shape = _flatten(lst)
         return flat, tuple(shape)
@@ -557,18 +235,110 @@ class NDArray:  # noqa: PLR0904 = too many public methods
     def __repr__(self) -> str:
         return self.__str__()
 
-    # TODO: implement __str__ to print the data in the array
     def __str__(self) -> str:
-        """String representation of the NDArray. (Inspired by numpy's __str__ method)
+        """String representation of the NDArray.
 
         >>> arr = NDArray([[1, 2], [3, 4]])
         >>> print(arr)
         [[1. 2.]
          [3. 4.]]
+
+        >>> arr = NDArray([1, 2, 3])
+        >>> print(arr)
+        [1. 2. 3.]
+
+        >>> arr = NDArray([4])
+        >>> print(arr)
+        [4.]
         """
-        # TODO: Check that this is zero-copy
-        data = self.numpy()
-        return data.__str__()
+        # 0-D scalar: one decimal
+        if len(self.shape) == 0:
+            return f"{float(self.item()):.1f}"
+
+        # work on a compact contiguous view to read logical order safely
+        comp = self.compact()
+        shape = comp.shape
+        strides = comp._strides  # contiguous strides in elements
+
+        def read_float_at(idx: list[int]) -> float:
+            flat = 0
+            for i, v in enumerate(idx):
+                flat += v * strides[i]
+            return float(comp.device.scalar_item(comp._handle, comp._offset + flat))
+
+        def fmt_elem(x: float) -> str:
+            # integer-valued floats inside arrays -> "N."
+            if x == math.inf:
+                return "inf."
+            elif x == -math.inf:
+                return "-inf."
+            if abs(x - round(x)) < 1e-6:
+                return f"{round(x)}."
+            return str(x)
+
+        ndim = len(shape)
+
+        # 1-D
+        if ndim == 1:
+            elems = [fmt_elem(read_float_at([i])) for i in range(shape[0])]
+            return "[" + " ".join(elems) + "]"
+
+        # 2-D: align columns
+        if ndim == 2:
+            rows = [
+                [fmt_elem(read_float_at([r, c])) for c in range(shape[1])]
+                for r in range(shape[0])
+            ]
+            col_widths = [
+                max(len(rows[r][c]) for r in range(shape[0])) for c in range(shape[1])
+            ]
+
+            def format_row(r: int) -> str:
+                return " ".join(
+                    rows[r][c].rjust(col_widths[c]) for c in range(shape[1])
+                )
+
+            lines = []
+            for r in range(shape[0]):
+                if r == 0:
+                    lines.append("[" + "[" + format_row(r) + "]")
+                else:
+                    lines.append(" " + "[" + format_row(r) + "]")
+            return "\n".join(lines) + "]"
+
+        # ND (N>2): recursively build blocks; format last two dims as 2-D blocks
+        def build(prefix: list[int], dim: int) -> str:
+            if dim == ndim - 2:
+                rows = []
+                for r in range(shape[dim]):
+                    row = [
+                        fmt_elem(read_float_at([*prefix, r, c]))
+                        for c in range(shape[dim + 1])
+                    ]
+                    rows.append(row)
+                col_widths = [
+                    max(len(rows[r][c]) for r in range(shape[dim]))
+                    for c in range(shape[dim + 1])
+                ]
+
+                def fmt_row_local(r: int) -> str:
+                    return " ".join(
+                        rows[r][c].rjust(col_widths[c]) for c in range(shape[dim + 1])
+                    )
+
+                block_lines = []
+                for r in range(shape[dim]):
+                    if r == 0:
+                        block_lines.append("[" + "[" + fmt_row_local(r) + "]")
+                    else:
+                        block_lines.append(" " + "[" + fmt_row_local(r) + "]")
+                return "\n".join(block_lines) + "]"
+            else:
+                parts = [build([*prefix, i], dim + 1) for i in range(shape[dim])]
+                joined = "\n ".join(parts)
+                return "[" + joined + "]"
+
+        return build([], 0)
 
     def __len__(self) -> int:
         """Returns the size of the first dimension.
@@ -582,7 +352,7 @@ class NDArray:  # noqa: PLR0904 = too many public methods
 
     # ==================== Basic array manipulation
 
-    def fill(self, value: Scalar) -> None:
+    def _fill(self, value: Scalar) -> None:
         """Fill (in place) with a constant value."""
         self._device.fill(self._handle, value)
 
@@ -625,7 +395,7 @@ class NDArray:  # noqa: PLR0904 = too many public methods
             NDArray: A NDArray with the same shape and data as the numpy array.
         """
         array = make(a.shape)
-        array.device.from_numpy(np.ascontiguousarray(a), array._handle)
+        array.device.from_numpy(a, array._handle)
         return array
 
     def __array__(self, copy: bool = False) -> np_ndarray:
@@ -672,7 +442,7 @@ class NDArray:  # noqa: PLR0904 = too many public methods
     # ==================== Shapes and strides
 
     @staticmethod
-    def compact_strides(shape: Shape) -> Strides:
+    def _compact_strides(shape: Shape) -> Strides:
         """
         For a contiguous array, this calculates how many elements to skip to move
         one step along each dimension.
@@ -685,11 +455,11 @@ class NDArray:  # noqa: PLR0904 = too many public methods
             A tuple of strides, one for each dimension in the shape
 
         Examples:
-            >>> NDArray.compact_strides((2, 3, 4))
+            >>> NDArray._compact_strides((2, 3, 4))
             (12, 4, 1)
-            >>> NDArray.compact_strides((5,))
+            >>> NDArray._compact_strides((5,))
             (1,)
-            >>> NDArray.compact_strides(())
+            >>> NDArray._compact_strides(())
             ()
         """
         stride = 1
@@ -711,7 +481,7 @@ class NDArray:  # noqa: PLR0904 = too many public methods
             bool: True if the array is compact, False otherwise.
         """
         return (
-            self._strides == self.compact_strides(self._shape)
+            self._strides == self._compact_strides(self._shape)
             and self.size == self._handle.size
         )
 
@@ -734,7 +504,7 @@ class NDArray:  # noqa: PLR0904 = too many public methods
         )
         return out
 
-    def as_strided(self, shape: Shape, strides: Strides) -> NDArray:
+    def _as_strided(self, shape: Shape, strides: Strides) -> NDArray:
         """
         Re-stride the matrix without copying memory.
 
@@ -817,7 +587,7 @@ class NDArray:  # noqa: PLR0904 = too many public methods
                 - Size is not divisible when using -1 dimension
 
         Examples:
-            >>> x = NDArray(np.array([1, 2, 3, 4, 5, 6]))
+            >>> x = NDArray([1, 2, 3, 4, 5, 6])
             >>> x.reshape((2, 3)).shape
             (2, 3)
             >>> x.reshape((3, 2)).shape
@@ -849,7 +619,7 @@ class NDArray:  # noqa: PLR0904 = too many public methods
             )
 
         # Create reshaped view with new strides
-        return self.as_strided(new_shape, self.compact_strides(new_shape))
+        return self._as_strided(new_shape, self._compact_strides(new_shape))
 
     def _is_1d_to_column_vector(self, new_shape: Shape) -> bool:
         """Check if reshaping from 1D array to column vector.
@@ -921,7 +691,7 @@ class NDArray:  # noqa: PLR0904 = too many public methods
                     if new_axes isn't a valid permutation.
 
         Examples:
-            >>> x = NDArray(np.arange(24).reshape(2, 3, 4))
+            >>> x = NDArray([i for i in range(24)]).reshape((2, 3, 4))
             >>> x.shape
             (2, 3, 4)
             >>> # Transpose last two dimensions
@@ -933,8 +703,10 @@ class NDArray:  # noqa: PLR0904 = too many public methods
             >>> z = NDArray([[1, 2, 3], [4, 5, 6]])
             >>> z.permute((1, 0)).shape
             (3, 2)
+
+            >>> from needle import array_api
             >>> # Permute 4D tensor from BHWC to BCHW format
-            >>> t = NDArray(np.ones((8, 16, 16, 3)))  # BHWC format
+            >>> t = NDArray(array_api.ones((8, 16, 16, 3)))  # BHWC format
             >>> t.permute((0, 3, 1, 2)).shape  # BCHW format
             (8, 3, 16, 16)
         """
@@ -947,7 +719,7 @@ class NDArray:  # noqa: PLR0904 = too many public methods
         new_shape = tuple(self._shape[d] for d in new_axes)
         new_strides = tuple(self._strides[d] for d in new_axes)
 
-        return self.as_strided(new_shape, new_strides)
+        return self._as_strided(new_shape, new_strides)
 
     def broadcast_to(self, new_shape: Shape) -> NDArray:
         """
@@ -970,17 +742,17 @@ class NDArray:  # noqa: PLR0904 = too many public methods
             BroadcastError: If shapes are incompatible for broadcasting
 
         Examples:
-            >>> x = NDArray(np.array([[1], [2]]))  # Shape (2, 1)
+            >>> x = NDArray([[1], [2]])  # Shape (2, 1)
             >>> x.broadcast_to((2, 3)).shape
             (2, 3)
 
             >>> # Add leading dimensions
-            >>> y = NDArray(np.array([5]))  # Shape (1,)
+            >>> y = NDArray([5])  # Shape (1,)
             >>> y.broadcast_to((3, 2, 1)).shape
             (3, 2, 1)
 
             >>> # Error: can't broadcast dimension with size != 1
-            >>> z = NDArray(np.array([[1, 2], [3, 4]]))  # Shape (2, 2)
+            >>> z = NDArray([[1, 2], [3, 4]])  # Shape (2, 2)
             >>> z.broadcast_to((2, 3))
             Traceback (most recent call last):
             ...
@@ -1016,7 +788,7 @@ class NDArray:  # noqa: PLR0904 = too many public methods
                     f"target: {target_dim})"
                 )
 
-        return self.as_strided(new_shape, tuple(new_strides))
+        return self._as_strided(new_shape, tuple(new_strides))
 
     # ====================  Get and set elements
 
@@ -1221,7 +993,7 @@ class NDArray:  # noqa: PLR0904 = too many public methods
         """
 
         # Indexing with an Array
-        if isinstance(idxs, list | NDArray | np.ndarray):
+        if isinstance(idxs, list | NDArray) or _is_numpy_array(idxs):
             # Convert to NDArray if needed
             if not isinstance(idxs, NDArray):
                 idxs = NDArray(idxs, device=self.device)  # type: ignore
@@ -1277,7 +1049,8 @@ class NDArray:  # noqa: PLR0904 = too many public methods
              [3. 7.]]
         """
         view = self.__getitem__(idxs)
-        if isinstance(other, np.ndarray):
+        if _is_numpy_array(other):
+            # if isinstance(other, np.ndarray):
             other = NDArray(other, device=self.device)
 
         if isinstance(other, NDArray):
@@ -1333,8 +1106,7 @@ class NDArray:  # noqa: PLR0904 = too many public methods
         if isinstance(index, int):
             if not 0 <= index < self.size:
                 raise IndexError("Index out of bounds")
-            compact = self.compact()
-            return self.device.scalar_item(compact._handle, index)
+            return self.device.scalar_item(self._handle, index)
 
         if isinstance(index, tuple):
             if len(index) != len(self.shape):
@@ -1344,12 +1116,11 @@ class NDArray:  # noqa: PLR0904 = too many public methods
             offset = sum(i * s for i, s in zip(index, self.strides))
             if not 0 <= offset < self.size:
                 raise IndexError("Index out of bounds")
-            compact = self.compact()
-            return self.device.scalar_item(compact._handle, compact._offset + offset)
+            return self.device.scalar_item(self._handle, self._offset + offset)
 
     # ====================  Element-wise and scalar functions
 
-    def ewise_or_scalar(
+    def _ewise_or_scalar(
         self,
         other: NDArrayLike,
         ewise_func: Callable[
@@ -1380,7 +1151,7 @@ class NDArray:  # noqa: PLR0904 = too many public methods
         if isinstance(other, NDArray):
             if other.shape != self.shape:
                 # Broadcast to the larger shape
-                larger_shape = broadcast_shapes(self.shape, other.shape)
+                larger_shape = array_api.broadcast_shapes(self.shape, other.shape)
                 other = other.broadcast_to(larger_shape)
                 self = self.broadcast_to(larger_shape)
 
@@ -1390,8 +1161,8 @@ class NDArray:  # noqa: PLR0904 = too many public methods
         elif isinstance(other, float | int):
             out = make(self.shape, device=self.device)
             scalar_func(self.compact()._handle, other, out._handle)
-        elif isinstance(other, np.ndarray):
-            return self.ewise_or_scalar(
+        elif _is_numpy_array(other):
+            return self._ewise_or_scalar(
                 NDArray(other, device=self.device), ewise_func, scalar_func
             )
         else:
@@ -1399,7 +1170,7 @@ class NDArray:  # noqa: PLR0904 = too many public methods
         return out
 
     def __add__(self, other: NDArray | Scalar) -> NDArray:
-        return self.ewise_or_scalar(
+        return self._ewise_or_scalar(
             other, self.device.ewise_add, self.device.scalar_add
         )
 
@@ -1412,28 +1183,28 @@ class NDArray:  # noqa: PLR0904 = too many public methods
         return other + (-self)
 
     def __mul__(self, other: NDArray | Scalar) -> NDArray:
-        return self.ewise_or_scalar(
+        return self._ewise_or_scalar(
             other, self.device.ewise_mul, self.device.scalar_mul
         )
 
     __rmul__ = __mul__
 
     def __truediv__(self, other: NDArray | Scalar) -> NDArray:
-        return self.ewise_or_scalar(
+        return self._ewise_or_scalar(
             other, self.device.ewise_div, self.device.scalar_div
         )
 
     def __rtruediv__(self, other: NDArray | Scalar) -> NDArray:
         if isinstance(other, int | float):
             out = make(self.shape, device=self.device)
-            out.fill(other)
+            out._fill(other)
             return out / self
         return NDArray(other, device=self.device) / self
 
     def __rfloordiv__(self, other: NDArray | Scalar) -> NDArray:
         if isinstance(other, int | float):
             out = make(self.shape, device=self.device)
-            out.fill(other)
+            out._fill(other)
             return out // self
         return NDArray(other, device=self.device) // self
 
@@ -1451,7 +1222,7 @@ class NDArray:  # noqa: PLR0904 = too many public methods
         return out
 
     def maximum(self, other: NDArrayLike) -> NDArray:
-        return self.ewise_or_scalar(
+        return self._ewise_or_scalar(
             other, self.device.ewise_maximum, self.device.scalar_maximum
         )
 
@@ -1474,18 +1245,16 @@ class NDArray:  # noqa: PLR0904 = too many public methods
 
     # ====================  Comparison operators
 
-    # def __hash__(self) -> int:
-    #     return hash(self._handle)
-
+    # TODO: array equality
     def __eq__(self, other: NDArrayLike) -> NDArray:
-        if isinstance(other, np.ndarray):
-            return NDArray(np.equal(self.numpy(), other).astype("float32"))
-        return self.ewise_or_scalar(other, self.device.ewise_eq, self.device.scalar_eq)
+        # if isinstance(other, np.ndarray):
+        #     return NDArray(np.equal(self.numpy(), other).astype("float32"))
+        return self._ewise_or_scalar(other, self.device.ewise_eq, self.device.scalar_eq)
 
     def __ge__(self, other: NDArrayLike) -> NDArray:
-        if isinstance(other, np.ndarray):
-            return NDArray(np.greater_equal(self.numpy(), other).astype("float32"))
-        return self.ewise_or_scalar(other, self.device.ewise_ge, self.device.scalar_ge)
+        # if isinstance(other, np.ndarray):
+        #     return NDArray(np.greater_equal(self.numpy(), other).astype("float32"))
+        return self._ewise_or_scalar(other, self.device.ewise_ge, self.device.scalar_ge)
 
     def __ne__(self, other: NDArrayLike) -> NDArray:
         return 1.0 - (self == other)
@@ -1498,15 +1267,6 @@ class NDArray:  # noqa: PLR0904 = too many public methods
 
     def __le__(self, other: NDArrayLike) -> NDArray:
         return 1.0 - (self > other)
-
-    # TODO: breaks array interop
-    # def __bool__(self) -> bool:
-    #     """Convert array to boolean value (True or False)."""
-    #     if self.size == 1:
-    #         return bool(self.item())
-    #     raise ValueError(
-    #         "Truth value of NDArray with more than one element is ambiguous"
-    #     )
 
     # ====================  Matrix multiplication
     def _check_matrix_shapes(self, other: NDArray) -> None:
@@ -1531,7 +1291,7 @@ class NDArray:  # noqa: PLR0904 = too many public methods
         a_batch_shape = self.shape[:-2] if self.ndim > 2 else (1,)
         b_batch_shape = other.shape[:-2] if other.ndim > 2 else (1,)
 
-        batch_shape = broadcast_shapes(a_batch_shape, b_batch_shape)
+        batch_shape = array_api.broadcast_shapes(a_batch_shape, b_batch_shape)
         batch_size = math.prod(batch_shape)
 
         # broadcast shapes of axis
@@ -1572,6 +1332,7 @@ class NDArray:  # noqa: PLR0904 = too many public methods
         Raises:
 
         Examples:
+            >>> from needle import array_api
             >>> a = NDArray([[1, 2], [3, 4]])
             >>> b = NDArray([[5, 6], [7, 8]])
             >>> c = a @ b
@@ -1581,8 +1342,8 @@ class NDArray:  # noqa: PLR0904 = too many public methods
             [[19. 22.]
              [43. 50.]]
 
-            >>> a = NDArray(np.random.rand(2, 2, 3, 4))
-            >>> b = NDArray(np.random.rand(2, 2, 4, 5))
+            >>> a = NDArray(array_api.ones((2, 2, 3, 4)))
+            >>> b = NDArray(array_api.zeros((2, 2, 4, 5)))
             >>> c = a @ b
             >>> c.shape
             (2, 2, 3, 5)
@@ -1612,7 +1373,7 @@ class NDArray:  # noqa: PLR0904 = too many public methods
 
     # ====================  Reductions over all element or over given axis
 
-    def reduce_view_out(
+    def _reduce_view_out(
         self, axis: Axis | None, *, keepdims: bool = False
     ) -> tuple[NDArray, NDArray]:
         """
@@ -1632,7 +1393,7 @@ class NDArray:  # noqa: PLR0904 = too many public methods
 
         Examples:
             >>> x = NDArray([[1, 2], [3, 4]])
-            >>> view, out = x.reduce_view_out(axis=0)
+            >>> view, out = x._reduce_view_out(axis=0)
             >>> view.shape
             (2, 2)
             >>> out.shape
@@ -1700,7 +1461,7 @@ class NDArray:  # noqa: PLR0904 = too many public methods
             >>> x.sum(axis=0, keepdims=True)
             [[4. 6.]]
         """  # noqa: DOC502
-        view, out = self.reduce_view_out(axis, keepdims=keepdims)
+        view, out = self._reduce_view_out(axis, keepdims=keepdims)
         self.device.reduce_sum(view.compact()._handle, out._handle, view.shape[-1])
         return out
 
@@ -1735,6 +1496,45 @@ class NDArray:  # noqa: PLR0904 = too many public methods
             >>> x.max(axis=0, keepdims=True)
             [[3. 4.]]
         """  # noqa: DOC502
-        view, out = self.reduce_view_out(axis, keepdims=keepdims)
+        view, out = self._reduce_view_out(axis, keepdims=keepdims)
         self.device.reduce_max(view.compact()._handle, out._handle, view.shape[-1])
+        return out
+
+    def argmax(self, axis: Axis | None = None, *, keepdims: bool = False) -> NDArray:
+        """
+        Find the indices of the maximum values in the array along the specified axis.
+
+        Args:
+            axis (Axis or None): Axes to find the maximum over.
+            If None, find the maximum of all elements.
+            keepdims (bool): If true, keep reduced dimensions with size 1.
+
+        Returns:
+            NDArray: The indices of the maximum values along the specified axis.
+
+        Raises:
+            ValueError: If axis is empty or invalid.
+
+        Examples:
+            >>> x = NDArray([[1, 2], [3, 4]])
+            >>> x.argmax(axis=0)
+            [1. 1.]
+
+            >>> x.argmax(axis=1)
+            [1. 1.]
+
+            >>> x.argmax()
+            [3.]
+
+            >>> x.argmax(axis=(0, 1))
+            3.0
+
+            >>> x.argmax(keepdims=True)
+            [[3.]]
+
+            >>> x.argmax(axis=0, keepdims=True)
+            [[1. 1.]]
+        """
+        view, out = self._reduce_view_out(axis, keepdims=keepdims)
+        self.device.reduce_argmax(view.compact()._handle, out._handle, view.shape[-1])
         return out

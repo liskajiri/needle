@@ -30,8 +30,8 @@ class CIFAR10Dataset(Dataset[NDArray]):
         train - bool, if True load training dataset, else load test dataset
         Divide pixel values by 255. so that images are in 0-1 range.
         Attributes:
-        X - numpy array of images
-        y - numpy array of labels
+        X - array of images
+        y - array of labels
         """
         super().__init__(**kwargs)
         self.train = train

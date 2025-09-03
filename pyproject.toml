@@ -11,9 +11,7 @@ urls = { repository = "https://github.com/liskajiri/needle" }
 dependencies = [
     # [AUTOGEN] by pydependence resolver 'needle' **DO NOT EDIT** [AUTOGEN]
     "numpy",
-    #     ← needle.backend_ndarray.ndarray
     #     ← needle.backend_numpy
-    #     ← needle.typing.types
 ]
 
 
@@ -21,13 +19,10 @@ dependencies = [
 all = [
     # [AUTOGEN] by pydependence resolver 'all' **DO NOT EDIT** [AUTOGEN]
     "backends", # [L]
-    #     ← [L] needle.backend_ndarray.ndarray
+    #     ← [L] needle.backend_ndarray.backend
     "numpy",
-    #     ← needle.backend_ndarray.ndarray
     #     ← needle.backend_numpy
     #     ← [L] needle.backend_selection
-    #     ← [L] needle.data.datasets.mnist
-    #     ← needle.typing.types
 ]
 
 # [build-system]

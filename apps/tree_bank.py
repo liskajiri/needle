@@ -65,13 +65,6 @@ def epoch_general_ptb(
         # Forward pass
         out, h = model(X)
         loss = loss_fn()(out, y)
-        total_loss += loss.numpy() * seq_len * batch_size
-
-        # Calculate accuracy
-        predictions = out.numpy().argmax(axis=1)
-        targets = y.numpy().reshape(-1)
-        total_correct += (predictions == targets).sum()
-        total_samples += targets.size
 
         if opt is not None:
             opt.reset_grad()
@@ -83,17 +76,35 @@ def epoch_general_ptb(
 
             opt.step()
 
+        y = y.array()
+        total_loss += loss.array().item() * seq_len * batch_size
+
+        # Calculate accuracy
+        predictions = out.array().argmax(axis=1)
+        targets = y.flatten()
+
+        batch_correct = 0
+        for i in range(batch_size):
+            if predictions[i].item() == y[i].item():
+                batch_correct += 1
+
+        total_correct += batch_correct
+        total_samples += targets.size
+
+        curr_loss = total_loss / total_samples
+
         # detach hidden state to avoid back-propagating through entire history
         h = tuple([h_i.detach() for h_i in h]) if isinstance(h, tuple) else h.detach()
         if TQDM_AVAILABLE:
             current_acc = total_correct / total_samples
             # Format numbers with consistent decimal places for better readability
             iter_range.set_postfix(
-                loss=f"{(loss.numpy().item()):.2f}", accuracy=f"{current_acc:.2%}"
+                loss=f"{curr_loss:.2f}",
+                accuracy=f"{current_acc:.2%}",
             )
         else:
             logging.info(
-                f"""Batch {i // seq_len}: Loss: {(loss.numpy().item()):.2f},
+                f"""Batch {i // seq_len}: Loss: {curr_loss:.2f},
                 Accuracy: {(total_correct / total_samples):.2f}"""
             )
 
@@ -202,7 +213,7 @@ if __name__ == "__main__":
     test_data = corpus.test
 
     # Create batches
-    batch_size = 100
+    batch_size = 32
     train_batches = ndl.data.nlp.batchify(train_data, batch_size)
     test_batches = ndl.data.nlp.batchify(test_data, batch_size)
 
@@ -211,7 +222,7 @@ if __name__ == "__main__":
     output_size = len(corpus.dictionary)
     hidden_size = 32
     num_layers = 2
-    seq_len = 35
+    seq_len = 16
     model = LanguageModel(
         embedding_size=embedding_size,
         output_size=output_size,
@@ -221,7 +232,7 @@ if __name__ == "__main__":
     )
     # Train model
     n_epochs = 1
-    optimizer = ndl.optim.Adam
+    optimizer = ndl.optim.SGD
     loss_fn = nn.SoftmaxLoss
     logging.info("Starting training...")
     train_acc, train_loss = train_ptb(

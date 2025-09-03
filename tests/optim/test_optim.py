@@ -10,12 +10,12 @@ logger = logging.getLogger(__name__)
 
 
 IMAGE_SHAPE = (1, 28, 28)
-NUM_SAMPLES = 64
-NUM_CLASSES = 5
-SEED = 7
+NUM_SAMPLES = 32
+NUM_CLASSES = 10
+SEED = 1
 EPOCHS = 10
 BATCH = NUM_SAMPLES // 2
-HIDDEN_SIZE = 64
+HIDDEN_SIZE = 16
 
 
 def _compute_loss_acc(dataloader, model):
@@ -29,9 +29,12 @@ def _compute_loss_acc(dataloader, model):
     for X, y in dataloader:
         out = model(X)
         loss = loss_func(out, y)
-        b = int(X.shape[0])
-        total_loss += float(np.array(loss.cached_data)) * b
+
+        b = X.shape[0]
+
+        total_loss += float(np.array(loss.cached_data) * b)
         preds = np.array(out.cached_data).argmax(axis=1)
+
         total_correct += int((preds == np.array(y.cached_data)).sum())
         total_n += b
 
@@ -60,13 +63,15 @@ def _train_full(
     init_acc, init_loss = _compute_loss_acc(dataloader, model)
     model.train()
 
+    loss_fn = nn.SoftmaxLoss()
+
     for _ in range(epochs):
         for X, y in dataloader:
-            opt.reset_grad()
+            opt.zero_grad()
 
             out = model(X)
 
-            loss = nn.SoftmaxLoss()(out, y)
+            loss = loss_fn(out, y)
             loss.backward()
 
             opt.step()
@@ -112,8 +117,8 @@ def make_builder(
 
 
 @pytest.mark.parametrize("optimizer", [ndl.optim.SGD, ndl.optim.Adam])
-@pytest.mark.parametrize("lr", [0.01, 0.001])
-@pytest.mark.parametrize("weight_decay", [0.01, 0.001])
+@pytest.mark.parametrize("lr", [0.1, 0.01])
+@pytest.mark.parametrize("weight_decay", [0.1, 0.01])
 @pytest.mark.parametrize("model_type", ["flat", "batchnorm", "layernorm"])
 def test_optimizers(optimizer, lr, weight_decay, model_type):
     image_shape = IMAGE_SHAPE

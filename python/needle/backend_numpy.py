@@ -5,14 +5,21 @@ when using numpy as NDArray backend.
 
 from __future__ import annotations
 
+try:
+    import numpy as np
+except ImportError as e:
+    raise ImportError(
+        "The numpy backend requires numpy to be installed. "
+        "Please install numpy to use this backend."
+    ) from e
+
 import sys
 from typing import TYPE_CHECKING
 
-import numpy as np
-
 from needle.typing.device import AbstractBackend
+from needle.typing.types import np_ndarray
 
-type NDArray = np.ndarray
+NDArray = np.ndarray
 
 if TYPE_CHECKING:
     from needle.typing import (
@@ -37,33 +44,40 @@ class Array:
         return self.array.size
 
 
-def to_numpy(a, shape, strides, offset) -> NDArray:
+def to_numpy(a, shape, strides, offset) -> np_ndarray:
     return np.lib.stride_tricks.as_strided(
         a.array[offset:], shape, tuple([s * _datetype_size for s in strides])
     )
 
 
 class NumpyBackend(AbstractBackend):
-    def randn(self, shape: Shape, dtype: DType = "float32") -> NDArray:
+    __tile_size__ = 1
+    itemsize = _datetype_size
+
+    def randn(self, shape: Shape, dtype: DType = "float32") -> np_ndarray:
         return np.random.randn(*shape)
 
-    def rand(self, shape: Shape, dtype: DType = "float32") -> NDArray:
+    def rand(self, shape: Shape, dtype: DType = "float32") -> np_ndarray:
         return np.random.rand(*shape)
 
-    def one_hot(self, n: int, i: IndexType, dtype: DType) -> NDArray:
+    def one_hot(self, n: int, i: IndexType, dtype: DType) -> np_ndarray:
         return np.eye(n, dtype=dtype)[i]
 
-    def zeros(self, shape: Shape, dtype: DType) -> NDArray:
+    def zeros(self, shape: Shape, dtype: DType) -> np_ndarray:
         return np.zeros(shape, dtype=dtype)
 
-    def ones(self, shape: Shape, dtype: DType) -> NDArray:
+    def ones(self, shape: Shape, dtype: DType) -> np_ndarray:
         return np.ones(shape, dtype=dtype)
 
-    def empty(self, shape: Shape, dtype: DType) -> NDArray:
+    def empty(self, shape: Shape, dtype: DType) -> np_ndarray:
         return np.empty(shape, dtype=dtype)
 
-    def full(self, shape: Shape, fill_value: Scalar, dtype: DType) -> NDArray:
+    def full(self, shape: Shape, fill_value: Scalar, dtype: DType) -> np_ndarray:
         return np.full(shape, fill_value, dtype=dtype)
+
+    def set_seed(self, seed: int | None = None) -> None:
+        if seed is not None:
+            np.random.seed(seed)
 
 
 # Devices
