@@ -22,12 +22,12 @@ execute_process(
 find_package(nanobind CONFIG REQUIRED)
 
 set(MODULE_FILES
-    cpu/ndarray.cc
-    cpu/elementwise.cc
-    cpu/scalar_ops.cc
-    cpu/matmul.cc
-    cpu/reductions.cc
-    cpu/ndarray_backend_cpu.cc
+    src/ndarray.cc
+    src/elementwise.cc
+    src/scalar_ops.cc
+    src/matmul.cc
+    src/reductions.cc
+    src/ndarray_backend_cpu.cc
 )
 
 nanobind_add_module(${PROJECT_NAME} MODULE ${MODULE_FILES})

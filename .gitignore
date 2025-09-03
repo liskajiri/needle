@@ -155,5 +155,13 @@ data/tree_bank
 
 reports/
 
-backends/pixi.*
-backends/CMakeLists.txt
+# backends/pixi.*
+# backends/CMakeLists.txt
+# pixi environments
+.pixi/*
+!.pixi/config.toml
+
+/noarch
+/linux-64
+*.conda
+*marimo*
