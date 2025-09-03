@@ -20,13 +20,16 @@ version = "0.1.0"
 [package.build]
 backend = { name = "pixi-build-python", version = "*" }
 
+[package.build.config]
+# Build platform-specific package
+noarch = false
+
 [package.host-dependencies]
-hatchling = "==1.26.3"
+hatchling = "*"
 
 [package.run-dependencies]
 ndarray_backend_cpu = { path = "backends/cpu" }
 python = ">=3.13.5,<3.14"
-python-gil = ">=3.13.5,<4"
 
 
 [tasks]
@@ -110,8 +113,6 @@ train = ["train"]
 
 [dependencies]
 python = ">=3.13.5,<3.14"
-# Pin python-gil to 3.13.3 to avoid issues with getting threaded python
-python-gil = ">=3.13.5,<4"
 needle = { path = "." }
 ndarray_backend_cpu = { path = "backends/cpu" }
 
@@ -155,56 +156,6 @@ test_all = { cmd = """coverage run -m pytest -n auto
 report_coverage = { cmd = "coverage combine && coverage xml", depends-on = [
   "test_all",
 ] }
-
-# [feature.test.tasks.test]
-# args = [
-#   { "arg" = "path", "default" = "tests/ python/needle" },
-#   { "arg" = "n_threads", "default" = "2" },
-#   { "arg" = "modules", "default" = "'not slow'" },
-#   { "arg" = "names", "default" = "'not dataset'" },
-#   { "arg" = "other", "default" = " " },
-# ]
-# cmd = "pytest {{ path }} -n {{ n_threads }} -m {{ modules }} -k {{ names }} {{ other }}"
-# depends-on = ["build", "print_backend"]
-
-# [feature.test.tasks.test_datasets]
-# depends-on = [
-#   { "task" = "test", "args" = [
-#     # { "arg" = "path", "default" = "tests/datasets" },
-#     "tests/datasets",
-#     "4",
-#     "''",
-#     "'dataset'",
-#   ] },
-# ]
-
-# [feature.test.tasks.test_doctests]
-# depends-on = [
-#   { task = "test", args = [
-#     "python/needle",
-#     "0",
-#     "''",
-#     "''",
-#     "--doctest-modules",
-#   ] },
-# ]
-
-# [feature.test.tasks.test_hypothesis]
-# depends-on = [
-#   { "task" = "test", "args" = [
-#     " ",
-#     "4",
-#     "'hypothesis'",
-#     "''",
-#     "--hypothesis-profile=dev",
-#   ] },
-# ]
-
-# [feature.test.tasks.test_all]
-# depends-on = [{ "task" = "test", "args" = [" ", "auto", "''", "''", """
-# --junitxml=$TEST_REPORT_PATH.xml -o junit_family=legacy
-# """] }]
-
 
 [feature.test.activation.env]
 # Save results of test to html

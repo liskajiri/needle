@@ -6,33 +6,18 @@ version = "0.1.0"
 backend = { name = "pixi-build-cmake", version = "*" }
 
 [package.build.config]
-extra-args = [
-  "-DCMAKE_BUILD_TYPE=Release",
-  # add optimization flags
-  "-DCMAKE_CXX_FLAGS=-O2 -march=native -mavx2",
-
-  "-DCMAKE_C_COMPILER=clang",
-  "-DCMAKE_CXX_COMPILER=clang++",
-]
+extra-args = ["-DCMAKE_BUILD_TYPE=Release"]
+# use clang because of C++ 20 modules features
+# c_compiler = ["clang"]
+# add optimization flags
+env = { CXXFLAGS = "-O3 -march=native" }
 
 [package.host-dependencies]
 python = ">=3.13.5,<3.14"
-python-gil = ">=3.13.5,<4"
 cmake = ">=4.0.1,<5"
 nanobind = ">=2.6.1,<2.8"
 llvm-openmp = ">=20.1.7,<20.2"
 
-ninja = ">=1.12.1,<2"
-clang = ">=20.1.2,<21"
-clangxx = ">=20.1.2,<21"
-libcxx = ">=20.1.2,<21"
-libcxx-devel = ">=20.1.2,<21"
-libcxxabi = ">=20.1.2,<21"
-clang-tools = ">=20.1.2,<21"
-
 [package.run-dependencies]
-libcxxabi = ">=20.1.2,<21"
 nanobind = ">=2.6.1,<2.8"
-python = ">=3.13.5,<3.14"
-python-gil = ">=3.13.5,<4"
 llvm-openmp = ">=20.1.7,<20.2"
