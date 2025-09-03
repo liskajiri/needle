@@ -1404,7 +1404,7 @@ class NDArray:
             raise ValueError("Empty axis in reduce")
 
         if axis is None:
-            view = self.compat().reshape((1,) * (self.ndim - 1) + (self.size,))
+            view = self.compact().reshape((1,) * (self.ndim - 1) + (self.size,))
             out_shape = (1,) * self.ndim if keepdims else (1,)
             out = make(out_shape, device=self.device)
             return view, out
