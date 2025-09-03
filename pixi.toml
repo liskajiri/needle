@@ -141,22 +141,15 @@ coverage = ">=7.10.5,<8"
 
 
 [feature.test.tasks]
-test = { cmd = "pytest -n 2 -m 'not slow' -k 'not dataset'", depends-on = [
-  "print_backend",
-] }
+test = { cmd = "pytest -n 2 -m 'not slow' -k 'not dataset'" }
 test_datasets = { cmd = "pytest -n 4 tests/datasets", depends-on = [
   "download_datasets",
 ] }
-test_doctests = { cmd = "pytest -n 0 --doctest-modules python/needle", depends-on = [
-  "print_backend",
-] }
-test_hypothesis = { cmd = "pytest -n 8 -m 'hypothesis' --hypothesis-profile=dev", depends-on = [
-  "print_backend",
-] }
+test_doctests = { cmd = "pytest -n 0 --doctest-modules python/needle" }
+test_hypothesis = { cmd = "pytest -n 8 -m 'hypothesis' --hypothesis-profile=dev" }
 test_all = { cmd = """coverage run -m pytest -n auto
 --junitxml=$TEST_REPORT_PATH.xml -o junit_family=legacy
 """, depends-on = [
-  "print_backend",
   "download_datasets",
 ], env = { COVERAGE_PROCESS_START = "./pyproject.toml" } }
 report_coverage = { cmd = "coverage combine && coverage xml", depends-on = [

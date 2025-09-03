@@ -8,6 +8,9 @@ backend = { name = "pixi-build-cmake", version = "*" }
 [package.build.config]
 extra-args = [
   "-DCMAKE_BUILD_TYPE=Release",
+  # add optimization flags
+  "-DCMAKE_CXX_FLAGS=-O2 -march=native -mavx2",
+
   "-DCMAKE_C_COMPILER=clang",
   "-DCMAKE_CXX_COMPILER=clang++",
 ]
