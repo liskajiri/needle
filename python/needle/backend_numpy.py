@@ -16,7 +16,8 @@ except ImportError as e:
 import sys
 from typing import TYPE_CHECKING
 
-from needle.typing.device import AbstractBackend, np_ndarray
+from needle.typing.device import AbstractBackend
+from needle.typing.types import np_ndarray
 
 NDArray = np.ndarray
 
