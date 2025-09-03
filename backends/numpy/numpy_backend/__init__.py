@@ -1,6 +1,3 @@
-# import numpy as array_api
-
-# from numpy import ndarray as NDArray
 import numpy_backend.array_api as array_api
 from numpy_backend.numpy_backend import NDArray, NumpyBackend, all_devices, cpu, cuda
 
