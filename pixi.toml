@@ -29,6 +29,7 @@ hatchling = "*"
 
 [package.run-dependencies]
 ndarray_backend_cpu = { path = "backends/cpu" }
+numpy_backend = { path = "backends/numpy" }
 python = ">=3.13.5,<3.14"
 
 
@@ -115,6 +116,7 @@ train = ["train"]
 python = ">=3.13.5,<3.14"
 needle = { path = "." }
 ndarray_backend_cpu = { path = "backends/cpu" }
+numpy_backend = { path = "backends/numpy" }
 
 [feature.notebooks.dependencies]
 marimo = ">=0.12.8,<0.13"

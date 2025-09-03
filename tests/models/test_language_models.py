@@ -1,7 +1,7 @@
 import needle as ndl
 import numpy as np
 import pytest
-from needle.typing import AbstractBackend
+from needle.needle_typing import AbstractBackend
 from tree_bank import evaluate_ptb, train_ptb
 
 from apps.models.language_model import LanguageModel
