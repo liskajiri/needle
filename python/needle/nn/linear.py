@@ -4,12 +4,12 @@ from typing import TYPE_CHECKING
 
 from needle import init
 from needle.backend_selection import default_device
+from needle.needle_typing import TensorKwargs
 from needle.nn.core import Module, Parameter
-from needle.typing import TensorKwargs
 
 if TYPE_CHECKING:
+    from needle.needle_typing import AbstractBackend, DType
     from needle.tensor import Tensor
-    from needle.typing import AbstractBackend, DType
 
 
 class Linear(Module):

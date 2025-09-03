@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from needle.typing import IndexType
+    from needle.needle_typing import IndexType
 
 
 class Dataset[T](Sequence[T], ABC):

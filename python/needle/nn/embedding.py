@@ -7,8 +7,8 @@ from needle.backend_selection import default_device
 from needle.nn.core import Module, Parameter
 
 if TYPE_CHECKING:
+    from needle.needle_typing import AbstractBackend, DType
     from needle.tensor import Tensor
-    from needle.typing import AbstractBackend, DType
 
 
 class Embedding(Module):

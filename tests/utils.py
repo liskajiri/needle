@@ -2,13 +2,16 @@ import logging
 import os
 import random
 from collections.abc import Callable
+from typing import TYPE_CHECKING
 
 import needle as ndl
 import numpy as np
 import pytest
 import torch
 from needle import Tensor
-from needle.typing.device import AbstractBackend
+
+if TYPE_CHECKING:
+    from needle.typing.device import AbstractBackend
 
 try:
     import torch

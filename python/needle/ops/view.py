@@ -4,10 +4,10 @@ from typing import TYPE_CHECKING
 
 import needle.init as init
 from needle.backend_selection import NDArray, array_api
+from needle.needle_typing.types import Axis
 from needle.ops.op import TensorOp, TensorTupleOp
 from needle.ops.ops_tuple import make_tuple
 from needle.tensor import Tensor
-from needle.typing.types import Axis
 
 if TYPE_CHECKING:
     from needle.backend_selection import NDArray

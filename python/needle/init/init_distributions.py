@@ -9,8 +9,8 @@ from needle.nn.activations import ReLU
 if TYPE_CHECKING:
     from typing import Literal
 
+    from needle.needle_typing import Shape
     from needle.tensor import Tensor
-    from needle.typing import Shape
 
 
 def xavier_uniform(

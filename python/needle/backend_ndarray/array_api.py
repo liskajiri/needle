@@ -4,13 +4,11 @@ import itertools
 import logging
 from typing import TYPE_CHECKING
 
-from needle.backend_ndarray.backend import cpu, cuda, default_device, make
-from needle.backend_ndarray.ndarray import NDArray
-from needle.errors import BroadcastError
-from needle.typing.dlpack import DLPackDeviceType
+from needle.backend_ndarray.ndarray import NDArray, cpu, cuda, default_device, make
+from needle.needle_typing.dlpack import DLPackDeviceType
 
 if TYPE_CHECKING:
-    from needle.typing import (
+    from needle.needle_typing import (
         AbstractBackend,
         Axis,
         DType,

@@ -1,7 +1,7 @@
-from needle.typing.array_interface import ArrayInterface
-from needle.typing.device import AbstractBackend
-from needle.typing.tensor_args import TensorKwargs
-from needle.typing.types import (
+from needle.needle_typing.array_interface import ArrayInterface
+from needle.needle_typing.device import AbstractBackend
+from needle.needle_typing.tensor_args import TensorKwargs
+from needle.needle_typing.types import (
     ArrayIndex,
     Axis,
     BatchType,

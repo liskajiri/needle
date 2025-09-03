@@ -7,8 +7,8 @@ from needle.tensor import Tensor
 
 if TYPE_CHECKING:
     from needle.backend_selection import NDArray
-    from needle.typing.device import AbstractBackend
-    from needle.typing.types import DType, Scalar, Shape
+    from needle.needle_typing.device import AbstractBackend
+    from needle.needle_typing.types import DType, Scalar, Shape
 
 
 def rand(

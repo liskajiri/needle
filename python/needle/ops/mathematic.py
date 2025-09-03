@@ -7,10 +7,10 @@ from typing import TYPE_CHECKING
 
 from needle.backend_ndarray.ndarray import NDArray
 from needle.backend_selection import array_api
+from needle.needle_typing.types import Axis
 from needle.ops.op import TensorOp
 from needle.ops.shape import broadcast_to, broadcast_to_new_axis
 from needle.tensor import Tensor
-from needle.typing.types import Axis
 
 if TYPE_CHECKING:
     from needle.backend_selection import NDArray

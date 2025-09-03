@@ -10,7 +10,7 @@ if TYPE_CHECKING:
     from collections.abc import Iterator
 
     from needle.data.dataset import Dataset
-    from needle.typing import AbstractBackend, BatchType
+    from needle.needle_typing import AbstractBackend, BatchType
 
 
 class DataLoader:

@@ -10,7 +10,7 @@ from needle.data.dataset import Dataset
 CIFARPath = Path("data/cifar-10/cifar-10-batches-py")
 
 if TYPE_CHECKING:
-    from needle.typing import IndexType
+    from needle.needle_typing import IndexType
 
 
 class CIFAR10Dataset(Dataset[NDArray]):
