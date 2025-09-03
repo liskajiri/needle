@@ -14,7 +14,7 @@ import numpy as np
 from numpy_backend.device import AbstractBackend
 
 if TYPE_CHECKING:
-    from needle.typing import (
+    from needle.needle_typing import (
         DType,
         IndexType,
         Scalar,

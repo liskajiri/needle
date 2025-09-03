@@ -9,26 +9,17 @@ license-files = ["LICENSE"]
 classifiers = ["Programming Language :: Python"]
 urls = { repository = "https://github.com/liskajiri/needle" }
 dependencies = [
-  # [AUTOGEN] by pydependence resolver 'needle' **DO NOT EDIT** [AUTOGEN]
-  "numpy",
-  #     ← needle.backend_ndarray.ndarray
-  #     ← needle.needle_typing.types
+    # [AUTOGEN] by pydependence resolver 'needle' **DO NOT EDIT** [AUTOGEN]
 ]
 
 
 [project.optional-dependencies]
 all = [
-  # [AUTOGEN] by pydependence resolver 'all' **DO NOT EDIT** [AUTOGEN]
-  "ndarray_backend_cpu", # [L]
-  #     ← [L] needle.backend_ndarray.ndarray
-  "needle", # [L]
-  #     ← [L] needle.backend_ndarray.ndarray
-  "numpy",
-  #     ← needle.backend_ndarray.ndarray
-  #     ← [L] needle.data.datasets.mnist
-  #     ← needle.needle_typing.types
-  "numpy_backend", # [L]
-  #     ← [L] needle.backend_selection
+    # [AUTOGEN] by pydependence resolver 'all' **DO NOT EDIT** [AUTOGEN]
+    "backends", # [L]
+    #     ← [L] needle.backend_ndarray.backend
+    "numpy_backend", # [L]
+    #     ← [L] needle.backend_selection
 ]
 
 [build-system]
