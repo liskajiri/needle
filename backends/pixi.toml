@@ -1,0 +1,47 @@
+[workspace]
+channels = ["https://prefix.dev/conda-forge"]
+platforms = ["linux-64"]
+preview = ["pixi-build"]
+
+[dependencies]
+ndarray_backend_cpu = { path = "." }
+python = ">=3.13.5,<3.14"
+
+[tasks]
+start = "python -c 'import ndarray_backend_cpu as ndl; a = ndl.Array(2); ndl.fill(a, 1); print(a)'"
+
+[package]
+name = "ndarray_backend_cpu"
+version = "0.1.0"
+
+[package.build]
+backend = { name = "pixi-build-cmake", version = "*" }
+
+[package.build.config]
+extra-args = [
+  "-DCMAKE_BUILD_TYPE=Release",
+  "-DCMAKE_C_COMPILER=clang",
+  "-DCMAKE_CXX_COMPILER=clang++",
+]
+
+[package.host-dependencies]
+python = ">=3.13.5,<3.14"
+python-gil = ">=3.13.5,<4"
+cmake = ">=4.0.1,<5"
+nanobind = ">=2.6.1,<2.8"
+openmp = ">=8.0.1,<9"
+
+ninja = ">=1.12.1,<2"
+clang = ">=20.1.2,<21"
+clangxx = ">=20.1.2,<21"
+libcxx = ">=20.1.2,<21"
+libcxx-devel = ">=20.1.2,<21"
+libcxxabi = ">=20.1.2,<21"
+clang-tools = ">=20.1.2,<21"
+
+[package.run-dependencies]
+libcxxabi = ">=20.1.2,<21"
+nanobind = ">=2.6.1,<2.8"
+python = ">=3.13.5,<3.14"
+python-gil = ">=3.13.5,<4"
+openmp = ">=8.0.1,<9"
