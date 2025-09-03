@@ -23,7 +23,6 @@ all = [
     "numpy",
     #     ← needle.backend_numpy
     #     ← [L] needle.backend_selection
-    #     ← [L] needle.typing.types
 ]
 
 # [build-system]

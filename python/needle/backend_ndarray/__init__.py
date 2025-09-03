@@ -59,7 +59,6 @@ __all__ = [
     "make",
     "max",
     "maximum",
-    "needle",
     "ones",
     "pad",
     "reshape",

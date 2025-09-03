@@ -114,7 +114,7 @@ class NDArray:
             array = other.to(device) + 0.0
 
         elif _is_numpy_array(other):
-            array = make(other.shape, device=device)
+            array = make(other.shape, device=device)  # type: ignore
             array.device.from_numpy(other, array._handle)
 
         # TODO: Check that array.array initialization works
@@ -1162,7 +1162,6 @@ class NDArray:
             out = make(self.shape, device=self.device)
             scalar_func(self.compact()._handle, other, out._handle)
         elif _is_numpy_array(other):
-            # elif isinstance(other, np.ndarray):
             return self._ewise_or_scalar(
                 NDArray(other, device=self.device), ewise_func, scalar_func
             )
