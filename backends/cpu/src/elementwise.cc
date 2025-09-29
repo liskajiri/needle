@@ -5,7 +5,7 @@ module;
 #include <stdint.h>
 #include <vector>
 
-#include <nanobind/stl/tuple.h>
+// #include <nanobind/stl/tuple.h>
 
 import ndarray;
 
@@ -13,7 +13,7 @@ export module elementwise;
 
 namespace needle {
 namespace cpu {
-std::vector<int32_t> get_compact_strides(const nanobind::tuple &shape) {
+std::vector<int32_t> get_compact_strides(const std::vector<int32_t> &shape) {
     // Incoming types (shape, stride) are Python tuples - need to recast
     // elements
     size_t num_dims = shape.size();
@@ -21,12 +21,12 @@ std::vector<int32_t> get_compact_strides(const nanobind::tuple &shape) {
     std::vector<int32_t> compact_strides(num_dims, 1);
     for (int i = num_dims - 2; i >= 0; --i) {
         compact_strides[i] =
-            compact_strides[i + 1] * nanobind::cast<int32_t>(shape[i + 1]);
+            compact_strides[i + 1] * shape[i + 1];
     }
     return compact_strides;
 }
 
-int32_t get_array_offset(const nanobind::tuple &strides,
+int32_t get_array_offset(const std::vector<int32_t> &strides,
                          const std::vector<int32_t> &compact_strides,
                          const int32_t offset, const size_t i) {
     int32_t idx_offset = offset;
@@ -34,15 +34,15 @@ int32_t get_array_offset(const nanobind::tuple &strides,
     size_t num_dims = compact_strides.size();
     for (size_t j = 0; j < num_dims; j++) {
         uint32_t idx = temp / compact_strides[j];
-        idx_offset += idx * nanobind::cast<int32_t>(strides[j]);
+        idx_offset += idx * strides[j];
         temp %= compact_strides[j];
     }
     return idx_offset;
 }
 
 export void Compact(const AlignedArray &a, AlignedArray *out,
-                    const nanobind::tuple &shape,
-                    const nanobind::tuple &strides, const size_t offset) {
+                    const std::vector<int32_t> &shape,
+                    const std::vector<int32_t> &strides, const size_t offset) {
     /**
      * Compact an array in memory
      *
@@ -69,8 +69,8 @@ export void Compact(const AlignedArray &a, AlignedArray *out,
 }
 
 export void EwiseSetitem(const AlignedArray &a, AlignedArray *out,
-                         const nanobind::tuple &shape,
-                         const nanobind::tuple &strides, const size_t offset) {
+                         const std::vector<int32_t> &shape,
+                         const std::vector<int32_t> &strides,  const size_t offset) {
     /**
      * Set items in a (non-compact) array
      *

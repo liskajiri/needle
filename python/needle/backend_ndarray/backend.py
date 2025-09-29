@@ -153,8 +153,8 @@ def cpu_numpy() -> AbstractBackend:
 def cpu() -> AbstractBackend:
     """Return cpu device."""
     try:
-        from backends.cpu import ndarray_backend_cpu  # type: ignore
-        # import ndarray_backend_cpu
+        # from backends.cpu import ndarray_backend_cpu  # type: ignore
+        import ndarray_backend_cpu
 
         return BackendDevice("cpu", ndarray_backend_cpu)  # type: ignore
     except ImportError:
