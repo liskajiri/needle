@@ -16,9 +16,10 @@ dependencies = [
 [project.optional-dependencies]
 all = [
     # [AUTOGEN] by pydependence resolver 'all' **DO NOT EDIT** [AUTOGEN]
-    "backends", # [L]
+    "ndarray_backend_cpu", # [L]
     #     ← [L] needle.backend_ndarray.backend
     "numpy_backend", # [L]
+    #     ← [L] needle.backend_ndarray.backend
     #     ← [L] needle.backend_selection
 ]
 

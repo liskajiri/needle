@@ -10,7 +10,7 @@ from needle.backend_selection import NDArray, array_api
 from needle.data.dataset import Dataset
 
 if TYPE_CHECKING:
-    from needle.needle_typing import IndexType, np_ndarray
+    from needle.needle_typing import IndexType
 
 
 class MNISTPaths:

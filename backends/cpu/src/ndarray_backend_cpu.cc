@@ -149,15 +149,13 @@ NB_MODULE(ndarray_backend_cpu, m) {
     });
 
     m.def("fill", Fill);
-    m.def(
-        "compact",
-        [=](const AlignedArray &a, AlignedArray *out,
-            const nb::tuple &shape_tuple, const nb::tuple &strides_tuple,
-            const size_t offset) {
-            auto shape = tuple_to_vec(shape_tuple);
-            auto strides = tuple_to_vec(strides_tuple);
-            Compact(a, out, shape, strides, offset);
-        });
+    m.def("compact", [=](const AlignedArray &a, AlignedArray *out,
+                         const nb::tuple &shape_tuple,
+                         const nb::tuple &strides_tuple, const size_t offset) {
+        auto shape = tuple_to_vec(shape_tuple);
+        auto strides = tuple_to_vec(strides_tuple);
+        Compact(a, out, shape, strides, offset);
+    });
 
     // Random number generation: uniform [0,1)
     m.def("rand", [](AlignedArray *out) {
@@ -178,15 +176,14 @@ NB_MODULE(ndarray_backend_cpu, m) {
     // Seed the CPU RNG
     m.def("set_seed", [](unsigned int seed) { cpu_rng.seed(seed); });
 
-    m.def(
-        "ewise_setitem",
-        [=](const AlignedArray &a, AlignedArray *out,
-            const nb::tuple &shape_tuple, const nb::tuple &strides_tuple,
-            const size_t offset) {
-            auto shape = tuple_to_vec(shape_tuple);
-            auto strides = tuple_to_vec(strides_tuple);
-            EwiseSetitem(a, out, shape, strides, offset);
-        });
+    m.def("ewise_setitem",
+          [=](const AlignedArray &a, AlignedArray *out,
+              const nb::tuple &shape_tuple, const nb::tuple &strides_tuple,
+              const size_t offset) {
+              auto shape = tuple_to_vec(shape_tuple);
+              auto strides = tuple_to_vec(strides_tuple);
+              EwiseSetitem(a, out, shape, strides, offset);
+          });
     m.def("ewise_add", EwiseAdd);
     m.def("ewise_mul", EwiseMul);
     m.def("ewise_div", EwiseDiv);
@@ -198,15 +195,14 @@ NB_MODULE(ndarray_backend_cpu, m) {
     m.def("ewise_pow", EwisePow);
     m.def("ewise_tanh", EwiseTanh);
 
-    m.def(
-        "scalar_setitem",
-        [=](const size_t size, const scalar_t val, AlignedArray *out,
-            const nb::tuple &shape_tuple, const nb::tuple &strides_tuple,
-            const size_t offset) {
-            auto shape = tuple_to_vec(shape_tuple);
-            auto strides = tuple_to_vec(strides_tuple);
-            ScalarSetitem(size, val, out, shape, strides, offset);
-        });
+    m.def("scalar_setitem",
+          [=](const size_t size, const scalar_t val, AlignedArray *out,
+              const nb::tuple &shape_tuple, const nb::tuple &strides_tuple,
+              const size_t offset) {
+              auto shape = tuple_to_vec(shape_tuple);
+              auto strides = tuple_to_vec(strides_tuple);
+              ScalarSetitem(size, val, out, shape, strides, offset);
+          });
     m.def("scalar_add", ScalarAdd);
     m.def("scalar_mul", ScalarMul);
     m.def("scalar_div", ScalarDiv);

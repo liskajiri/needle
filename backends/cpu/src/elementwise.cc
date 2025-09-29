@@ -20,8 +20,7 @@ std::vector<int32_t> get_compact_strides(const std::vector<int32_t> &shape) {
     // precalculate strides for compact array
     std::vector<int32_t> compact_strides(num_dims, 1);
     for (int i = num_dims - 2; i >= 0; --i) {
-        compact_strides[i] =
-            compact_strides[i + 1] * shape[i + 1];
+        compact_strides[i] = compact_strides[i + 1] * shape[i + 1];
     }
     return compact_strides;
 }
@@ -70,7 +69,8 @@ export void Compact(const AlignedArray &a, AlignedArray *out,
 
 export void EwiseSetitem(const AlignedArray &a, AlignedArray *out,
                          const std::vector<int32_t> &shape,
-                         const std::vector<int32_t> &strides,  const size_t offset) {
+                         const std::vector<int32_t> &strides,
+                         const size_t offset) {
     /**
      * Set items in a (non-compact) array
      *

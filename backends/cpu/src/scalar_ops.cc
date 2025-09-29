@@ -21,7 +21,8 @@ export void Fill(AlignedArray *out, const scalar_t val) {
 
 export void ScalarSetitem(const size_t size, const scalar_t val,
                           AlignedArray *out, const std::vector<int32_t> &shape,
-                          const std::vector<int32_t> &strides, const size_t offset) {
+                          const std::vector<int32_t> &strides,
+                          const size_t offset) {
     /**
      * Set items in a (non-compact) array
      *
@@ -38,8 +39,7 @@ export void ScalarSetitem(const size_t size, const scalar_t val,
     // precalculate strides for compact array
     std::vector<uint32_t> compact_strides(num_dims, 1);
     for (int i = num_dims - 2; i >= 0; --i) {
-        compact_strides[i] =
-            compact_strides[i + 1] * shape[i + 1];
+        compact_strides[i] = compact_strides[i + 1] * shape[i + 1];
     }
 
 #pragma omp parallel for schedule(static)

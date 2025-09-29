@@ -24,7 +24,7 @@ if TYPE_CHECKING:
         Strides,
         np_ndarray,
     )
-    from needle.needle_typing.device import ModuleProtocol, NDArrayBackendProtocol
+    from needle.needle_typing.device import NDArrayBackendProtocol
     from needle.needle_typing.dlpack import DLPackDeviceId, DLPackDeviceType
 
 logger = logging.getLogger(__name__)
@@ -175,10 +175,12 @@ class NDArray:
             >>> NDArray._flatten_iterable([])
             ([], (0,))
 
-            >>> NDArray._flatten_iterable([
-            ...     [1, 2],
-            ...     [3],
-            ... ])  # doctest: +IGNORE_EXCEPTION_DETAIL
+            >>> NDArray._flatten_iterable(
+            ...     [
+            ...         [1, 2],
+            ...         [3],
+            ...     ]
+            ... )  # doctest: +IGNORE_EXCEPTION_DETAIL
             Traceback (most recent call last):
             ValueError: Inconsistent dimensions
         """
@@ -907,12 +909,14 @@ class NDArray:
         Examples
         --------
         >>> import needle as ndl
-        >>> x = ndl.backend_ndarray.NDArray([
-        ...     [10, 11],
-        ...     [20, 21],
-        ...     [30, 31],
-        ...     [40, 41],
-        ... ])
+        >>> x = ndl.backend_ndarray.NDArray(
+        ...     [
+        ...         [10, 11],
+        ...         [20, 21],
+        ...         [30, 31],
+        ...         [40, 41],
+        ...     ]
+        ... )
         >>> idx = ndl.backend_ndarray.NDArray([[2, 0], [1, 3]])
         >>> y = x._handle_array_indexing(idx)
         >>> y.numpy()
