@@ -137,17 +137,6 @@ def cuda() -> AbstractBackend:
         return BackendDevice("cuda", None)
 
 
-def cpu_numpy() -> AbstractBackend:
-    """Return numpy device."""
-    try:
-        import numpy_backend
-        from numpy_backend import NumpyBackend
-
-        return NumpyBackend("cpu_numpy", numpy_backend)  # type: ignore
-    except ImportError:
-        raise ImportError("Numpy backend not available")
-
-
 def cpu() -> AbstractBackend:
     """Return cpu device."""
     try:
@@ -160,7 +149,7 @@ def cpu() -> AbstractBackend:
 
 def all_devices() -> list[AbstractBackend]:
     """Return a list of all available devices."""
-    return [cpu(), cuda(), cpu_numpy()]
+    return [cpu(), cuda()]
 
 
 default_device = cpu()

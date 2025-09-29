@@ -19,7 +19,6 @@ all = [
     "ndarray_backend_cpu", # [L]
     #     ← [L] needle.backend_ndarray.backend
     "numpy_backend", # [L]
-    #     ← [L] needle.backend_ndarray.backend
     #     ← [L] needle.backend_selection
 ]
 
