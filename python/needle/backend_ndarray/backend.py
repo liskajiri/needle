@@ -140,10 +140,8 @@ def cuda() -> AbstractBackend:
 def cpu_numpy() -> AbstractBackend:
     """Return numpy device."""
     try:
-        from backends.numpy import (
-            NumpyBackend,  # type: ignore
-            numpy_backend,  # type: ignore
-        )
+        import numpy_backend
+        from numpy_backend import NumpyBackend
 
         return NumpyBackend("cpu_numpy", numpy_backend)  # type: ignore
     except ImportError:
@@ -153,7 +151,6 @@ def cpu_numpy() -> AbstractBackend:
 def cpu() -> AbstractBackend:
     """Return cpu device."""
     try:
-        # from backends.cpu import ndarray_backend_cpu  # type: ignore
         import ndarray_backend_cpu
 
         return BackendDevice("cpu", ndarray_backend_cpu)  # type: ignore
