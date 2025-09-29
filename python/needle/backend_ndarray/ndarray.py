@@ -9,12 +9,12 @@ from typing import TYPE_CHECKING
 import needle.backend_ndarray.array_api as array_api
 from needle.backend_ndarray.backend import default_device, make
 from needle.errors import BroadcastError
-from needle.typing import AbstractBackend
+from needle.needle_typing import AbstractBackend
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from needle.typing import (
+    from needle.needle_typing import (
         Axis,
         DType,
         IndexType,
@@ -24,8 +24,8 @@ if TYPE_CHECKING:
         Strides,
         np_ndarray,
     )
-    from needle.typing.device import NDArrayBackendProtocol
-    from needle.typing.dlpack import DLPackDeviceId, DLPackDeviceType
+    from needle.needle_typing.device import NDArrayBackendProtocol
+    from needle.needle_typing.dlpack import DLPackDeviceId, DLPackDeviceType
 
 logger = logging.getLogger(__name__)
 

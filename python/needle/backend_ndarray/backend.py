@@ -4,17 +4,17 @@ import math
 import random
 from typing import TYPE_CHECKING, override
 
-from needle.typing import AbstractBackend
+from needle.needle_typing import AbstractBackend
 
 if TYPE_CHECKING:
     from needle.backend_ndarray.ndarray import NDArray
-    from needle.typing import (
+    from needle.needle_typing import (
         DType,
         IndexType,
         Shape,
         Strides,
     )
-    from needle.typing.device import ModuleProtocol, NDArrayBackendProtocol
+    from needle.needle_typing.device import ModuleProtocol, NDArrayBackendProtocol
 
 
 class BackendDevice(AbstractBackend):
@@ -137,22 +137,10 @@ def cuda() -> AbstractBackend:
         return BackendDevice("cuda", None)
 
 
-def cpu_numpy() -> AbstractBackend:
-    """Return numpy device."""
-    try:
-        from needle import backend_numpy
-        from needle.backend_numpy import NumpyBackend
-
-        return NumpyBackend("cpu_numpy", backend_numpy)  # type: ignore
-    except ImportError:
-        raise ImportError("Numpy backend not available")
-
-
 def cpu() -> AbstractBackend:
     """Return cpu device."""
     try:
-        from backends.cpu import ndarray_backend_cpu  # type: ignore
-        # import ndarray_backend_cpu
+        import ndarray_backend_cpu
 
         return BackendDevice("cpu", ndarray_backend_cpu)  # type: ignore
     except ImportError:
@@ -161,7 +149,7 @@ def cpu() -> AbstractBackend:
 
 def all_devices() -> list[AbstractBackend]:
     """Return a list of all available devices."""
-    return [cpu(), cuda(), cpu_numpy()]
+    return [cpu(), cuda()]
 
 
 default_device = cpu()

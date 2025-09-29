@@ -1,0 +1,12 @@
+[package]
+name = "numpy_backend"
+version = "0.1.0"
+
+[package.build]
+backend = { name = "pixi-build-python", version = "*" }
+
+[package.host-dependencies]
+hatchling = "*"
+
+[package.run-dependencies]
+numpy = "*"

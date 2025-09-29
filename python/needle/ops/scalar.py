@@ -8,8 +8,8 @@ from needle.ops.op import TensorOp
 
 if TYPE_CHECKING:
     from needle.backend_selection import NDArray
+    from needle.needle_typing import Scalar
     from needle.tensor import Tensor
-    from needle.typing import Scalar
 
 
 class AddScalar(TensorOp):

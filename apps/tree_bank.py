@@ -5,7 +5,7 @@ from models.language_model import LanguageModel
 from needle import nn
 from needle.backend_selection import default_device
 from needle.data.nlp import Corpus
-from needle.typing import AbstractBackend, DType
+from needle.needle_typing import AbstractBackend, DType
 
 try:
     from tqdm import tqdm  # type: ignore

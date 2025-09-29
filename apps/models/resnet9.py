@@ -2,9 +2,9 @@ from typing import TypedDict
 
 from needle import nn
 from needle.backend_selection import default_device
+from needle.needle_typing.device import AbstractBackend
+from needle.needle_typing.types import DType
 from needle.tensor import Tensor
-from needle.typing.device import AbstractBackend
-from needle.typing.types import DType
 
 
 class Config(TypedDict):

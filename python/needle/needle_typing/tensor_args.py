@@ -1,7 +1,7 @@
 from typing import TypedDict
 
-from needle.typing.device import AbstractBackend
-from needle.typing.types import DType
+from needle.needle_typing.device import AbstractBackend
+from needle.needle_typing.types import DType
 
 
 class TensorKwargs(TypedDict, total=False):

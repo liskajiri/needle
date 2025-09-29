@@ -10,24 +10,21 @@ classifiers = ["Programming Language :: Python"]
 urls = { repository = "https://github.com/liskajiri/needle" }
 dependencies = [
     # [AUTOGEN] by pydependence resolver 'needle' **DO NOT EDIT** [AUTOGEN]
-    "numpy",
-    #     ← needle.backend_numpy
 ]
 
 
 [project.optional-dependencies]
 all = [
     # [AUTOGEN] by pydependence resolver 'all' **DO NOT EDIT** [AUTOGEN]
-    "backends", # [L]
+    "ndarray_backend_cpu", # [L]
     #     ← [L] needle.backend_ndarray.backend
-    "numpy",
-    #     ← needle.backend_numpy
+    "numpy_backend", # [L]
     #     ← [L] needle.backend_selection
 ]
 
-# [build-system]
-# build-backend = "hatchling.build"
-# requires = ["hatchling"]
+[build-system]
+build-backend = "hatchling.build"
+requires = ["hatchling"]
 
 [tool.pytest.ini_options]
 pythonpath = "python/needle"

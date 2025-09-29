@@ -7,7 +7,7 @@ from needle.backend_selection import NDArray, array_api, default_device
 from needle.tensor import Tensor
 
 if TYPE_CHECKING:
-    from needle.typing import AbstractBackend, DType
+    from needle.needle_typing import AbstractBackend, DType
 
 
 class Dictionary:

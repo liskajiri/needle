@@ -93,7 +93,7 @@ set(OpenMP_ROOT "$ENV{CONDA_PREFIX}")
 set(OpenMP_CXX_FLAGS "-fopenmp")
 set(OpenMP_CXX_LIB_NAMES "omp")
 set(OpenMP_omp_LIBRARY "$ENV{CONDA_PREFIX}/lib/libomp.so")
-set(OpenMP_CXX_INCLUDE_DIRS "$ENV{CONDA_PREFIX}/lib/clang/19/include")
+set(OpenMP_CXX_INCLUDE_DIRS "$ENV{CONDA_PREFIX}/lib/clang/20/include")
 
 find_package(OpenMP REQUIRED)
 if (OpenMP_CXX_FOUND)

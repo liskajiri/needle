@@ -8,16 +8,30 @@ version = "0.1.0"
 requires-pixi = ">=0.45.0"
 
 channels = [
-  # "https://prefix.dev/pixi-build-backends",
+  "https://prefix.dev/pixi-build-backends",
   "https://prefix.dev/conda-forge",
 ]
-# preview = ["pixi-build"]
+preview = ["pixi-build"]
 
-# [package.build]
-# backend = { name = "pixi-build-python", version = "0.1.*" }
+[package]
+name = "needle"
+version = "0.1.0"
 
-# [package.host-dependencies]
-# hatchling = "==1.26.3"
+[package.build]
+backend = { name = "pixi-build-python", version = "*" }
+
+[package.build.config]
+# Build platform-specific package
+noarch = false
+
+[package.host-dependencies]
+hatchling = "*"
+
+[package.run-dependencies]
+ndarray_backend_cpu = { path = "backends/cpu" }
+numpy_backend = { path = "backends/numpy" }
+python = ">=3.13.5,<3.14"
+
 
 [tasks]
 clean = "rm -rf .build/ cmake-build-debug/ python/needle/backend_ndarray/ndarray_backend*.so .pytest_cache/ .coverage"
@@ -31,7 +45,8 @@ download_datasets = { cmd = [
   "unpack_cifar",
 ] }
 see_updated_deps = "pixi update --no-install --json | pixi exec pixi-diff-to-markdown > diff.md"
-check_numpy_is_not_dependency = "python -c 'import needle as ndl; a = ndl.NDArray([1, 2]); b = ndl.NDArray([1, 2]); print(a + b)'"
+start_cpu = "python -c 'import ndarray_backend_cpu as ndl; a = ndl.Array(2); ndl.fill(a, 1); print(a)'"
+start_ndl = "python -c 'import needle as ndl; a = ndl.NDArray([2]); b = ndl.NDArray([3]); print(a + b)'"
 
 [tasks.download_mnist]
 args = [
@@ -88,21 +103,20 @@ inputs = ["data/cifar-10/cifar-10-python.tar.gz"]
 outputs = ["data/cifar-10/cifar-10-batches-py/"]
 depends-on = [{ "task" = "download_cifar" }]
 
+
 # TODO: gpu test/bench environment
 [environments]
 notebooks = ["notebooks"]
 lint = { features = ["lint"] }
-dev = ["dev"]
 test = { features = ["test"], solve-group = "test" }
 benchmark = { features = ["benchmark"], solve-group = "test" }
 train = ["train"]
 
 [dependencies]
 python = ">=3.13.5,<3.14"
-# Pin python-gil to 3.13.3 to avoid issues with getting threaded python
-python-gil = ">=3.13.5,<4"
-# needle = { path = "."}
-# ndarray_backend_cpu = { path = "backends/"}
+needle = { path = "." }
+ndarray_backend_cpu = { path = "backends/cpu" }
+numpy_backend = { path = "backends/numpy" }
 
 [feature.notebooks.dependencies]
 marimo = ">=0.12.8,<0.13"
@@ -118,23 +132,6 @@ basedpyright = ">=1.31.3,<2"
 lint = "pre-commit run --all-files --color=always --show-diff-on-failure"
 type_check = "pyright"
 
-[feature.dev.dependencies]
-cmake = ">=4.1.1,<5"
-ninja = ">=1.13.1,<2"
-nanobind = ">=2.6.1,<2.8"
-clang = ">=20.1.8,<21"
-openmp = ">=8.0.1,<9"
-clangxx = ">=20.1.8,<21"
-libcxx = ">=20.1.8,<21"
-libcxx-devel = ">=20.1.8,<21"
-libcxxabi = ">=20.1.8,<21"
-clang-tools = ">=20.1.8,<21"
-
-[feature.dev.tasks]
-# TODO: Move CMakelists to backends folder
-make = { cmd = "cmake -G Ninja -S . -B .build" }
-build = { cmd = ["ninja", "-C", ".build"], depends-on = ["make"] }
-
 [feature.test.dependencies]
 pytest = ">=8.4.1,<9"
 pytest-sugar = ">=1.1.1,<2"
@@ -147,82 +144,20 @@ coverage = ">=7.10.5,<8"
 
 
 [feature.test.tasks]
-test = { cmd = "pytest -n 2 -m 'not slow' -k 'not dataset'", depends-on = [
-  "build",
-  "print_backend",
-] }
+test = { cmd = "pytest -n 2 -m 'not slow' -k 'not dataset'" }
 test_datasets = { cmd = "pytest -n 4 tests/datasets", depends-on = [
-  "build",
   "download_datasets",
 ] }
-test_doctests = { cmd = "pytest -n 0 --doctest-modules python/needle", depends-on = [
-  "build",
-  "print_backend",
-] }
-test_hypothesis = { cmd = "pytest -n 8 -m 'hypothesis' --hypothesis-profile=dev", depends-on = [
-  "build",
-  "print_backend",
-] }
+test_doctests = { cmd = "pytest -n 0 --doctest-modules python/needle" }
+test_hypothesis = { cmd = "pytest -n 8 -m 'hypothesis' --hypothesis-profile=dev" }
 test_all = { cmd = """coverage run -m pytest -n auto
 --junitxml=$TEST_REPORT_PATH.xml -o junit_family=legacy
 """, depends-on = [
-  "build",
-  "print_backend",
   "download_datasets",
 ], env = { COVERAGE_PROCESS_START = "./pyproject.toml" } }
 report_coverage = { cmd = "coverage combine && coverage xml", depends-on = [
   "test_all",
 ] }
-
-# [feature.test.tasks.test]
-# args = [
-#   { "arg" = "path", "default" = "tests/ python/needle" },
-#   { "arg" = "n_threads", "default" = "2" },
-#   { "arg" = "modules", "default" = "'not slow'" },
-#   { "arg" = "names", "default" = "'not dataset'" },
-#   { "arg" = "other", "default" = " " },
-# ]
-# cmd = "pytest {{ path }} -n {{ n_threads }} -m {{ modules }} -k {{ names }} {{ other }}"
-# depends-on = ["build", "print_backend"]
-
-# [feature.test.tasks.test_datasets]
-# depends-on = [
-#   { "task" = "test", "args" = [
-#     # { "arg" = "path", "default" = "tests/datasets" },
-#     "tests/datasets",
-#     "4",
-#     "''",
-#     "'dataset'",
-#   ] },
-# ]
-
-# [feature.test.tasks.test_doctests]
-# depends-on = [
-#   { task = "test", args = [
-#     "python/needle",
-#     "0",
-#     "''",
-#     "''",
-#     "--doctest-modules",
-#   ] },
-# ]
-
-# [feature.test.tasks.test_hypothesis]
-# depends-on = [
-#   { "task" = "test", "args" = [
-#     " ",
-#     "4",
-#     "'hypothesis'",
-#     "''",
-#     "--hypothesis-profile=dev",
-#   ] },
-# ]
-
-# [feature.test.tasks.test_all]
-# depends-on = [{ "task" = "test", "args" = [" ", "auto", "''", "''", """
-# --junitxml=$TEST_REPORT_PATH.xml -o junit_family=legacy
-# """] }]
-
 
 [feature.test.activation.env]
 # Save results of test to html
@@ -239,15 +174,11 @@ pytest-benchmark = ">=5.1.0,<6"
 pytorch = ">=2.7.1,<3"
 
 [feature.benchmark.tasks]
-benchmarks = { cmd = "pytest benchmarks/ --codspeed", depends-on = ["build"] }
-benchmarks_local = { cmd = "pytest benchmarks/ $BENCHMARK_OPTIONS", depends-on = [
-  "build",
-], env = { BENCHMARK_OPTIONS = """
+benchmarks = { cmd = "pytest benchmarks/ --codspeed" }
+benchmarks_local = { cmd = "pytest benchmarks/ $BENCHMARK_OPTIONS", env = { BENCHMARK_OPTIONS = """
 --benchmark-autosave --benchmark-save-data --benchmark-compare --benchmark-group-by=name --benchmark-sort=name --benchmark-columns=min,max,mean,stddev,rounds --benchmark-compare-fail=min:20% --benchmark-min-rounds=100
 """ } }
-benchmark_matmul = { cmd = "pytest benchmarks/test_matmul.py --codspeed", depends-on = [
-  "build",
-] }
+benchmark_matmul = { cmd = "pytest benchmarks/test_matmul.py --codspeed" }
 
 [feature.benchmark.pypi-dependencies]
 scalene = ">=1.5.54, <2"
@@ -257,15 +188,12 @@ tqdm = ">=4.67.1,<5"
 
 [feature.train.tasks]
 train_resnet_cifar = { cmd = "python -m apps.train_resnet --log=INFO", depends-on = [
-  "build",
   "download_cifar",
 ] }
 train_resnet_mnist = { cmd = "python -m apps.train_resnet --log=INFO --dataset=mnist", depends-on = [
-  "build",
   "download_mnist",
 ] }
 train_tree_bank = { cmd = "python -m apps.tree_bank --log=INFO", depends-on = [
-  "build",
   "download_tree_bank",
 ] }
 

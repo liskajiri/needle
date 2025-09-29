@@ -7,14 +7,21 @@ from typing import TYPE_CHECKING
 import needle as ndl
 from needle.autograd.value import Value
 from needle.backend_selection import NDArray, array_api, default_device
-from needle.typing.types import Axis
+from needle.needle_typing.types import Axis
 
 if TYPE_CHECKING:
     from collections.abc import Generator
     from typing import Self
 
-    from needle.typing import AbstractBackend as Device
-    from needle.typing import DType, IndexType, NDArrayLike, Scalar, Shape, np_ndarray
+    from needle.needle_typing import AbstractBackend as Device
+    from needle.needle_typing import (
+        DType,
+        IndexType,
+        NDArrayLike,
+        Scalar,
+        Shape,
+        np_ndarray,
+    )
 
 
 class Tensor(Value):

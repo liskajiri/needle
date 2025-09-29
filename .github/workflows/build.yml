@@ -21,6 +21,5 @@ jobs:
         uses: prefix-dev/setup-pixi@v0.8.5
         with:
           cache: true
-          cache-write:
-            ${{ github.event_name == 'push' && github.ref_name == 'main' }}
-      - run: pixi run build
+          cache-write: ${{ github.event_name == 'push' && github.ref_name == 'main' }}
+      - run: pixi build

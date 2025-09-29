@@ -7,7 +7,7 @@ from needle.backend_selection import NDArray, array_api, default_device
 from needle.data.dataset import Dataset
 
 if TYPE_CHECKING:
-    from needle.typing import AbstractBackend, IndexType
+    from needle.needle_typing import AbstractBackend, IndexType
 
 
 class SyntheticMNIST(Dataset[NDArray]):

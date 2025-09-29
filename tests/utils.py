@@ -8,7 +8,7 @@ import numpy as np
 import pytest
 import torch
 from needle import Tensor
-from needle.typing.device import AbstractBackend
+from needle.needle_typing.device import AbstractBackend
 
 try:
     import torch

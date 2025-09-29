@@ -70,12 +70,12 @@ def set_backend(backend_name: str) -> None:
 
         elif backend == BACKENDS.NUMPY:
             logging.info("Using numpy backend")
-            import numpy as array_api
 
-            from needle.backend_numpy import NDArray, all_devices, cpu, cuda
-            from needle.backend_numpy import NumpyBackend as Device
+            from numpy_backend import NDArray, all_devices, array_api, cpu, cuda
+            from numpy_backend import NumpyBackend as Device
 
             default_device = cpu()
+        print(backend)
 
         _loaded_backend = backend
 

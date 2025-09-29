@@ -10,7 +10,7 @@ from needle.tensor import Tensor
 
 if TYPE_CHECKING:
     from needle.backend_selection import NDArray
-    from needle.typing.types import Shape
+    from needle.needle_typing.types import Shape
 
 
 class Conv(TensorOp):

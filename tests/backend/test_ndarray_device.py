@@ -1,7 +1,7 @@
 import numpy as np
+import numpy_backend
 import pytest
 from needle import backend_ndarray as nd
-from needle import backend_numpy
 
 # Constants for testing
 DEFAULT_SHAPE = (4, 5)
@@ -14,7 +14,7 @@ def get_backends():
     """Get both CPU and NumPy backends for testing."""
     backends = [
         (nd.cpu(), "cpu"),
-        (backend_numpy.cpu(), "numpy"),
+        (numpy_backend.cpu(), "numpy"),
     ]
     if nd.cuda().enabled():
         backends.append((nd.cuda(), "cuda"))
@@ -110,6 +110,7 @@ class TestRandom:
     )
     def test_rand_distribution(self, backend, name):
         """Test uniform random distribution properties."""
+        print(backend, name)
         samples = backend.rand((STATISTICAL_SAMPLE_SIZE,))
         data = convert_to_numpy(samples)
 
@@ -169,7 +170,7 @@ class TestBackendConsistency:
 
     def setup_method(self):
         self.cpu_backend = nd.cpu()
-        self.numpy_backend = backend_numpy.cpu()
+        self.numpy_backend = numpy_backend.cpu()
 
     @pytest.mark.parametrize("n,idx", one_hot_cases, ids=one_hot_ids)
     @pytest.mark.parametrize("dtype", DTYPES, ids=dtype_ids)
