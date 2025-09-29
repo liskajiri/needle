@@ -1349,7 +1349,7 @@ packages:
   - python_abi 3.13.* *_cp313
   license: MIT
   input:
-    hash: 22de9bca68acf276a1440cd2202635e3727760241a50bbc251f47c50323eabb4
+    hash: f9c1bbd85334e5791fa0640fa4b3fdcdba4f087312f06680fa0b5e5a324d92df
     globs:
     - pyproject.toml
   sources:
