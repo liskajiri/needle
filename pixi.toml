@@ -113,7 +113,7 @@ benchmark = { features = ["benchmark"], solve-group = "test" }
 train = ["train"]
 
 [dependencies]
-python = ">=3.13.5,<3.14"
+python = ">=3.13.7,<3.14"
 needle = { path = "." }
 ndarray_backend_cpu = { path = "backends/cpu" }
 numpy_backend = { path = "backends/numpy" }
@@ -123,13 +123,12 @@ marimo = ">=0.12.8,<0.13"
 pytorch = ">=2.6.0,<3"
 
 [feature.lint.dependencies]
-pre-commit = ">=4.3.0,<5"
-pre-commit-hooks = ">=5.0.0,<6"
 pyright = ">=1.1.404,<2"
 basedpyright = ">=1.31.3,<2"
+prek = ">=0.2.3,<0.3"
 
 [feature.lint.tasks]
-lint = "pre-commit run --all-files --color=always --show-diff-on-failure"
+lint = "prek run --all-files --color=always --show-diff-on-failure"
 type_check = "pyright"
 
 [feature.test.dependencies]
